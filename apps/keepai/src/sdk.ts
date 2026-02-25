@@ -9,6 +9,7 @@
  *   const keep = new KeepAI({ configDir: '/path/to/.keepai' });
  */
 
+import { EventEmitter } from 'events';
 import {
   RPCCaller,
   RPCCallError,
@@ -55,7 +56,9 @@ export class KeepAIError extends Error {
   }
 }
 
-export class KeepAI {
+export type KeepAIEvent = 'waiting_approval' | 'connected' | 'disconnected';
+
+export class KeepAI extends EventEmitter {
   private configDir: string;
   private caller: RPCCaller | null = null;
   private identity: Identity | null = null;
@@ -63,6 +66,7 @@ export class KeepAI {
   private timeout: number;
 
   constructor(options: KeepAIOptions = {}) {
+    super();
     this.configDir = options.configDir ?? getConfigDir();
     this.timeout = options.timeout ?? 300_000;
 
@@ -190,6 +194,7 @@ export class KeepAI {
     try {
       const result = await this.getCaller().call('ping', {});
       if (result) {
+        this.emit('connected');
         // Also fetch services
         const helpResult = await this.getCaller().call('help', {});
         const services = Array.isArray(helpResult) ? (helpResult as ServiceHelp[]) : [];
@@ -231,6 +236,7 @@ export class KeepAI {
     delete cleanParams.account;
 
     try {
+      this.emit('waiting_approval');
       const result = await caller.call(method, {
         service,
         params: cleanParams,
@@ -275,6 +281,7 @@ export class KeepAI {
     }
     this.identity = null;
     this.config = null;
+    this.emit('disconnected');
   }
 
   /**

@@ -151,8 +151,8 @@ export async function createServer(config: ServerConfig = {}) {
   });
 
   // Register routes
-  await registerConnectionRoutes(app, connectionManager, () => `http://${host}:${port}`);
-  await registerAgentRoutes(app, agentManager, policyEngine, updateSubscription);
+  await registerConnectionRoutes(app, connectionManager, () => `http://${host}:${port}`, connectorExecutor);
+  await registerAgentRoutes(app, agentManager, policyEngine, updateSubscription, sse);
   await registerPolicyRoutes(app, agentManager, policyEngine, connectorExecutor);
   await registerQueueRoutes(app, approvalQueue);
   await registerLogRoutes(app, auditLogger);

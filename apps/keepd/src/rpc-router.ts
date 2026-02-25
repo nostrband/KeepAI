@@ -14,6 +14,7 @@
 
 import type { RPCRequest, RPCError, Agent } from '@keepai/proto';
 import { PROTOCOL_VERSION, SOFTWARE_VERSION } from '@keepai/proto';
+import { AuthError, isClassifiedError } from '@keepai/proto';
 import type { AgentKeys } from '@keepai/nostr-rpc';
 import type { AgentManager } from './managers/agent-manager.js';
 import type { PolicyEngine } from './managers/policy-engine.js';
@@ -103,6 +104,15 @@ export class RPCRouter {
       return {
         error: { code: 'not_paired', message: 'Agent not paired' },
       };
+    }
+
+    // Emit agent_connected on first RPC (when agent was not previously seen)
+    if (agent.lastSeenAt === null) {
+      this.sse.broadcast('agent_connected', {
+        id: agent.id,
+        name: agent.name,
+        agentPubkey: agent.agentPubkey,
+      });
     }
 
     // Touch agent last_seen
@@ -388,6 +398,16 @@ export class RPCRouter {
 
       return { result };
     } catch (err: any) {
+      // If AuthError, the connection's token is invalid — notify UI
+      if (err instanceof AuthError) {
+        this.sse.broadcast('connection_updated', {
+          service,
+          accountId,
+          status: 'error',
+          error: err.message,
+        });
+      }
+
       this.auditLogger.log({
         agent,
         metadata,

@@ -10,12 +10,14 @@
 import type { FastifyInstance } from 'fastify';
 import type { AgentManager } from '../managers/agent-manager.js';
 import type { PolicyEngine } from '../managers/policy-engine.js';
+import type { SSEBroadcaster } from '../sse.js';
 
 export async function registerAgentRoutes(
   app: FastifyInstance,
   agentManager: AgentManager,
   policyEngine: PolicyEngine,
-  onSubscriptionChange: () => void
+  onSubscriptionChange: () => void,
+  sse?: SSEBroadcaster
 ): Promise<void> {
   // List agents
   app.get('/api/agents', async () => {
@@ -88,6 +90,13 @@ export async function registerAgentRoutes(
 
       // Delete policies
       policyEngine.deleteAgentPolicies(agent.agentPubkey);
+
+      // Emit agent_disconnected SSE event
+      sse?.broadcast('agent_disconnected', {
+        id: agent.id,
+        name: agent.name,
+        agentPubkey: agent.agentPubkey,
+      });
 
       // Update nostr subscription
       onSubscriptionChange();

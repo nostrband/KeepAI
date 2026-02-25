@@ -1,7 +1,8 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Bot, Shield, Trash2, ArrowLeft } from 'lucide-react';
+import { Shield, Trash2, ArrowLeft, Activity } from 'lucide-react';
 import { useAgent, useRevokeAgent } from '../hooks/use-agents';
 import { usePolicies } from '../hooks/use-policies';
+import { useLogs } from '../hooks/use-logs';
 import { StatusBadge } from '../components/status-badge';
 import { ServiceIcon, serviceName } from '../components/service-icon';
 
@@ -10,6 +11,7 @@ export function AgentDetailPage() {
   const navigate = useNavigate();
   const { data: agent, isLoading } = useAgent(agentId!);
   const { data: policies } = usePolicies(agentId!);
+  const { data: logsData } = useLogs({ agent: agentId!, limit: '10' });
   const revokeMutation = useRevokeAgent();
 
   if (isLoading) return <div className="text-sm text-muted-foreground">Loading...</div>;
@@ -22,6 +24,7 @@ export function AgentDetailPage() {
   };
 
   const policyServices = policies ? Object.keys(policies) : [];
+  const recentLogs = logsData?.entries ?? [];
 
   return (
     <div>
@@ -68,7 +71,7 @@ export function AgentDetailPage() {
       </div>
 
       {/* Policies */}
-      <div className="border border-border rounded-lg p-4">
+      <div className="border border-border rounded-lg p-4 mb-6">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
             <Shield className="w-4 h-4" />
@@ -97,6 +100,52 @@ export function AgentDetailPage() {
                 </div>
               );
             })}
+          </div>
+        )}
+      </div>
+
+      {/* Recent Activity */}
+      <div className="border border-border rounded-lg p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+            <Activity className="w-4 h-4" />
+            Recent Activity
+          </h2>
+          <Link
+            to={`/logs?agent=${agentId}`}
+            className="text-sm text-primary hover:underline"
+          >
+            View all
+          </Link>
+        </div>
+        {recentLogs.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No requests yet.</p>
+        ) : (
+          <div className="space-y-1">
+            {recentLogs.map((entry: any) => (
+              <div
+                key={entry.id}
+                className="flex items-center gap-2 p-2 text-sm rounded-md hover:bg-accent/20"
+              >
+                <ServiceIcon service={entry.service} className="w-4 h-4 shrink-0" />
+                <span className="font-mono text-xs">{entry.method}</span>
+                <span
+                  className={`text-xs px-1.5 py-0.5 rounded ${
+                    entry.response_status === 'success'
+                      ? 'bg-green-500/10 text-green-600'
+                      : 'bg-red-500/10 text-red-600'
+                  }`}
+                >
+                  {entry.response_status}
+                </span>
+                {entry.duration_ms != null && (
+                  <span className="text-xs text-muted-foreground">{entry.duration_ms}ms</span>
+                )}
+                <span className="text-xs text-muted-foreground ml-auto">
+                  {new Date(entry.created_at).toLocaleString()}
+                </span>
+              </div>
+            ))}
           </div>
         )}
       </div>

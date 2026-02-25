@@ -19,7 +19,12 @@ export function ConnectionsPage() {
     try {
       const result = await connectMutation.mutateAsync(service);
       if (result.url) {
-        window.open(result.url, '_blank');
+        // In Electron, open OAuth URL in system browser (not in-app window)
+        if ((window as any).electronAPI?.openExternal) {
+          (window as any).electronAPI.openExternal(result.url);
+        } else {
+          window.open(result.url, '_blank');
+        }
       }
     } catch (err) {
       console.error('Connect failed:', err);

@@ -31,6 +31,14 @@ export function useSSE() {
       queryClient.invalidateQueries({ queryKey: ['logs'] });
     });
 
+    source.addEventListener('agent_connected', () => {
+      queryClient.invalidateQueries({ queryKey: qk.agents() });
+    });
+
+    source.addEventListener('agent_disconnected', () => {
+      queryClient.invalidateQueries({ queryKey: qk.agents() });
+    });
+
     source.addEventListener('connection_updated', () => {
       queryClient.invalidateQueries({ queryKey: qk.connections() });
     });

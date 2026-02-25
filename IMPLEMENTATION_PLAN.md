@@ -2,7 +2,7 @@
 
 > **Goal**: Simple, lovable, complete v1 — a safe gate for AI agents to access user services (Gmail, Notion) via e2e encrypted nostr RPC.
 >
-> **Status**: Phase 9 complete. All phases done. 235 tests across 7 suites, all 8 packages build clean.
+> **Status**: Phase 10 complete. All phases done. 235 tests across 7 suites, all 8 packages build clean.
 
 ---
 
@@ -154,3 +154,18 @@
 - [x] **Cleanup job verification** — expired pairings deleted, expired approvals moved to expired status, resolved approvals deleted after max age, old RPC request dedup entries cleaned, old audit log entries cleaned
 - [x] **Agent key lookup** — paired agents resolved, pending pairings resolved (with empty agentPubkey), revoked agents return null, unknown pubkeys return null
 - [x] **Tests** — 56 integration tests (26 RPCRouter pipeline + 24 HTTP API + 5 cleanup + 1 full lifecycle); 235 total tests across 7 suites (28 proto + 26 db + 28 nostr-rpc + 42 connectors + 86 keepd + 25 keepai); all 8 packages build clean
+
+## Phase 10: Spec Compliance & Polish ✅
+> Tighten up edge cases, SSE events, UI polish, SDK ergonomics, and connection health checks.
+
+- [x] **AuthError handling in RPC router** — catch `AuthError` in `executeServiceMethod` catch block, broadcast `connection_updated` SSE event to notify UI of connection errors
+- [x] **agent_connected SSE event** — emitted when an agent makes its first RPC call (lastSeenAt was null), triggers agent list refresh in UI
+- [x] **agent_disconnected SSE event** — emitted when an agent is revoked via DELETE /api/agents/:id, triggers agent list refresh in UI
+- [x] **connection_updated SSE event type** — added to `SSEEventType` union in proto (UI already listened for it)
+- [x] **Approval cards expandable request details** — added expand/collapse toggle to show raw request params JSON (was hidden before)
+- [x] **Electron bridge: tray badge** — `useQueue` hook now calls `window.electronAPI.updateTrayBadge(count)` when pending approval count changes
+- [x] **Electron bridge: OAuth in system browser** — connections page uses `window.electronAPI.openExternal()` for OAuth URLs in Electron mode (prevents in-app OAuth window)
+- [x] **SDK EventEmitter** — `KeepAI` class extends `EventEmitter`, emits `waiting_approval` (before service calls), `connected` (on successful ping), `disconnected` (on disconnect)
+- [x] **Agent detail: recent activity** — added "Recent Activity" section showing last 10 requests filtered by agentId, with service icon, method, status, duration, and timestamp
+- [x] **Connection health check: live probe** — POST /check endpoint now makes a live API call (Gmail profile.get, Notion search) instead of just checking token existence
+- [x] **Tests** — 235 tests passing across 7 suites (28 proto + 26 db + 28 nostr-rpc + 42 connectors + 86 keepd + 25 keepai); all 8 packages build clean

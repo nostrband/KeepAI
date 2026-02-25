@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { ServiceIcon, serviceName } from './service-icon';
-import { Clock, Check, X } from 'lucide-react';
+import { Clock, Check, X, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface ApprovalCardProps {
   item: {
@@ -29,6 +30,9 @@ function timeAgo(dateStr: string): string {
 }
 
 export function ApprovalCard({ item, onApprove, onDeny, isApproving, isDenying }: ApprovalCardProps) {
+  const [expanded, setExpanded] = useState(false);
+  const hasParams = item.params && Object.keys(item.params).length > 0;
+
   return (
     <div className="border border-border rounded-lg p-4 bg-card">
       <div className="flex items-start justify-between gap-3">
@@ -70,6 +74,24 @@ export function ApprovalCard({ item, onApprove, onDeny, isApproving, isDenying }
           </button>
         </div>
       </div>
+
+      {/* Expandable request details */}
+      {hasParams && (
+        <div className="mt-2 pt-2 border-t border-border/50">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+          >
+            {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            Request details
+          </button>
+          {expanded && (
+            <pre className="mt-2 p-2 rounded bg-muted/50 text-xs font-mono overflow-x-auto max-h-48 overflow-y-auto">
+              {JSON.stringify(item.params, null, 2)}
+            </pre>
+          )}
+        </div>
+      )}
     </div>
   );
 }

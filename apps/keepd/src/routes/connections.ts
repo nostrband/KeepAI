@@ -10,12 +10,18 @@
  */
 
 import type { FastifyInstance } from 'fastify';
-import type { ConnectionManager } from '@keepai/connectors';
+import type { ConnectionManager, ConnectorExecutor } from '@keepai/connectors';
+
+const HEALTH_CHECK_METHODS: Record<string, { method: string; params: Record<string, unknown> }> = {
+  gmail: { method: 'profile.get', params: {} },
+  notion: { method: 'search', params: { query: '', page_size: 1 } },
+};
 
 export async function registerConnectionRoutes(
   app: FastifyInstance,
   connectionManager: ConnectionManager,
-  getServerBaseUrl: () => string
+  getServerBaseUrl: () => string,
+  connectorExecutor?: ConnectorExecutor
 ): Promise<void> {
   // List all connections
   app.get('/api/connections', async () => {
@@ -103,7 +109,7 @@ export async function registerConnectionRoutes(
     }
   );
 
-  // Check connection (test by fetching profile)
+  // Check connection (test by making a live API call)
   app.post<{ Params: { service: string; accountId: string } }>(
     '/api/connections/:service/:accountId/check',
     async (request, reply) => {
@@ -114,7 +120,18 @@ export async function registerConnectionRoutes(
           service,
           accountId,
         });
-        return { success: true, hasCredentials: !!creds.accessToken };
+
+        if (!creds.accessToken) {
+          return { success: false, error: 'No access token' };
+        }
+
+        // Make a live API probe if connector executor is available
+        const probe = HEALTH_CHECK_METHODS[service];
+        if (connectorExecutor && probe) {
+          await connectorExecutor.execute(service, probe.method, probe.params, creds);
+        }
+
+        return { success: true };
       } catch (err: any) {
         reply.status(500);
         return { success: false, error: err.message };
