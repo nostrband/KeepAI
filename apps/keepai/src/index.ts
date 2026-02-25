@@ -1,3 +1,13 @@
 // @keepai/cli — SDK entry point
-// Placeholder — implementation in Phase 6
-export {};
+export { KeepAI, KeepAIError, type KeepAIOptions, type StatusResult } from './sdk.js';
+export {
+  loadIdentity,
+  loadConfig,
+  saveIdentity,
+  saveConfig,
+  deleteStorage,
+  isPaired,
+  getConfigDir,
+  type Identity,
+  type ClientConfig,
+} from './storage.js';

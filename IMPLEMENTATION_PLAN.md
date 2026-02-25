@@ -2,7 +2,7 @@
 
 > **Goal**: Simple, lovable, complete v1 — a safe gate for AI agents to access user services (Gmail, Notion) via e2e encrypted nostr RPC.
 >
-> **Status**: Phase 5 complete. Daemon (keepd) with Fastify HTTP API, agent management, policy engine, approval queue, audit logging, SSE, and RPC routing implemented and tested.
+> **Status**: Phase 6 complete. CLI & SDK (keepai) with local storage, KeepAI SDK class, and CLI commands implemented and tested.
 
 ---
 
@@ -91,18 +91,21 @@
 - [x] **keepd: DB bridge** — `createDbBridge()` wrapping sync @keepai/db ConnectionStore in async DbConnectionStore for ConnectionManager; handles JSON metadata serialization
 - [x] **Tests** — 30 tests (AgentManager lifecycle/pairing/revocation, PolicyEngine rule matching/caching/defaults/path safety, ApprovalQueue approve/deny/timeout/hash verification, AuditLogger logging/filtering/counting, SSEBroadcaster, DB bridge)
 
-## Phase 6: CLI & SDK (keepai)
+## Phase 6: CLI & SDK (keepai) ✅
 > Agent-facing tool. Pairs with daemon, makes RPC calls.
 
-- [ ] **keepai: local storage** — config.json + identity.json management at ~/.keepai/client/ with 0o600 perms → [specs/04-keepai-cli-sdk.md]
-- [ ] **keepai: SDK KeepAI class** — `init(pairingCode)`, `status()`, `help(service?)`, `run(service, method, params)`, `disconnect()`; events: waiting_approval, connected, disconnected → [specs/04-keepai-cli-sdk.md]
-- [ ] **keepai: CLI init command** — decode pairing code, generate keypair, send "pair" RPC, save config, send "help", print services → [specs/04-keepai-cli-sdk.md]
-- [ ] **keepai: CLI run command** — `npx keepai run <service> <method> [options]`; --account, --params, --timeout, --raw; JSON stdout, errors stderr → [specs/04-keepai-cli-sdk.md]
-- [ ] **keepai: CLI help command** — list services/methods or detailed per-method help; LLM-friendly markdown → [specs/04-keepai-cli-sdk.md]
-- [ ] **keepai: CLI status command** — check connection, list services/accounts → [specs/04-keepai-cli-sdk.md]
-- [ ] **keepai: CLI disconnect command** — remove local identity and config → [specs/04-keepai-cli-sdk.md]
-- [ ] **keepai: exit codes** — 0=success, 1=general, 2=not paired, 3=permission denied, 4=approval timeout, 5=service error → [specs/04-keepai-cli-sdk.md]
-- [ ] **Verify first end-to-end flow**: keepd running → `npx keepai init <code>` → `npx keepai run gmail messages.list` → response
+- [x] **keepai: local storage** — `storage.ts` with config.json + identity.json at ~/.keepai/client/ (or $KEEPAI_CONFIG_DIR); 0o600 perms via atomic tmp+rename; loadIdentity/saveIdentity/loadConfig/saveConfig/deleteStorage/isPaired/getConfigDir
+- [x] **keepai: SDK KeepAI class** — `sdk.ts` with static `init(pairingCode)` (decode → keypair → pair RPC → save → help), `run(service, method, params)`, `help(service?)`, `status()`, `disconnect()`, `close()`; KeepAIError with code + exitCode; RPCCallError mapping to exit codes
+- [x] **keepai: CLI init command** — commander-based; decode pairing code, generate keypair, send "pair" RPC, save config, fetch services, print summary
+- [x] **keepai: CLI run command** — `npx keepai run <service> <method>` with --account, --params (JSON), --timeout, --raw; supports --key=value extra flags; JSON stdout, errors stderr
+- [x] **keepai: CLI help command** — list all services or per-service method help with padded formatting
+- [x] **keepai: CLI status command** — check pairing, display daemon status, list services/accounts
+- [x] **keepai: CLI disconnect command** — remove local identity and config
+- [x] **keepai: exit codes** — 0=success, 1=general, 2=not paired, 3=permission denied, 4=approval timeout, 5=service error (from @keepai/proto EXIT_CODES)
+- [x] **keepai: tsup dual config** — separate configs for index.ts (ESM+CJS+DTS) and cli.ts (ESM only with shebang banner)
+- [x] **keepai: SDK exports** — index.ts re-exports KeepAI, KeepAIError, storage functions and types
+- [x] **Tests** — 25 tests (getConfigDir env override, Identity CRUD + perms + nested dirs, Config CRUD + perms, isPaired logic, deleteStorage + idempotent, KeepAIError construction, KeepAI constructor variants, disconnect, status when unpaired, run/help when unpaired)
+- [ ] **Verify first end-to-end flow**: keepd running → `npx keepai init <code>` → `npx keepai run gmail messages.list` → response (deferred to Phase 9)
 
 ## Phase 7: UI (React SPA)
 > Management interface. All state via TanStack Query + keepd HTTP API.

@@ -20,6 +20,7 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
+    "test": "vitest run",
     "clean": "rimraf dist",
     "type-check": "tsc --noEmit"
   },

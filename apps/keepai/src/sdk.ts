@@ -1,0 +1,289 @@
+/**
+ * KeepAI SDK — programmatic interface for AI agents.
+ *
+ * Usage:
+ *   const keep = new KeepAI();
+ *   const result = await keep.run('gmail', 'messages.list', { q: 'is:unread' });
+ *
+ * Or with explicit config:
+ *   const keep = new KeepAI({ configDir: '/path/to/.keepai' });
+ */
+
+import {
+  RPCCaller,
+  RPCCallError,
+  generateKeypair,
+  parsePairingCode,
+} from '@keepai/nostr-rpc';
+import { EXIT_CODES } from '@keepai/proto';
+import type { ServiceHelp } from '@keepai/proto';
+import {
+  loadIdentity,
+  loadConfig,
+  saveIdentity,
+  saveConfig,
+  deleteStorage,
+  isPaired,
+  getConfigDir,
+  type Identity,
+  type ClientConfig,
+} from './storage.js';
+
+export interface KeepAIOptions {
+  configDir?: string;
+  /** Explicit connection details (skip loading from config files) */
+  daemonPubkey?: string;
+  relays?: string[];
+  privateKey?: string;
+  timeout?: number;
+}
+
+export interface StatusResult {
+  paired: boolean;
+  services?: ServiceHelp[];
+}
+
+export class KeepAIError extends Error {
+  code: string;
+  exitCode: number;
+
+  constructor(message: string, code: string, exitCode: number) {
+    super(message);
+    this.name = 'KeepAIError';
+    this.code = code;
+    this.exitCode = exitCode;
+  }
+}
+
+export class KeepAI {
+  private configDir: string;
+  private caller: RPCCaller | null = null;
+  private identity: Identity | null = null;
+  private config: ClientConfig | null = null;
+  private timeout: number;
+
+  constructor(options: KeepAIOptions = {}) {
+    this.configDir = options.configDir ?? getConfigDir();
+    this.timeout = options.timeout ?? 300_000;
+
+    if (options.daemonPubkey && options.relays && options.privateKey) {
+      // Explicit config — skip file loading
+      this.identity = { privateKey: options.privateKey, publicKey: '' };
+      this.config = {
+        daemonPubkey: options.daemonPubkey,
+        relays: options.relays,
+        pairedAt: 0,
+      };
+    }
+  }
+
+  private ensurePaired(): void {
+    if (!this.identity) {
+      this.identity = loadIdentity(this.configDir);
+    }
+    if (!this.config) {
+      this.config = loadConfig(this.configDir);
+    }
+
+    if (!this.identity || !this.config) {
+      throw new KeepAIError(
+        'Not paired with KeepAI daemon. Run "npx keepai init <code>" first.',
+        'not_paired',
+        EXIT_CODES.NOT_PAIRED
+      );
+    }
+  }
+
+  private getCaller(): RPCCaller {
+    this.ensurePaired();
+
+    if (!this.caller) {
+      this.caller = new RPCCaller({
+        relays: this.config!.relays,
+        privkey: this.identity!.privateKey,
+        pubkey: this.identity!.publicKey,
+        daemonPubkey: this.config!.daemonPubkey,
+        timeout: this.timeout,
+      });
+    }
+
+    return this.caller;
+  }
+
+  /**
+   * Pair with a KeepAI daemon using a pairing code.
+   */
+  static async init(
+    pairingCode: string,
+    options: { configDir?: string; timeout?: number } = {}
+  ): Promise<{ services: ServiceHelp[] }> {
+    const configDir = options.configDir ?? getConfigDir();
+    const timeout = options.timeout ?? 30_000;
+
+    // Decode pairing code
+    const { pubkey, relays, secret } = parsePairingCode(pairingCode);
+
+    // Generate keypair
+    const { pubkey: agentPubkey, privkey: agentPrivkey } = generateKeypair();
+
+    // Save identity
+    saveIdentity({ privateKey: agentPrivkey, publicKey: agentPubkey }, configDir);
+
+    // Create RPC caller for pairing
+    const caller = new RPCCaller({
+      relays,
+      privkey: agentPrivkey,
+      pubkey: agentPubkey,
+      daemonPubkey: pubkey,
+      timeout,
+    });
+
+    try {
+      // Send pair request
+      const pairResult = await caller.call('pair', {
+        params: { secret, pubkey: agentPubkey },
+      });
+
+      if (!pairResult || (pairResult as any).error) {
+        throw new KeepAIError(
+          'Pairing failed: ' + ((pairResult as any)?.error?.message ?? 'Unknown error'),
+          'pairing_failed',
+          EXIT_CODES.GENERAL_ERROR
+        );
+      }
+
+      // Save config
+      saveConfig(
+        {
+          daemonPubkey: pubkey,
+          relays,
+          pairedAt: Date.now(),
+        },
+        configDir
+      );
+
+      // Fetch available services
+      let services: ServiceHelp[] = [];
+      try {
+        const helpResult = await caller.call('help', {});
+        if (Array.isArray(helpResult)) {
+          services = helpResult as ServiceHelp[];
+        }
+      } catch {
+        // Help fetch is optional — pairing already succeeded
+      }
+
+      return { services };
+    } finally {
+      caller.close();
+    }
+  }
+
+  /**
+   * Check connection status.
+   */
+  async status(): Promise<StatusResult> {
+    if (!isPaired(this.configDir)) {
+      return { paired: false };
+    }
+
+    try {
+      const result = await this.getCaller().call('ping', {});
+      if (result) {
+        // Also fetch services
+        const helpResult = await this.getCaller().call('help', {});
+        const services = Array.isArray(helpResult) ? (helpResult as ServiceHelp[]) : [];
+        return { paired: true, services };
+      }
+    } catch {
+      return { paired: true }; // Paired but daemon unreachable
+    }
+
+    return { paired: true };
+  }
+
+  /**
+   * Get help for all services or a specific service.
+   */
+  async help(service?: string): Promise<ServiceHelp | ServiceHelp[]> {
+    const caller = this.getCaller();
+
+    if (service) {
+      const result = await caller.call('help', { service });
+      return result as ServiceHelp;
+    }
+
+    const result = await caller.call('help');
+    return result as ServiceHelp[];
+  }
+
+  /**
+   * Execute a service operation.
+   */
+  async run(
+    service: string,
+    method: string,
+    params: Record<string, unknown> = {}
+  ): Promise<unknown> {
+    const caller = this.getCaller();
+    const account = params.account as string | undefined;
+    const cleanParams = { ...params };
+    delete cleanParams.account;
+
+    try {
+      const result = await caller.call(method, {
+        service,
+        params: cleanParams,
+        account,
+      });
+      return result;
+    } catch (err) {
+      if (err instanceof RPCCallError) {
+        const code = err.code;
+        let exitCode: number = EXIT_CODES.GENERAL_ERROR;
+
+        switch (code) {
+          case 'not_paired':
+          case 'not_connected':
+            exitCode = EXIT_CODES.NOT_PAIRED;
+            break;
+          case 'permission_denied':
+            exitCode = EXIT_CODES.PERMISSION_DENIED;
+            break;
+          case 'approval_timeout':
+            exitCode = EXIT_CODES.APPROVAL_TIMEOUT;
+            break;
+          case 'service_error':
+            exitCode = EXIT_CODES.SERVICE_ERROR;
+            break;
+        }
+
+        throw new KeepAIError(err.message, code, exitCode);
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * Remove local identity and config.
+   */
+  disconnect(): void {
+    deleteStorage(this.configDir);
+    if (this.caller) {
+      this.caller.close();
+      this.caller = null;
+    }
+    this.identity = null;
+    this.config = null;
+  }
+
+  /**
+   * Close the SDK (cleanup resources).
+   */
+  close(): void {
+    if (this.caller) {
+      this.caller.close();
+      this.caller = null;
+    }
+  }
+}
