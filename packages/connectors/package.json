@@ -18,7 +18,8 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "clean": "rimraf dist",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@keepai/proto": "file:../proto",

@@ -2,7 +2,7 @@
 
 > **Goal**: Simple, lovable, complete v1 — a safe gate for AI agents to access user services (Gmail, Notion) via e2e encrypted nostr RPC.
 >
-> **Status**: Phase 3 complete. Nostr RPC layer (NIP-44 v3, pairing, transport, RPC caller/handler) implemented and tested.
+> **Status**: Phase 4 complete. Connectors (Gmail + Notion) with OAuth, credential store, connection manager, and executor implemented and tested.
 
 ---
 
@@ -51,22 +51,23 @@
 - [x] **Tests** — 28 tests (NIP-44 round-trip, PeerEncryption bidirectional, pairing encode/decode/validation, keypair/secret generation, protocol compatibility)
 - **Note**: Streaming (StreamWriter/StreamReader) deferred — V1 uses inline request/response only. Can add in V2.
 
-## Phase 4: Connectors (Gmail first, then Notion)
-> OAuth + service execution. Copy OAuth infrastructure from ../keep.ai, build new connector method registries.
+## Phase 4: Connectors (Gmail + Notion) ✅
+> OAuth + service execution. OAuth infrastructure adapted from ../keep.ai, new connector method registries.
 
-- [ ] **connectors: OAuth types** — copy `types.ts` from ../keep.ai/packages/connectors/ (ConnectionId, OAuthConfig, OAuthCredentials, Connection, ServiceDefinition) → [specs/06-connectors.md]
-- [ ] **connectors: OAuthHandler** — copy from ../keep.ai (auth URL, code exchange, token refresh, revocation) → [specs/06-connectors.md]
-- [ ] **connectors: CredentialStore** — copy from ../keep.ai (atomic file writes, 0o600 perms, base64url encoding) → [specs/06-connectors.md]
-- [ ] **connectors: ConnectionManager** — copy from ../keep.ai (startOAuthFlow, completeOAuthFlow, getCredentials with auto-refresh, disconnect, reconcile) → [specs/06-connectors.md]
-- [ ] **connectors: db-adapter** — implement `ConnectionDb` interface wrapping better-sqlite3 (pattern from ../keep.ai) → [specs/06-connectors.md]
-- [ ] **connectors: credentials** — `getGoogleCredentials()`, `getNotionCredentials()` with build-time + env var override (copy tsup.config pattern) → [specs/06-connectors.md]
-- [ ] **connectors: Google service def** — copy `gmailService` + `googleOAuthBase` + `fetchGoogleProfile` from ../keep.ai → [specs/06-connectors.md]
-- [ ] **connectors: Notion service def** — copy `notionService` from ../keep.ai → [specs/06-connectors.md]
-- [ ] **connectors: Gmail connector** — 15 methods (messages.list/get/send/trash/modify, drafts.create/list/get/send, labels.list/get, threads.list/get/modify, profile.get) with schemas, help text, `extractPermMetadata` → [specs/06-connectors.md]
-- [ ] **connectors: Notion connector** — 8 methods (databases.query/retrieve, pages.create/retrieve/update, blocks.children.list/append, search) → [specs/06-connectors.md]
-- [ ] **connectors: ConnectorExecutor** — registry Map, `register()`, `extractPermMetadata()`, `execute()` (auto-refresh), `getHelp()` → [specs/06-connectors.md]
-- [ ] **connectors: help text generation** — LLM-friendly markdown output for all methods → [specs/06-connectors.md]
-- [ ] **Verify connectors build; test OAuth URL generation**
+- [x] **connectors: OAuth types** — `types.ts` with ConnectionId, OAuthConfig, OAuthCredentials, Connection, ServiceDefinition, TokenResponse, ConnectionDb interface; `parseConnectionId()`/`formatConnectionId()` helpers
+- [x] **connectors: OAuthHandler** — auth URL generation, code exchange, token refresh, token revocation; `tokenResponseToCredentials()` with metadata extraction; `classifyOAuthError()` for proper error classification
+- [x] **connectors: CredentialStore** — file-based storage at `{basePath}/connectors/{service}/{encodedAccountId}.json`; atomic writes via tmp file + rename; 0o600 permissions; base64url account ID encoding; save/load/delete/exists/listByService/listAll
+- [x] **connectors: ConnectionManager** — OAuth flow orchestration (startOAuthFlow, completeOAuthFlow); credential management with auto-refresh and dedup; CSRF state protection with TTL + cleanup; reconcile file↔DB state; disconnect with optional token revocation; redirect URI validation (localhost only)
+- [x] **connectors: db-adapter** — `ConnectionDbAdapter` bridging snake_case DB (via `DbConnectionStore` interface) to camelCase API (`ConnectionDb` interface)
+- [x] **connectors: credentials** — `getGoogleCredentials()`, `getNotionCredentials()`, `getCredentialsForService()`, `hasCredentialsForService()`; build-time injection via `__GOOGLE_*`/`__NOTION_*` + env var override
+- [x] **connectors: Google service def** — `gmailService` with Google OAuth config (scopes: gmail.modify + userinfo.email), `fetchGoogleProfile()`, profile-based account ID extraction, display name extraction
+- [x] **connectors: Notion service def** — `notionService` with Notion OAuth config (Basic auth, no refresh, no scopes), workspace_id-based account ID extraction
+- [x] **connectors: Gmail connector** — 15 methods (messages.list/get/send/trash/modify, drafts.create/list/get/send, labels.list/get, threads.list/get/modify, profile.get); full param schemas with types, defaults, enums; human-readable descriptions; `buildRawEmail()` for email composition
+- [x] **connectors: Notion connector** — 8 methods (databases.query/retrieve, pages.create/retrieve/update, blocks.children.list/append, search); Notion API v2022-06-28; full param schemas
+- [x] **connectors: ConnectorExecutor** — register, getConnector, getRegisteredServices, extractPermMetadata (validates service + method), execute, getHelp (all or per-service), getMethodHelp
+- [x] **connectors: help text generation** — `help(method?)` on each connector returning ServiceHelp with method schemas, examples, descriptions
+- [x] **Tests** — 42 tests (ConnectionId, OAuthHandler URL generation, tokenResponseToCredentials, CredentialStore CRUD + permissions, service definitions, Gmail 15-method connector, Notion 8-method connector, ConnectorExecutor registry)
+- **Notes**: tsup config uses `external: ['@keepai/proto']` to avoid rootDir DTS issues; source imports use `@keepai/proto` (main barrel) not sub-path imports
 
 ## Phase 5: Daemon (keepd)
 > The central hub. Fastify HTTP API + nostr RPC handler + policy engine + approval queue.
