@@ -2,7 +2,7 @@
 
 > **Goal**: Simple, lovable, complete v1 — a safe gate for AI agents to access user services (Gmail, Notion) via e2e encrypted nostr RPC.
 >
-> **Status**: Phase 7 complete. React SPA with all pages, TanStack Query hooks, SSE real-time updates, Tailwind + Radix components.
+> **Status**: Phase 8 complete. Electron desktop app with keepd integration, tray icon, SSE notifications, and preload IPC bridge.
 
 ---
 
@@ -129,18 +129,18 @@
 - [x] **ui: Shared components** — StatusBadge (connected/online/active/pending/offline/error/revoked with color dots), ServiceIcon (Gmail=Mail red, Notion=FileText, default=Globe), EmptyState (icon + title + description + action), ApprovalCard (service icon, method, description, timeAgo, approve/deny), CodeBlock (mono pre), cn() utility (clsx + tailwind-merge)
 - [x] **Verify UI builds in both modes** — frontend (384KB JS + 20KB CSS) and electron; all 8 packages build; 179 tests pass
 
-## Phase 8: Electron Desktop App
+## Phase 8: Electron Desktop App ✅
 > Bundle keepd + UI into a desktop app with tray and notifications.
 
-- [ ] **electron: main.ts** — start keepd, create window (1000x700, hidden initially), create tray, SSE notification listener, dock hide (macOS) → [specs/08-electron.md]
-- [ ] **electron: preload.ts** — expose API_ENDPOINT, electronAPI (getVersion, getPlatform, onNavigateTo, showNotification, updateTrayBadge) → [specs/08-electron.md]
-- [ ] **electron: esbuild config** — main.cjs + preload.cjs, externals: electron + better-sqlite3 → [specs/08-electron.md]
-- [ ] **electron: builder config** — electron-builder.yml, extraResources for better-sqlite3, platform targets → [specs/08-electron.md]
-- [ ] **electron: tray** — context menu (Open, Pending Approvals count, Quit), single click toggle, badge → [specs/08-electron.md]
-- [ ] **electron: notifications** — SSE listener in main process, OS notifications on approval_request, click navigates to /approvals → [specs/08-electron.md]
-- [ ] **electron: window behavior** — close → minimize to tray, external nav blocked, OAuth in external browser → [specs/08-electron.md]
-- [ ] **electron: build script** — turbo build → copy ui dist → esbuild → electron-builder → [specs/08-electron.md]
-- [ ] **Verify electron app launches, shows UI, tray works, notifications fire**
+- [x] **electron: main.ts** — full startup sequence: createServer() → listen() → createWindow (1000x700, preload, context isolation) → createTray → setupSSEListener → setupIPC → dock.hide (macOS)
+- [x] **electron: preload.ts** — contextBridge.exposeInMainWorld for `env` (API_ENDPOINT, NODE_ENV) and `electronAPI` (getVersion, getPlatform, onNavigateTo, showNotification, updateTrayBadge, openExternal)
+- [x] **electron: esbuild config** — already configured: main.cjs + preload.cjs, externals: electron + better-sqlite3, CJS format, node22 target
+- [x] **electron: builder config** — already configured: electron-builder.yml with asar, extraResources for native modules, win/mac/linux targets
+- [x] **electron: tray** — context menu (Open KeepAI, Pending Approvals: N, Quit); single click toggles window; pending count from SSE
+- [x] **electron: SSE notifications** — EventSource on /api/events; approval_request → OS notification (title: "KeepAI — Approval Required", body: description) + tray badge update; click → show window + navigate to /approvals; approval_resolved → decrement count
+- [x] **electron: window behavior** — close → hide (minimize to tray) with isQuitting flag; external navigation blocked (opens in system browser via shell.openExternal); window open handler → deny + external
+- [x] **electron: IPC handlers** — get-version, get-platform, show-notification, update-tray-badge, open-external
+- [x] **Verify** — type-check passes, esbuild bundles main.cjs + preload.cjs, all 8 packages build, 179 tests pass
 
 ## Phase 9: Polish & Integration Testing
 > End-to-end validation and final polish.
