@@ -2,7 +2,7 @@
 
 > **Goal**: Simple, lovable, complete v1 — a safe gate for AI agents to access user services (Gmail, Notion) via e2e encrypted nostr RPC.
 >
-> **Status**: Phase 1 complete. Monorepo scaffolding done, `turbo build` succeeds across all 8 packages.
+> **Status**: Phase 2 complete. Proto types/errors/constants + full DB layer with 7 stores, all tested.
 
 ---
 
@@ -20,23 +20,23 @@
 - [x] **apps/electron scaffold** — `package.json`, `esbuild.main.mjs`, `electron-builder.yml` (at repo root)
 - [x] **Verify `turbo build` succeeds** — all 8 packages build clean, 7.8s total
 
-## Phase 2: Shared Types & Database
+## Phase 2: Shared Types & Database ✅
 > Build the leaf packages everything else depends on.
 
-- [ ] **proto: types** — `RPCRequest`, `RPCResponse`, `RPCError`, `PermissionMetadata`, `PolicyDecision`, connector interfaces (`Connector`, `ConnectorMethod`, `ParamSchema`) → [specs/00-overview.md, specs/02-nostr-rpc.md, specs/06-connectors.md, specs/07-permissions.md]
-- [ ] **proto: errors** — `AuthError`, `PermissionError`, `NetworkError`, `LogicError`, `classifyHttpError` (copy from ../keep.ai) → [specs/06-connectors.md]
-- [ ] **proto: constants** — Event kinds (21700–21704, 20173, 173), default relays, timeouts, protocol version → [specs/02-nostr-rpc.md]
-- [ ] **db: KeepDB class** — open with WAL + foreign_keys, migration runner using `user_version` pragma → [specs/09-database.md]
-- [ ] **db: migration v1** — Create all 7 tables: `agents`, `pending_pairings`, `connections`, `rpc_requests`, `approval_queue`, `audit_log`, `settings` → [specs/09-database.md]
-- [ ] **db: AgentStore** — CRUD for agents table → [specs/09-database.md]
-- [ ] **db: PairingStore** — create/getBySecret/delete/expireOld → [specs/09-database.md]
-- [ ] **db: ConnectionStore** — CRUD, listByService → [specs/09-database.md]
-- [ ] **db: RpcRequestStore** — tryInsert (dedup by event_id), cleanup → [specs/09-database.md]
-- [ ] **db: ApprovalStore** — create/getById/listPending/resolve/expireOld/cleanupResolved → [specs/09-database.md]
-- [ ] **db: AuditStore** — log/list/count with filters → [specs/09-database.md]
-- [ ] **db: SettingsStore** — key/value get/set → [specs/09-database.md]
-- [ ] **db: KeepDBApi facade** — compose all stores → [specs/09-database.md]
-- [ ] **Verify proto + db build and basic tests pass**
+- [x] **proto: types** — `RPCRequest`, `RPCResponse`, `RPCError`, `PermissionMetadata`, `PolicyDecision`, `Policy`, `PolicyRule`, connector interfaces (`Connector`, `ConnectorMethod`, `ParamSchema`, `OAuthCredentials`), DB row types (`Agent`, `PendingPairing`, `Connection`, `RpcRequest`, `ApprovalEntry`, `AuditEntry`), `PairingCode`, `SSEEventType`
+- [x] **proto: errors** — `ClassifiedError`, `AuthError`, `PermissionError`, `NetworkError`, `LogicError`, `InternalError`, `classifyHttpError`, `classifyFileError`, `ensureClassified`, `isClassifiedError`, `isErrorType`
+- [x] **proto: constants** — `EVENT_KINDS`, `PROTOCOL_VERSION`, `SOFTWARE_VERSION`, `DEFAULT_RELAYS`, `TIMEOUTS`, `DEFAULT_POLICY`, `EXIT_CODES`, `CLEANUP`
+- [x] **db: KeepDB class** — WAL + foreign_keys + `user_version` migration runner
+- [x] **db: migration v1** — All 7 tables + indexes
+- [x] **db: AgentStore** — create, getById, getByPubkey, getByKeepdPubkey, getByName, list, updateLastSeen, revoke, delete
+- [x] **db: PairingStore** — create, getBySecret, getByKeepdPubkey, list, delete, expireOld
+- [x] **db: ConnectionStore** — upsert, getById, listByService, listAll, updateStatus, updateLastUsed, delete
+- [x] **db: RpcRequestStore** — tryInsert (dedup by event_id), updateStatus, cleanupOld
+- [x] **db: ApprovalStore** — create, getById, listPending, resolve, expireOld, cleanupResolved
+- [x] **db: AuditStore** — log, list (with filters), count (with filters), cleanupOld
+- [x] **db: SettingsStore** — get, set, delete, getAll
+- [x] **db: KeepDBApi facade** — composes all 7 stores
+- [x] **Tests** — 54 tests passing (28 proto + 26 db)
 
 ## Phase 3: Nostr RPC
 > The core communication layer between agents and daemon. Copy streaming primitives from ../keep.ai.

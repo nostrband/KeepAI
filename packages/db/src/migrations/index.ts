@@ -1,0 +1,113 @@
+import type Database from 'better-sqlite3';
+
+export const MAX_VERSION = 1;
+
+export const migrations = new Map<number, (db: Database.Database) => void>();
+
+migrations.set(1, (db) => {
+  db.exec(`
+    CREATE TABLE agents (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE,
+      agent_pubkey TEXT NOT NULL UNIQUE,
+      keepd_pubkey TEXT NOT NULL UNIQUE,
+      keepd_privkey TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'paired',
+      paired_at INTEGER NOT NULL,
+      last_seen_at INTEGER,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch('now') * 1000)
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE pending_pairings (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      secret TEXT NOT NULL UNIQUE,
+      keepd_pubkey TEXT NOT NULL UNIQUE,
+      keepd_privkey TEXT NOT NULL,
+      expires_at INTEGER NOT NULL,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch('now') * 1000)
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE connections (
+      id TEXT PRIMARY KEY,
+      service TEXT NOT NULL,
+      account_id TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'connected',
+      label TEXT,
+      error TEXT,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch('now') * 1000),
+      last_used_at INTEGER,
+      metadata TEXT
+    )
+  `);
+  db.exec(`CREATE INDEX idx_connections_service ON connections(service)`);
+
+  db.exec(`
+    CREATE TABLE rpc_requests (
+      event_id TEXT PRIMARY KEY,
+      request_id TEXT NOT NULL,
+      agent_pubkey TEXT NOT NULL,
+      method TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'received',
+      created_at INTEGER NOT NULL DEFAULT (unixepoch('now') * 1000),
+      responded_at INTEGER
+    )
+  `);
+  db.exec(`CREATE INDEX idx_rpc_requests_created ON rpc_requests(created_at)`);
+
+  db.exec(`
+    CREATE TABLE approval_queue (
+      id TEXT PRIMARY KEY,
+      agent_id TEXT NOT NULL,
+      agent_name TEXT NOT NULL,
+      service TEXT NOT NULL,
+      method TEXT NOT NULL,
+      account_id TEXT NOT NULL,
+      operation_type TEXT NOT NULL,
+      description TEXT NOT NULL,
+      request_hash TEXT NOT NULL,
+      temp_file_path TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at INTEGER NOT NULL DEFAULT (unixepoch('now') * 1000),
+      resolved_at INTEGER,
+      resolved_by TEXT,
+      FOREIGN KEY (agent_id) REFERENCES agents(id)
+    )
+  `);
+  db.exec(`CREATE INDEX idx_queue_status ON approval_queue(status)`);
+  db.exec(`CREATE INDEX idx_queue_agent ON approval_queue(agent_id)`);
+
+  db.exec(`
+    CREATE TABLE audit_log (
+      id TEXT PRIMARY KEY,
+      agent_id TEXT NOT NULL,
+      agent_name TEXT NOT NULL,
+      service TEXT NOT NULL,
+      method TEXT NOT NULL,
+      account_id TEXT NOT NULL,
+      operation_type TEXT NOT NULL,
+      policy_action TEXT NOT NULL,
+      approved INTEGER NOT NULL,
+      approved_by TEXT,
+      request_summary TEXT,
+      response_status TEXT NOT NULL,
+      error_message TEXT,
+      duration_ms INTEGER,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch('now') * 1000)
+    )
+  `);
+  db.exec(`CREATE INDEX idx_audit_agent ON audit_log(agent_id)`);
+  db.exec(`CREATE INDEX idx_audit_service ON audit_log(service)`);
+  db.exec(`CREATE INDEX idx_audit_created ON audit_log(created_at)`);
+
+  db.exec(`
+    CREATE TABLE settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    )
+  `);
+});
