@@ -1,0 +1,38 @@
+{
+  "name": "keepai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Safe gate for AI agents to access your Gmail/Notion via e2e encrypted nostr RPC",
+  "main": "apps/electron/dist/main.cjs",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "clean": "turbo run clean",
+    "type-check": "turbo run type-check"
+  },
+  "devDependencies": {
+    "rimraf": "^6.1.2",
+    "tsup": "^8.5.0",
+    "turbo": "^2.6.0",
+    "typescript": "^5.2.0"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "bindings": "^1.5.0",
+    "file-uri-to-path": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.9.0"
+  },
+  "packageManager": "npm@11.4.2",
+  "homepage": "https://github.com/nicegoodid/clawkeep",
+  "author": {
+    "name": "Artur Briugeman",
+    "email": "artur@nostr.band"
+  }
+}

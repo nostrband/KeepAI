@@ -1,0 +1,30 @@
+{
+  "name": "@keepai/electron",
+  "version": "0.1.0",
+  "description": "KeepAI Desktop Application",
+  "private": true,
+  "type": "module",
+  "main": "dist/main.cjs",
+  "scripts": {
+    "build": "npm run build:app && npm run copy:frontend",
+    "build:app": "npm run type-check && npm run build:main",
+    "type-check": "tsc --noEmit",
+    "build:main": "node esbuild.main.mjs",
+    "copy:frontend": "mkdir -p public && cp -r ../ui/dist/electron/* ./public/",
+    "start": "electron .",
+    "start:dev": "electron . --dev",
+    "clean": "rimraf dist public",
+    "dist": "npm run build && cd ../../ && electron-builder"
+  },
+  "dependencies": {
+    "@keepai/daemon": "file:../keepd",
+    "@keepai/ui": "file:../ui"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "electron": "^33.0.0",
+    "electron-builder": "^26.0.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.2.0"
+  }
+}

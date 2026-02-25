@@ -1,0 +1,38 @@
+{
+  "name": "keepai",
+  "version": "0.1.0",
+  "description": "CLI and SDK for KeepAI — safe gate for AI agents",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "keepai": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rimraf dist",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@keepai/proto": "file:../../packages/proto",
+    "@keepai/nostr-rpc": "file:../../packages/nostr-rpc",
+    "commander": "^12.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.2.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

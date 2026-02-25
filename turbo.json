@@ -1,0 +1,41 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "build": {
+      "cache": false,
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", "public/**", "build/**"],
+      "env": [
+        "BUILD_GMAIL_SECRET",
+        "BUILD_GOOGLE_CLIENT_ID",
+        "BUILD_NOTION_CLIENT_ID",
+        "BUILD_NOTION_CLIENT_SECRET"
+      ]
+    },
+    "build:frontend": {
+      "cache": false,
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
+    "build:electron": {
+      "cache": false,
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "clean": {
+      "cache": false
+    },
+    "type-check": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "test": {
+      "cache": false,
+      "dependsOn": ["build"]
+    }
+  }
+}

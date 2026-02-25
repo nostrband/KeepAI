@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022", "DOM"],
+    "types": [],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@keepai/proto/*": ["packages/proto/src/*"],
+      "@keepai/db/*": ["packages/db/src/*"],
+      "@keepai/connectors/*": ["packages/connectors/src/*"],
+      "@keepai/nostr-rpc/*": ["packages/nostr-rpc/src/*"],
+      "@keepai/daemon/*": ["apps/keepd/src/*"],
+      "@keepai/ui/*": ["apps/ui/src/*"],
+      "@keepai/cli/*": ["apps/keepai/src/*"]
+    }
+  },
+  "exclude": ["node_modules", "dist", "build"]
+}
