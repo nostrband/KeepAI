@@ -12,11 +12,29 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs",
       "default": "./dist/index.js"
+    },
+    "./types.js": {
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.js",
+      "require": "./dist/types.cjs",
+      "default": "./dist/types.js"
+    },
+    "./constants.js": {
+      "types": "./dist/constants.d.ts",
+      "import": "./dist/constants.js",
+      "require": "./dist/constants.cjs",
+      "default": "./dist/constants.js"
+    },
+    "./errors.js": {
+      "types": "./dist/errors.d.ts",
+      "import": "./dist/errors.js",
+      "require": "./dist/errors.cjs",
+      "default": "./dist/errors.js"
     }
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm,cjs --dts",
-    "dev": "tsup src/index.ts --format esm,cjs --dts --watch",
+    "build": "tsup src/index.ts src/types.ts src/constants.ts src/errors.ts --format esm,cjs --dts",
+    "dev": "tsup src/index.ts src/types.ts src/constants.ts src/errors.ts --format esm,cjs --dts --watch",
     "clean": "rimraf dist",
     "type-check": "tsc --noEmit",
     "test": "vitest run"

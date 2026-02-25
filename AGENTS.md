@@ -2,23 +2,17 @@
 - Requires Node.js >= 22.0.0, npm >= 10.9.0
 - Monorepo using npm workspaces + Turbo
 - `npm install` then `npm run build` from root
-
-# UX Tests
-
+- `npx turbo run test` to run all tests
+- `npx turbo run build --filter=@keepai/proto` to build a single package
 
 # Validation
-Run these after implementing to get immediate feedback:
-
-Typecheck: `npm run type-check`
-Lint: Not configured
-
-# Operational Notes
-Succinct learnings about how to RUN the project:
-
-**Development**:
-- `cd apps/ui && npm run build:frontend && cd ../apps/keepd && npm run build:all && npm start` - single nodejs process that hosts background workers and serves the web app
-
-**DB**
+- Typecheck: `npm run type-check`
+- Tests: `npx turbo run test` (vitest)
+- Build: `npm run build`
 
 # Codebase Patterns
-<add when discovered>
+- Proto types exported from `@keepai/proto` (types.ts, errors.ts, constants.ts)
+- DB stores use better-sqlite3 sync API, row types map snake_case → camelCase
+- Each store takes `Database.Database` in constructor
+- `KeepDBApi` composes all 7 stores
+- Migrations use `user_version` pragma

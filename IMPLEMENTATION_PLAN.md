@@ -2,7 +2,7 @@
 
 > **Goal**: Simple, lovable, complete v1 — a safe gate for AI agents to access user services (Gmail, Notion) via e2e encrypted nostr RPC.
 >
-> **Status**: Phase 2 complete. Proto types/errors/constants + full DB layer with 7 stores, all tested.
+> **Status**: Phase 3 complete. Nostr RPC layer (NIP-44 v3, pairing, transport, RPC caller/handler) implemented and tested.
 
 ---
 
@@ -38,20 +38,18 @@
 - [x] **db: KeepDBApi facade** — composes all 7 stores
 - [x] **Tests** — 54 tests passing (28 proto + 26 db)
 
-## Phase 3: Nostr RPC
-> The core communication layer between agents and daemon. Copy streaming primitives from ../keep.ai.
+## Phase 3: Nostr RPC ✅
+> The core communication layer between agents and daemon.
 
-- [ ] **nostr-rpc: nip44-v3 encryption** — copy `nip44-v3.ts` from ../keep.ai/packages/sync/src/nostr/ → [specs/02-nostr-rpc.md]
-- [ ] **nostr-rpc: stream types & encryption** — copy `types.ts`, `encryption.ts`, `interfaces.ts` from ../keep.ai stream/ → [specs/02-nostr-rpc.md]
-- [ ] **nostr-rpc: stream common + metadata** — copy `common.ts` (update DEFAULT_RELAYS), `metadata.ts` → [specs/02-nostr-rpc.md]
-- [ ] **nostr-rpc: StreamWriter** — copy from ../keep.ai, chunked publish with prev-tag chain → [specs/02-nostr-rpc.md]
-- [ ] **nostr-rpc: StreamReader** — copy from ../keep.ai, async iterable with out-of-order handling → [specs/02-nostr-rpc.md]
-- [ ] **nostr-rpc: DefaultStreamFactory** — copy from ../keep.ai → [specs/02-nostr-rpc.md]
-- [ ] **nostr-rpc: transport** — nostr relay communication using SimplePool (publish, subscribe, filter management) → [specs/02-nostr-rpc.md]
-- [ ] **nostr-rpc: pairing** — `generatePairingCode()` (base64url encode {pubkey, relays, secret, protocolVersion}), `parsePairingCode()` → [specs/02-nostr-rpc.md]
-- [ ] **nostr-rpc: rpc-caller** — client-side `call(method, params, options)` → Promise: publish REQUEST, subscribe for READY/REJECT/RESPONSE, handle streaming, timeouts → [specs/02-nostr-rpc.md]
-- [ ] **nostr-rpc: rpc-handler** — server-side `listen(callback)`: subscribe for REQUEST events, decrypt, dedup by event_id, invoke callback, send RESPONSE → [specs/02-nostr-rpc.md]
-- [ ] **Verify nostr-rpc builds; unit test pairing code encode/decode**
+- [x] **nostr-rpc: nip44-v3 encryption** — copied from ../keep.ai, version 0x3, 4-byte payload size, ~1MB max
+- [x] **nostr-rpc: PeerEncryption** — wraps nip44-v3 with cached conversation key, encrypt/decrypt/encryptJSON/decryptJSON
+- [x] **nostr-rpc: transport** — `NostrTransport` wrapping SimplePool (publish, publishEvent with signing, subscribe, close)
+- [x] **nostr-rpc: pairing** — `generatePairingCode()` (base64url encode), `parsePairingCode()` (with validation), `generateKeypair()`, `generateSecret()`, `isProtocolCompatible()`
+- [x] **nostr-rpc: rpc-caller** — `RPCCaller.call(method, params)` → publish REQUEST, subscribe for READY/REJECT/RESPONSE, timeout handling. `RPCCallError` class.
+- [x] **nostr-rpc: rpc-handler** — `RPCHandler.listen(pubkeys)` → subscribe for REQUEST events, decrypt, protocol version check, dedup via callback, route to handler, send RESPONSE/REJECT. `updateSubscription()` for dynamic changes.
+- [x] **proto: sub-path exports** — added `./types.js`, `./constants.js`, `./errors.js` sub-path exports with multi-entry tsup build
+- [x] **Tests** — 28 tests (NIP-44 round-trip, PeerEncryption bidirectional, pairing encode/decode/validation, keypair/secret generation, protocol compatibility)
+- **Note**: Streaming (StreamWriter/StreamReader) deferred — V1 uses inline request/response only. Can add in V2.
 
 ## Phase 4: Connectors (Gmail first, then Notion)
 > OAuth + service execution. Copy OAuth infrastructure from ../keep.ai, build new connector method registries.
