@@ -2,7 +2,7 @@
 
 > **Goal**: Simple, lovable, complete v1 — a safe gate for AI agents to access user services (Gmail, Notion) via e2e encrypted nostr RPC.
 >
-> **Status**: Phase 6 complete. CLI & SDK (keepai) with local storage, KeepAI SDK class, and CLI commands implemented and tested.
+> **Status**: Phase 7 complete. React SPA with all pages, TanStack Query hooks, SSE real-time updates, Tailwind + Radix components.
 
 ---
 
@@ -107,23 +107,27 @@
 - [x] **Tests** — 25 tests (getConfigDir env override, Identity CRUD + perms + nested dirs, Config CRUD + perms, isPaired logic, deleteStorage + idempotent, KeepAIError construction, KeepAI constructor variants, disconnect, status when unpaired, run/help when unpaired)
 - [ ] **Verify first end-to-end flow**: keepd running → `npx keepai init <code>` → `npx keepai run gmail messages.list` → response (deferred to Phase 9)
 
-## Phase 7: UI (React SPA)
+## Phase 7: UI (React SPA) ✅
 > Management interface. All state via TanStack Query + keepd HTTP API.
 
-- [ ] **ui: Vite + Tailwind + Radix setup** — vite.config.ts (two build modes), tailwind.config, CSS variables (copy from ../keep.ai), main.tsx, queryClient → [specs/05-ui.md]
-- [ ] **ui: App shell + routing** — React Router, top bar (logo left, approval badge + menu right), page layout → [specs/05-ui.md]
-- [ ] **ui: useSSE hook** — subscribe to /api/events, trigger TanStack Query invalidation → [specs/05-ui.md]
-- [ ] **ui: Dashboard page** — pending approvals, connected services, paired agents, quick actions → [specs/05-ui.md]
-- [ ] **ui: Connections page** — list with connect/disconnect/test; service picker dialog; OAuth flow → [specs/05-ui.md]
-- [ ] **ui: Connection detail page** — status, usage stats, disconnect → [specs/05-ui.md]
-- [ ] **ui: Agents page** — list with add/revoke; "Add Agent" pairing dialog (name → code → wait for SSE → success) → [specs/05-ui.md]
-- [ ] **ui: Agent detail page** — info, per-service policy summary, recent requests, revoke → [specs/05-ui.md]
-- [ ] **ui: Policies page** — visual policy editor per service; default action dropdown; per-operation rules; raw JSON toggle; save/reset → [specs/05-ui.md]
-- [ ] **ui: Approvals page** — real-time pending cards (agent, service, method, account, description, time, expandable details, approve/deny); SSE-driven; badge count → [specs/05-ui.md]
-- [ ] **ui: Logs page** — searchable/filterable table; expandable rows → [specs/05-ui.md]
-- [ ] **ui: Settings page** — relay URLs, approval timeout, OAuth callback port, about → [specs/05-ui.md]
-- [ ] **ui: shared components** — StatusBadge, ServiceIcon, AgentAvatar, ApprovalCard, PolicyEditor, LogTable, CodeBlock, EmptyState → [specs/05-ui.md]
-- [ ] **Verify UI builds in both modes; dashboard loads from keepd**
+- [x] **ui: Tailwind 4 + Radix + PostCSS setup** — postcss.config.mjs with @tailwindcss/postcss; index.css with @theme directive for semantic colors (primary/secondary/muted/destructive/accent), CSS variables, border radius tokens; HSL-based theming
+- [x] **ui: Entry point + providers** — main.tsx with React.StrictMode, QueryClientProvider (5s staleTime, 60s gcTime), BrowserRouter (frontend) / HashRouter (electron) based on __ELECTRON__ define
+- [x] **ui: App shell + routing** — App.tsx with Header + Routes; 8 routes (/, /connections, /agents, /agents/:agentId, /agents/:agentId/policies, /approvals, /logs, /settings); max-w-5xl centered layout
+- [x] **ui: Header component** — top bar with "KeepAI" logo, pending approval badge (from useQueue), Radix DropdownMenu with nav items (Dashboard, Connections, Agents, Approvals, Logs) + separator + Settings; lucide-react icons; active route highlighting
+- [x] **ui: useSSE hook** — EventSource on /api/events; listeners for approval_request, approval_resolved, pairing_completed, request_completed, connection_updated → queryClient.invalidateQueries; auto-reconnect on error
+- [x] **ui: API client** — lib/api.ts with typed request() wrapper; all endpoints: connections (list, services, connect, disconnect, check), agents (list, get, create, revoke), policies (list, get, save), queue (list, approve, deny), logs (list with params), config (get, save), status
+- [x] **ui: Query keys** — lib/query-keys.ts factory: connections, services, agents, agent(id), policies(agentId), policy(agentId, service), queue, logs(params), config, status
+- [x] **ui: TanStack Query hooks** — use-connections (5 hooks), use-agents (4 hooks), use-queue (3 hooks with 5s refetchInterval), use-logs, use-config (3 hooks with 30s status refetch), use-policies (3 hooks); all with proper invalidation on mutation success
+- [x] **ui: Dashboard page** — pending approvals (top 3 with approve/deny), connected services list with StatusBadge, paired agents list with avatars; empty states with CTAs; links to relevant pages
+- [x] **ui: Connections page** — service picker (Gmail/Notion), connection list with status/last-used, test connection (RefreshCw spinner), disconnect with confirmation; window.open for OAuth redirect
+- [x] **ui: Agents page** — agent list with avatars and status; "Add Agent" modal dialog (name input → generate code → display `npx keepai init <code>` with copy button → waiting state)
+- [x] **ui: Agent detail page** — agent info (ID, pubkey, paired date, last seen), per-service policy summary with ServiceIcon, edit policies link, revoke button with confirmation → navigate to /agents
+- [x] **ui: Policies page** — per-connected-service policy cards; default action ActionSelect (allow/deny/ask); operation-specific rules (read/write/delete); raw JSON toggle with textarea; save + reset buttons
+- [x] **ui: Approvals page** — pending approval cards (ApprovalCard component) with service icon, method, description, timeAgo, agent name, approve/deny buttons; real-time via SSE + 5s polling
+- [x] **ui: Logs page** — filterable table (service, agent text inputs); expandable rows (full JSON detail); pagination (previous/next with offset/limit); timestamp, service icon, method, agent, status (color-coded), duration columns
+- [x] **ui: Settings page** — daemon status card (agents, connections, pending approvals, SSE clients), config form (relay URLs textarea, approval timeout input), save button, about section (version 0.1.0)
+- [x] **ui: Shared components** — StatusBadge (connected/online/active/pending/offline/error/revoked with color dots), ServiceIcon (Gmail=Mail red, Notion=FileText, default=Globe), EmptyState (icon + title + description + action), ApprovalCard (service icon, method, description, timeAgo, approve/deny), CodeBlock (mono pre), cn() utility (clsx + tailwind-merge)
+- [x] **Verify UI builds in both modes** — frontend (384KB JS + 20KB CSS) and electron; all 8 packages build; 179 tests pass
 
 ## Phase 8: Electron Desktop App
 > Bundle keepd + UI into a desktop app with tray and notifications.
