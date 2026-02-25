@@ -16,6 +16,7 @@
     "build:copy": "mkdir -p public && rm -rf public/* && cp -r ../ui/dist/frontend/* ./public/",
     "dev": "tsx src/start.ts",
     "start": "node dist/start.cjs",
+    "test": "vitest run",
     "clean": "rimraf dist public",
     "type-check": "tsc --noEmit"
   },

@@ -2,7 +2,7 @@
 
 > **Goal**: Simple, lovable, complete v1 — a safe gate for AI agents to access user services (Gmail, Notion) via e2e encrypted nostr RPC.
 >
-> **Status**: Phase 4 complete. Connectors (Gmail + Notion) with OAuth, credential store, connection manager, and executor implemented and tested.
+> **Status**: Phase 5 complete. Daemon (keepd) with Fastify HTTP API, agent management, policy engine, approval queue, audit logging, SSE, and RPC routing implemented and tested.
 
 ---
 
@@ -69,26 +69,27 @@
 - [x] **Tests** — 42 tests (ConnectionId, OAuthHandler URL generation, tokenResponseToCredentials, CredentialStore CRUD + permissions, service definitions, Gmail 15-method connector, Notion 8-method connector, ConnectorExecutor registry)
 - **Notes**: tsup config uses `external: ['@keepai/proto']` to avoid rootDir DTS issues; source imports use `@keepai/proto` (main barrel) not sub-path imports
 
-## Phase 5: Daemon (keepd)
+## Phase 5: Daemon (keepd) ✅
 > The central hub. Fastify HTTP API + nostr RPC handler + policy engine + approval queue.
 
-- [ ] **keepd: Fastify server** — `createServer()` on localhost:9090, CORS, static file serving → [specs/03-keepd.md]
-- [ ] **keepd: connection routes** — GET/POST/DELETE /api/connections/* (6 routes, reuse ConnectorManager) → [specs/03-keepd.md]
-- [ ] **keepd: AgentManager** — createPairing, completePairing, getAgentByKeepdPubkey, listAgents, revokeAgent, touchAgent → [specs/03-keepd.md]
-- [ ] **keepd: agent routes** — list, new (generate pairing code), get detail, revoke at /api/agents/* → [specs/03-keepd.md]
-- [ ] **keepd: PolicyEngine** — `evaluate(agentPubkey, metadata)` → allow/deny/ask; file-based policies with mtime caching + fs.watch; `savePolicy()` with atomic write; `createDefaults()` → [specs/07-permissions.md]
-- [ ] **keepd: policy routes** — GET/PUT /api/agents/:agentId/policies/:service → [specs/03-keepd.md]
-- [ ] **keepd: ApprovalQueue** — write temp file → SHA-256 hash → DB insert → SSE emit → DB poll 500ms → verify hash on approval → execute → cleanup → [specs/07-permissions.md]
-- [ ] **keepd: approval routes** — list pending, approve, deny at /api/queue/* → [specs/03-keepd.md]
-- [ ] **keepd: AuditLogger** — log every request with all fields → [specs/03-keepd.md]
-- [ ] **keepd: log routes** — GET /api/logs with filters (agent, service, method, date range, status) → [specs/03-keepd.md]
-- [ ] **keepd: SSE endpoint** — `/api/events` emitting approval_request, approval_resolved, pairing_completed, agent_connected, agent_disconnected, request_completed → [specs/03-keepd.md]
-- [ ] **keepd: config/status routes** — GET/PUT /api/config, GET /api/status → [specs/03-keepd.md]
-- [ ] **keepd: RPC handler** — decrypt → identify agent → route (pair/ping/help/service) → validate → extractPermMetadata → policy check → approval flow → execute connector → audit → respond → [specs/03-keepd.md]
-- [ ] **keepd: pairing flow** — POST /api/agents/new → keypair + secret → pending_pairings → nostr subscription update → return code; RPC "pair" → verify secret → create agent → delete pending → SSE emit → [specs/03-keepd.md]
-- [ ] **keepd: cleanup jobs** — every 5 min: expire pairings, expire approvals, clean resolved approvals (7d), clean audit log (30d) → [specs/09-database.md]
-- [ ] **keepd: server startup sequence** — 14-step: data dir → DB → migration → settings → connectors → reconcile → register connectors → agent manager → policy engine → approval queue → audit logger → RPC handler → nostr subscribe → static files → [specs/03-keepd.md]
-- [ ] **Verify keepd starts, HTTP API responds, SSE connects**
+- [x] **keepd: Fastify server** — `createServer()` on localhost:9090, CORS, `@fastify/static` for UI, SPA fallback for non-API routes
+- [x] **keepd: connection routes** — GET /api/connections (list), GET /api/connections/services, POST /api/connections/:service/connect (start OAuth), GET /api/connections/:service/callback (OAuth callback with HTML response), DELETE /api/connections/:service/:accountId (disconnect), POST .../check (test connection)
+- [x] **keepd: AgentManager** — createPairing (generates keypair + secret, encodes pairing code), completePairing (verifies secret, moves from pending_pairings to agents), getAgentByKeepdPubkey, getActiveKeepdPubkeys (agents + pending pairings), touchAgent, revokeAgent, cleanupExpiredPairings
+- [x] **keepd: agent routes** — GET /api/agents (list), POST /api/agents/new?name=... (pairing code), GET /api/agents/:agentId (detail), DELETE /api/agents/:agentId (revoke + delete policies)
+- [x] **keepd: PolicyEngine** — `evaluate(agentPubkey, metadata)` → allow/deny/ask; file-based policies at `{dataDir}/agents/{pubkey}/policies/{service}.json`; mtime-based cache; atomic writes with 0o600 perms; path traversal prevention; `createDefaults()` on pairing; `deleteAgentPolicies()` on revoke
+- [x] **keepd: policy routes** — GET /api/agents/:agentId/policies (all), GET /api/agents/:agentId/policies/:service (one), PUT .../policies/:service (validate + save)
+- [x] **keepd: ApprovalQueue** — write request to temp file → SHA-256 hash → DB insert → SSE emit → poll DB every 500ms → verify hash on approve → cleanup temp files; hash-verification-based tamper detection
+- [x] **keepd: approval routes** — GET /api/queue (pending), POST /api/queue/:id/approve, POST /api/queue/:id/deny
+- [x] **keepd: AuditLogger** — logs every request with agent info, metadata, policy action, approval status, response status, duration; filters by agent, service, date range
+- [x] **keepd: log routes** — GET /api/logs with query params (agent, service, from, to, limit, offset); returns entries + total count
+- [x] **keepd: SSE endpoint** — GET /api/events with text/event-stream, heartbeat every 30s, event types: approval_request, approval_resolved, pairing_completed, request_completed
+- [x] **keepd: config/status routes** — GET/PUT /api/config (settings store), GET /api/status (agents count, connections count, pending approvals, SSE clients)
+- [x] **keepd: RPCRouter** — full pipeline: getAgentKeys (agents + pending pairings) → handleRequest → route (pair/ping/help/service methods) → validate account → extractPermMetadata → policy check → approval flow → execute connector → audit → respond
+- [x] **keepd: pairing flow** — POST /api/agents/new → keypair + secret → pending_pairings → subscription update; RPC "pair" → verify secret → create agent → default policies → SSE emit → subscription update
+- [x] **keepd: cleanup jobs** — setInterval(5min): expire pairings, expire approvals, cleanup resolved approvals (7d), cleanup rpc_requests (1h), cleanup audit log (30d)
+- [x] **keepd: server startup sequence** — 16-step: data dir → SQLite + migrate → CredentialStore → DbBridge → ConnectionManager (register services, reconcile) → ConnectorExecutor → SSE → AgentManager → PolicyEngine → ApprovalQueue → AuditLogger → RPCRouter → RPCHandler (listen) → Fastify (CORS, routes, static) → cleanup timer
+- [x] **keepd: DB bridge** — `createDbBridge()` wrapping sync @keepai/db ConnectionStore in async DbConnectionStore for ConnectionManager; handles JSON metadata serialization
+- [x] **Tests** — 30 tests (AgentManager lifecycle/pairing/revocation, PolicyEngine rule matching/caching/defaults/path safety, ApprovalQueue approve/deny/timeout/hash verification, AuditLogger logging/filtering/counting, SSEBroadcaster, DB bridge)
 
 ## Phase 6: CLI & SDK (keepai)
 > Agent-facing tool. Pairs with daemon, makes RPC calls.
