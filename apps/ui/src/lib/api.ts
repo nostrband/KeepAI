@@ -45,7 +45,7 @@ export const api = {
     request<{ services: any[] }>('/connections/services').then((r) => r.services),
 
   connectService: (service: string) =>
-    request<{ url: string }>(`/connections/${service}/connect`, { method: 'POST' }),
+    request<{ authUrl: string }>(`/connections/${service}/connect`, { method: 'POST' }),
 
   disconnectService: (service: string, accountId: string) =>
     request<void>(`/connections/${service}/${encodeURIComponent(accountId)}`, { method: 'DELETE' }),

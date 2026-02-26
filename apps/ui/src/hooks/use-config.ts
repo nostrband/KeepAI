@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { api } from '../lib/api';
 import { qk } from '../lib/query-keys';
 
@@ -23,6 +24,7 @@ export function useSaveConfig() {
     mutationFn: (config: Record<string, string>) => api.saveConfig(config),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: qk.config() });
+      toast.success('Settings saved');
     },
   });
 }

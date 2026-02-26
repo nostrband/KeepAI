@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { api } from '../lib/api';
 import { qk } from '../lib/query-keys';
 
@@ -29,6 +30,7 @@ export function useDisconnectService() {
       api.disconnectService(service, accountId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: qk.connections() });
+      toast.success('Service disconnected');
     },
   });
 }

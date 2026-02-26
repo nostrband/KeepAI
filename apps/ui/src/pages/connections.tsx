@@ -18,16 +18,16 @@ export function ConnectionsPage() {
     setShowPicker(false);
     try {
       const result = await connectMutation.mutateAsync(service);
-      if (result.url) {
+      if (result.authUrl) {
         // In Electron, open OAuth URL in system browser (not in-app window)
         if ((window as any).electronAPI?.openExternal) {
-          (window as any).electronAPI.openExternal(result.url);
+          (window as any).electronAPI.openExternal(result.authUrl);
         } else {
-          window.open(result.url, '_blank');
+          window.open(result.authUrl, '_blank');
         }
       }
-    } catch (err) {
-      console.error('Connect failed:', err);
+    } catch {
+      // error toast shown by global mutation handler
     }
   };
 

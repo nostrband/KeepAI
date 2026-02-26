@@ -66,11 +66,15 @@ export function PoliciesPage() {
   };
 
   const handleSave = async (service: string) => {
-    await saveMutation.mutateAsync({
-      agentId: agentId!,
-      service,
-      policy: localPolicies[service] ?? DEFAULT_POLICY,
-    });
+    try {
+      await saveMutation.mutateAsync({
+        agentId: agentId!,
+        service,
+        policy: localPolicies[service] ?? DEFAULT_POLICY,
+      });
+    } catch {
+      // error toast shown by global mutation handler
+    }
   };
 
   const handleReset = (service: string) => {
@@ -78,13 +82,19 @@ export function PoliciesPage() {
   };
 
   const handleSaveRaw = async (service: string) => {
+    let parsed: any;
     try {
-      const parsed = JSON.parse(rawJson);
-      setRawError('');
+      parsed = JSON.parse(rawJson);
+    } catch {
+      setRawError('Invalid JSON');
+      return;
+    }
+    setRawError('');
+    try {
       await saveMutation.mutateAsync({ agentId: agentId!, service, policy: parsed });
       setLocalPolicies((prev) => ({ ...prev, [service]: parsed }));
     } catch {
-      setRawError('Invalid JSON');
+      // error toast shown by global mutation handler
     }
   };
 

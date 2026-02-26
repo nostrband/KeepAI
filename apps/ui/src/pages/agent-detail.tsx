@@ -19,8 +19,12 @@ export function AgentDetailPage() {
 
   const handleRevoke = async () => {
     if (!confirm(`Revoke agent "${agent.name}"? This cannot be undone.`)) return;
-    await revokeMutation.mutateAsync(agentId!);
-    navigate('/agents');
+    try {
+      await revokeMutation.mutateAsync(agentId!);
+      navigate('/agents');
+    } catch {
+      // error toast shown by global mutation handler
+    }
   };
 
   const policyServices = policies ? Object.keys(policies) : [];

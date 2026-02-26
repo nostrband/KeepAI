@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { api } from '../lib/api';
 import { qk } from '../lib/query-keys';
 
@@ -26,6 +27,7 @@ export function useSavePolicy() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: qk.policies(variables.agentId) });
       queryClient.invalidateQueries({ queryKey: qk.policy(variables.agentId, variables.service) });
+      toast.success('Policy saved');
     },
   });
 }

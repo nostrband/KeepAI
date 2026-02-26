@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { api } from '../lib/api';
 import { qk } from '../lib/query-keys';
 
@@ -33,6 +34,7 @@ export function useRevokeAgent() {
     mutationFn: (agentId: string) => api.revokeAgent(agentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: qk.agents() });
+      toast.success('Agent revoked');
     },
   });
 }

@@ -1,12 +1,5 @@
 @import "tailwindcss";
 
-/* Override Radix popper broken positioning */
-[data-radix-popper-content-wrapper] {
-  transform: none !important;
-  position: absolute !important;
-  inset: auto !important;
-}
-
 @layer base {
   :root {
     --background: 0 0% 100%;
