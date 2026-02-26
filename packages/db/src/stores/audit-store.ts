@@ -41,6 +41,7 @@ function rowToAudit(row: AuditRow): AuditEntry {
 
 export interface AuditFilters {
   agentId?: string;
+  agentName?: string;
   service?: string;
   from?: number;
   to?: number;
@@ -86,9 +87,13 @@ export class AuditStore {
       conditions.push('agent_id = ?');
       params.push(filters.agentId);
     }
+    if (filters.agentName) {
+      conditions.push('agent_name LIKE ?');
+      params.push(filters.agentName + '%');
+    }
     if (filters.service) {
-      conditions.push('service = ?');
-      params.push(filters.service);
+      conditions.push('service LIKE ?');
+      params.push(filters.service + '%');
     }
     if (filters.from) {
       conditions.push('created_at >= ?');
@@ -117,9 +122,13 @@ export class AuditStore {
       conditions.push('agent_id = ?');
       params.push(filters.agentId);
     }
+    if (filters.agentName) {
+      conditions.push('agent_name LIKE ?');
+      params.push(filters.agentName + '%');
+    }
     if (filters.service) {
-      conditions.push('service = ?');
-      params.push(filters.service);
+      conditions.push('service LIKE ?');
+      params.push(filters.service + '%');
     }
     if (filters.from) {
       conditions.push('created_at >= ?');

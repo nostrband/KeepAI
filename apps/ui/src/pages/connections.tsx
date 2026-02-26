@@ -92,20 +92,20 @@ export function ConnectionsPage() {
         <div className="space-y-3">
           {connections.map((conn: any) => (
             <div
-              key={`${conn.service}:${conn.account_id}`}
+              key={`${conn.service}:${conn.accountId}`}
               className="flex items-center gap-3 p-4 border border-border rounded-lg"
             >
               <ServiceIcon service={conn.service} className="w-6 h-6" />
               <div className="flex-1 min-w-0">
-                <div className="font-medium">{conn.account_id}</div>
+                <div className="font-medium">{conn.accountId}</div>
                 <div className="text-sm text-muted-foreground">
                   {serviceName(conn.service)}
-                  {conn.last_used_at && ` — last used ${new Date(conn.last_used_at).toLocaleString()}`}
+                  {conn.lastUsedAt && ` — last used ${new Date(conn.lastUsedAt).toLocaleString()}`}
                 </div>
               </div>
-              <StatusBadge status={conn.status === 'active' ? 'connected' : 'error'} />
+              <StatusBadge status={conn.status === 'connected' ? 'connected' : 'error'} />
               <button
-                onClick={() => checkMutation.mutate({ service: conn.service, accountId: conn.account_id })}
+                onClick={() => checkMutation.mutate({ service: conn.service, accountId: conn.accountId })}
                 disabled={checkMutation.isPending}
                 className="p-2 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground"
                 title="Test connection"
@@ -114,8 +114,8 @@ export function ConnectionsPage() {
               </button>
               <button
                 onClick={() => {
-                  if (confirm(`Disconnect ${conn.account_id}?`)) {
-                    disconnectMutation.mutate({ service: conn.service, accountId: conn.account_id });
+                  if (confirm(`Disconnect ${conn.accountId}?`)) {
+                    disconnectMutation.mutate({ service: conn.service, accountId: conn.accountId });
                   }
                 }}
                 disabled={disconnectMutation.isPending}

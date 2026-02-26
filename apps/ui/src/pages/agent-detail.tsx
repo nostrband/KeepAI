@@ -66,11 +66,11 @@ export function AgentDetailPage() {
           <dt className="text-muted-foreground">Agent ID</dt>
           <dd className="font-mono text-xs">{agent.id}</dd>
           <dt className="text-muted-foreground">Public Key</dt>
-          <dd className="font-mono text-xs truncate">{agent.agent_pubkey}</dd>
+          <dd className="font-mono text-xs truncate">{agent.agentPubkey}</dd>
           <dt className="text-muted-foreground">Paired</dt>
-          <dd>{new Date(agent.created_at).toLocaleString()}</dd>
+          <dd>{new Date(agent.pairedAt).toLocaleString()}</dd>
           <dt className="text-muted-foreground">Last Seen</dt>
-          <dd>{agent.last_seen_at ? new Date(agent.last_seen_at).toLocaleString() : 'Never'}</dd>
+          <dd>{agent.lastSeenAt ? new Date(agent.lastSeenAt).toLocaleString() : 'Never'}</dd>
         </dl>
       </div>
 
@@ -135,18 +135,18 @@ export function AgentDetailPage() {
                 <span className="font-mono text-xs">{entry.method}</span>
                 <span
                   className={`text-xs px-1.5 py-0.5 rounded ${
-                    entry.response_status === 'success'
+                    entry.responseStatus === 'success'
                       ? 'bg-green-500/10 text-green-600'
                       : 'bg-red-500/10 text-red-600'
                   }`}
                 >
-                  {entry.response_status}
+                  {entry.responseStatus}
                 </span>
-                {entry.duration_ms != null && (
-                  <span className="text-xs text-muted-foreground">{entry.duration_ms}ms</span>
+                {entry.durationMs != null && (
+                  <span className="text-xs text-muted-foreground">{entry.durationMs}ms</span>
                 )}
                 <span className="text-xs text-muted-foreground ml-auto">
-                  {new Date(entry.created_at).toLocaleString()}
+                  {new Date(entry.createdAt).toLocaleString()}
                 </span>
               </div>
             ))}

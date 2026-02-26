@@ -85,16 +85,16 @@ export function DashboardPage() {
           <div className="space-y-2">
             {connections.map((conn: any) => (
               <Link
-                key={`${conn.service}:${conn.account_id}`}
+                key={`${conn.service}:${conn.accountId}`}
                 to="/connections"
                 className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors"
               >
                 <ServiceIcon service={conn.service} />
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{conn.account_id}</div>
+                  <div className="text-sm font-medium truncate">{conn.accountId}</div>
                   <div className="text-xs text-muted-foreground">{serviceName(conn.service)}</div>
                 </div>
-                <StatusBadge status={conn.status === 'active' ? 'connected' : 'error'} />
+                <StatusBadge status={conn.status === 'connected' ? 'connected' : 'error'} />
               </Link>
             ))}
           </div>
@@ -146,7 +146,7 @@ export function DashboardPage() {
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate">{agent.name || 'Unnamed'}</div>
                   <div className="text-xs text-muted-foreground">
-                    {agent.last_seen_at ? `Last seen ${new Date(agent.last_seen_at).toLocaleString()}` : 'Never connected'}
+                    {agent.lastSeenAt ? `Last seen ${new Date(agent.lastSeenAt).toLocaleString()}` : 'Never connected'}
                   </div>
                 </div>
                 <StatusBadge status={agent.status === 'revoked' ? 'revoked' : 'active'} />

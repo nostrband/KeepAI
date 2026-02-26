@@ -272,13 +272,14 @@ export class RPCRouter {
     };
   }
 
-  private handleHelp(
+  private async handleHelp(
     request: RPCRequest
-  ): { result?: unknown; error?: RPCError } {
+  ): Promise<{ result?: unknown; error?: RPCError }> {
     const service = request.service;
     if (service) {
       try {
         const help = this.connectorExecutor.getHelp(service);
+        await this.enrichHelpWithAccounts([help]);
         return { result: help };
       } catch {
         return {
@@ -288,8 +289,23 @@ export class RPCRouter {
     }
 
     // List all services
-    const help = this.connectorExecutor.getHelp();
+    const help = this.connectorExecutor.getHelp() as import('@keepai/proto').ServiceHelp[];
+    await this.enrichHelpWithAccounts(help);
     return { result: help };
+  }
+
+  private async enrichHelpWithAccounts(
+    services: import('@keepai/proto').ServiceHelp[]
+  ): Promise<void> {
+    for (const svc of services) {
+      const connections = await this.connectionManager.listConnectionsByService(svc.service);
+      svc.accounts = connections
+        .filter((c) => c.status === 'connected')
+        .map((c) => ({
+          id: c.accountId,
+          label: (c.metadata?.displayName as string) ?? undefined,
+        }));
+    }
   }
 
   private async executeServiceMethod(

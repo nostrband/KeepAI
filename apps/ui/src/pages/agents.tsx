@@ -149,8 +149,8 @@ export function AgentsPage() {
               <div className="flex-1 min-w-0">
                 <div className="font-medium">{agent.name || 'Unnamed'}</div>
                 <div className="text-sm text-muted-foreground">
-                  Paired {new Date(agent.created_at).toLocaleDateString()}
-                  {agent.last_seen_at && ` — last seen ${new Date(agent.last_seen_at).toLocaleString()}`}
+                  Paired {new Date(agent.pairedAt).toLocaleDateString()}
+                  {agent.lastSeenAt && ` — last seen ${new Date(agent.lastSeenAt).toLocaleString()}`}
                 </div>
               </div>
               <StatusBadge status={agent.status === 'revoked' ? 'revoked' : 'active'} />

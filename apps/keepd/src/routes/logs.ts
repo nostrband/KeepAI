@@ -24,7 +24,7 @@ export async function registerLogRoutes(
     const { agent, service, from, to, limit, offset } = request.query;
 
     const entries = auditLogger.list({
-      agentId: agent,
+      agentName: agent,
       service,
       from: from ? Number(from) : undefined,
       to: to ? Number(to) : undefined,
@@ -33,7 +33,7 @@ export async function registerLogRoutes(
     });
 
     const total = auditLogger.count({
-      agentId: agent,
+      agentName: agent,
       service,
       from: from ? Number(from) : undefined,
       to: to ? Number(to) : undefined,

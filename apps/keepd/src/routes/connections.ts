@@ -11,6 +11,7 @@
 
 import type { FastifyInstance } from 'fastify';
 import type { ConnectionManager, ConnectorExecutor } from '@keepai/connectors';
+import type { SSEBroadcaster } from '../sse.js';
 
 const HEALTH_CHECK_METHODS: Record<string, { method: string; params: Record<string, unknown> }> = {
   gmail: { method: 'profile.get', params: {} },
@@ -21,7 +22,8 @@ export async function registerConnectionRoutes(
   app: FastifyInstance,
   connectionManager: ConnectionManager,
   getServerBaseUrl: () => string,
-  connectorExecutor?: ConnectorExecutor
+  connectorExecutor?: ConnectorExecutor,
+  sse?: SSEBroadcaster
 ): Promise<void> {
   // List all connections
   app.get('/api/connections', async () => {
@@ -87,6 +89,7 @@ export async function registerConnectionRoutes(
 
     reply.type('text/html');
     if (result.success) {
+      sse?.broadcast('connection_updated', { service, action: 'connected' });
       return `<html><body><h2>Connected!</h2><p>${escapeHtml(service)} account connected successfully.</p><p>You can close this window.</p><script>window.close();</script></body></html>`;
     } else {
       return `<html><body><h2>Connection Failed</h2><p>${escapeHtml(result.error || 'Unknown error')}</p><p>You can close this window.</p></body></html>`;

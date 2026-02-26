@@ -5,12 +5,12 @@ import { Clock, Check, X, ChevronDown, ChevronUp } from 'lucide-react';
 interface ApprovalCardProps {
   item: {
     id: string;
-    agent_name?: string;
+    agentName?: string;
     service: string;
     method: string;
-    account_id?: string;
+    accountId?: string;
     description?: string;
-    created_at: string;
+    createdAt: number;
     params?: Record<string, unknown>;
   };
   onApprove: (id: string) => void;
@@ -19,8 +19,8 @@ interface ApprovalCardProps {
   isDenying?: boolean;
 }
 
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
+function timeAgo(ts: number): string {
+  const diff = Date.now() - ts;
   const seconds = Math.floor(diff / 1000);
   if (seconds < 60) return `${seconds}s ago`;
   const minutes = Math.floor(seconds / 60);
@@ -47,11 +47,11 @@ export function ApprovalCard({ item, onApprove, onDeny, isApproving, isDenying }
             <p className="text-sm text-muted-foreground mb-1">{item.description}</p>
           )}
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            {item.agent_name && <span>Agent: {item.agent_name}</span>}
-            {item.account_id && <span>Account: {item.account_id}</span>}
+            {item.agentName && <span>Agent: {item.agentName}</span>}
+            {item.accountId && <span>Account: {item.accountId}</span>}
             <span className="flex items-center gap-1">
               <Clock className="w-3 h-3" />
-              {timeAgo(item.created_at)}
+              {timeAgo(item.createdAt)}
             </span>
           </div>
         </div>

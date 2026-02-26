@@ -72,7 +72,7 @@ export function LogsPage() {
                       onClick={() => setExpandedId(expandedId === entry.id ? null : entry.id)}
                     >
                       <td className="px-3 py-2 text-xs text-muted-foreground whitespace-nowrap">
-                        {new Date(entry.created_at).toLocaleString()}
+                        {new Date(entry.createdAt).toLocaleString()}
                       </td>
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-1.5">
@@ -81,22 +81,22 @@ export function LogsPage() {
                         </div>
                       </td>
                       <td className="px-3 py-2 font-mono text-xs">{entry.method}</td>
-                      <td className="px-3 py-2 text-muted-foreground">{entry.agent_name || '—'}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{entry.agentName || '—'}</td>
                       <td className="px-3 py-2">
                         <span
                           className={`text-xs font-medium ${
-                            entry.response_status === 'success'
+                            entry.responseStatus === 'success'
                               ? 'text-green-600'
-                              : entry.response_status === 'denied'
+                              : entry.responseStatus === 'denied'
                                 ? 'text-red-600'
                                 : 'text-yellow-600'
                           }`}
                         >
-                          {entry.response_status || entry.policy_action || '—'}
+                          {entry.responseStatus || entry.policyAction || '—'}
                         </span>
                       </td>
                       <td className="px-3 py-2 text-xs text-muted-foreground">
-                        {entry.duration_ms ? `${entry.duration_ms}ms` : '—'}
+                        {entry.durationMs ? `${entry.durationMs}ms` : '—'}
                       </td>
                       <td className="px-3 py-2">
                         {expandedId === entry.id ? (
