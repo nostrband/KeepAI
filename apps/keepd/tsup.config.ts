@@ -33,6 +33,7 @@ export default defineConfig({
   outDir: 'dist',
   dts: true,
   clean: true,
+  external: ['debug'],
   define: {
     'process.env.GOOGLE_CLIENT_ID': JSON.stringify(GOOGLE_CLIENT_ID),
     'process.env.GOOGLE_CLIENT_SECRET': JSON.stringify(GOOGLE_CLIENT_SECRET),

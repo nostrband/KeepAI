@@ -7,5 +7,5 @@ export default defineConfig({
   treeshake: true,
   platform: 'node',
   sourcemap: true,
-  external: ['@keepai/proto'],
+  external: ['@keepai/proto', 'debug'],
 });

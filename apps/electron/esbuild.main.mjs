@@ -8,6 +8,7 @@ const common = {
   external: [
     'electron',
     'better-sqlite3',
+    'ws',
   ],
 };
 

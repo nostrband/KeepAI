@@ -9,6 +9,7 @@
  *   const keep = new KeepAI({ configDir: '/path/to/.keepai' });
  */
 
+import createDebug from 'debug';
 import { EventEmitter } from 'events';
 import {
   RPCCaller,
@@ -17,6 +18,8 @@ import {
   parsePairingCode,
 } from '@keepai/nostr-rpc';
 import { EXIT_CODES } from '@keepai/proto';
+
+const log = createDebug('keepai:sdk');
 import type { ServiceHelp } from '@keepai/proto';
 import {
   loadIdentity,
@@ -126,12 +129,15 @@ export class KeepAI extends EventEmitter {
 
     // Decode pairing code
     const { pubkey, relays, secret } = parsePairingCode(pairingCode);
+    log('parsed pairing code: daemonPubkey:%s relays:%o', pubkey, relays);
 
     // Generate keypair
     const { pubkey: agentPubkey, privkey: agentPrivkey } = generateKeypair();
+    log('generated agent keypair pubkey:%s', agentPubkey);
 
     // Save identity
     saveIdentity({ privateKey: agentPrivkey, publicKey: agentPubkey }, configDir);
+    log('saved identity to %s', configDir);
 
     // Create RPC caller for pairing
     const caller = new RPCCaller({
@@ -144,9 +150,11 @@ export class KeepAI extends EventEmitter {
 
     try {
       // Send pair request
+      log('sending pair request with secret');
       const pairResult = await caller.call('pair', {
         params: { secret, pubkey: agentPubkey },
       });
+      log('pair result: %O', pairResult);
 
       if (!pairResult || (pairResult as any).error) {
         throw new KeepAIError(
@@ -165,16 +173,19 @@ export class KeepAI extends EventEmitter {
         },
         configDir
       );
+      log('saved config to %s', configDir);
 
       // Fetch available services
       let services: ServiceHelp[] = [];
       try {
+        log('fetching available services...');
         const helpResult = await caller.call('help', {});
         if (Array.isArray(helpResult)) {
           services = helpResult as ServiceHelp[];
         }
-      } catch {
-        // Help fetch is optional — pairing already succeeded
+        log('got %d service(s)', services.length);
+      } catch (err) {
+        log('help fetch failed (non-fatal): %s', err);
       }
 
       return { services };
@@ -230,6 +241,7 @@ export class KeepAI extends EventEmitter {
     method: string,
     params: Record<string, unknown> = {}
   ): Promise<unknown> {
+    log('run %s.%s params:%O', service, method, params);
     const caller = this.getCaller();
     const account = params.account as string | undefined;
     const cleanParams = { ...params };

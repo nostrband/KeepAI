@@ -9,12 +9,13 @@
 const BASE = '/api';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const headers: Record<string, string> = { ...options?.headers as Record<string, string> };
+  if (options?.body) {
+    headers['Content-Type'] = 'application/json';
+  }
   const response = await fetch(`${BASE}${path}`, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
+    headers,
   });
 
   if (!response.ok) {
@@ -38,10 +39,10 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 export const api = {
   // Connections
   listConnections: () =>
-    request<any[]>('/connections'),
+    request<{ connections: any[] }>('/connections').then((r) => r.connections),
 
   listServices: () =>
-    request<any[]>('/connections/services'),
+    request<{ services: any[] }>('/connections/services').then((r) => r.services),
 
   connectService: (service: string) =>
     request<{ url: string }>(`/connections/${service}/connect`, { method: 'POST' }),
@@ -54,13 +55,13 @@ export const api = {
 
   // Agents
   listAgents: () =>
-    request<any[]>('/agents'),
+    request<{ agents: any[] }>('/agents').then((r) => r.agents),
 
   getAgent: (agentId: string) =>
     request<any>(`/agents/${agentId}`),
 
   createAgent: (name: string) =>
-    request<{ pairingCode: string; agentId: string }>(`/agents/new?name=${encodeURIComponent(name)}`, { method: 'POST' }),
+    request<{ code: string; id: string }>(`/agents/new?name=${encodeURIComponent(name)}`, { method: 'POST' }),
 
   revokeAgent: (agentId: string) =>
     request<void>(`/agents/${agentId}`, { method: 'DELETE' }),
@@ -80,7 +81,7 @@ export const api = {
 
   // Approval Queue
   listQueue: () =>
-    request<any[]>('/queue'),
+    request<{ pending: any[] }>('/queue').then((r) => r.pending),
 
   approveRequest: (id: string) =>
     request<void>(`/queue/${id}/approve`, { method: 'POST' }),

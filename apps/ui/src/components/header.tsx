@@ -8,7 +8,13 @@ import {
   Settings,
   Menu,
 } from 'lucide-react';
-import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from './ui/dropdown-menu';
 import { useQueue } from '../hooks/use-queue';
 import { cn } from '../lib/cn';
 
@@ -43,52 +49,46 @@ export function Header() {
         </Link>
       )}
 
-      <DropdownMenu.Root>
-        <DropdownMenu.Trigger asChild>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
           <button className="p-2 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground">
             <Menu className="w-5 h-5" />
           </button>
-        </DropdownMenu.Trigger>
-        <DropdownMenu.Portal>
-          <DropdownMenu.Content
-            align="end"
-            sideOffset={8}
-            className="z-50 min-w-[180px] bg-popover border border-border rounded-lg shadow-lg p-1"
-          >
-            {navItems.map((item) => (
-              <DropdownMenu.Item key={item.path} asChild>
-                <Link
-                  to={item.path}
-                  className={cn(
-                    'flex items-center gap-2 px-3 py-2 text-sm rounded-md outline-none cursor-pointer',
-                    location.pathname === item.path
-                      ? 'bg-accent text-accent-foreground font-medium'
-                      : 'text-foreground hover:bg-accent'
-                  )}
-                >
-                  <item.icon className="w-4 h-4" />
-                  {item.label}
-                  {item.path === '/approvals' && pendingCount > 0 && (
-                    <span className="ml-auto bg-primary text-primary-foreground text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
-                      {pendingCount}
-                    </span>
-                  )}
-                </Link>
-              </DropdownMenu.Item>
-            ))}
-            <DropdownMenu.Separator className="h-px bg-border my-1" />
-            <DropdownMenu.Item asChild>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" sideOffset={8} className="min-w-[180px]">
+          {navItems.map((item) => (
+            <DropdownMenuItem key={item.path} asChild>
               <Link
-                to="/settings"
-                className="flex items-center gap-2 px-3 py-2 text-sm rounded-md outline-none cursor-pointer text-foreground hover:bg-accent"
+                to={item.path}
+                className={cn(
+                  'flex items-center gap-2 px-3 py-2 text-sm rounded-md outline-none cursor-pointer',
+                  location.pathname === item.path
+                    ? 'bg-accent text-accent-foreground font-medium'
+                    : 'text-foreground hover:bg-accent'
+                )}
               >
-                <Settings className="w-4 h-4" />
-                Settings
+                <item.icon className="w-4 h-4" />
+                {item.label}
+                {item.path === '/approvals' && pendingCount > 0 && (
+                  <span className="ml-auto bg-primary text-primary-foreground text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+                    {pendingCount}
+                  </span>
+                )}
               </Link>
-            </DropdownMenu.Item>
-          </DropdownMenu.Content>
-        </DropdownMenu.Portal>
-      </DropdownMenu.Root>
+            </DropdownMenuItem>
+          ))}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link
+              to="/settings"
+              className="flex items-center gap-2 px-3 py-2 text-sm rounded-md outline-none cursor-pointer text-foreground hover:bg-accent"
+            >
+              <Settings className="w-4 h-4" />
+              Settings
+            </Link>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </header>
   );
 }

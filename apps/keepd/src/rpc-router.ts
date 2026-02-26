@@ -12,8 +12,11 @@
  * 9. Return response
  */
 
+import createDebug from 'debug';
 import type { RPCRequest, RPCError, Agent } from '@keepai/proto';
 import { PROTOCOL_VERSION, SOFTWARE_VERSION } from '@keepai/proto';
+
+const log = createDebug('keepai:router');
 import { AuthError, isClassifiedError } from '@keepai/proto';
 import type { AgentKeys } from '@keepai/nostr-rpc';
 import type { AgentManager } from './managers/agent-manager.js';
@@ -59,6 +62,7 @@ export class RPCRouter {
     // Check paired agents first
     const agent = this.agentManager.getAgentByKeepdPubkey(keepdPubkey);
     if (agent && agent.status === 'paired') {
+      log('getAgentKeys: found paired agent %s for pubkey:%s', agent.name, keepdPubkey);
       return {
         keepdPubkey: agent.keepdPubkey,
         keepdPrivkey: agent.keepdPrivkey,
@@ -69,14 +73,15 @@ export class RPCRouter {
     // Check pending pairings
     const pairing = this.agentManager.getPairingByKeepdPubkey(keepdPubkey);
     if (pairing && pairing.expiresAt > Date.now()) {
-      // For pending pairings, agentPubkey is not yet known (will be the event author)
+      log('getAgentKeys: found pending pairing %s for pubkey:%s', pairing.name, keepdPubkey);
       return {
         keepdPubkey: pairing.keepdPubkey,
         keepdPrivkey: pairing.keepdPrivkey,
-        agentPubkey: '', // Not yet known
+        agentPubkey: '',
       };
     }
 
+    log('getAgentKeys: no match for pubkey:%s', keepdPubkey);
     return null;
   }
 
@@ -88,6 +93,9 @@ export class RPCRouter {
     agentKeys: AgentKeys,
     eventId: string
   ): Promise<{ result?: unknown; error?: RPCError }> {
+    log('handleRequest method:%s service:%s from agent pubkey:%s',
+      request.method, request.service ?? '-', agentKeys.agentPubkey || '(pending)');
+
     // Route built-in methods
     switch (request.method) {
       case 'pair':
@@ -223,7 +231,9 @@ export class RPCRouter {
         };
       }
 
+      log('completing pairing for agent pubkey:%s', agentPubkey);
       const agent = this.agentManager.completePairing(agentPubkey, secret);
+      log('pairing completed: agent %s (%s)', agent.name, agent.id);
 
       // Create default policies
       const services = this.connectorExecutor.getRegisteredServices();

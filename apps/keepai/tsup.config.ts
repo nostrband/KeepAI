@@ -7,6 +7,7 @@ export default defineConfig([
     dts: true,
     clean: true,
     target: 'node22',
+    external: ['debug'],
   },
   {
     entry: ['src/cli.ts'],
@@ -14,6 +15,7 @@ export default defineConfig([
     dts: false,
     clean: false,
     target: 'node22',
+    external: ['debug'],
     banner: {
       js: '#!/usr/bin/env node',
     },

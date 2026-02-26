@@ -87,6 +87,11 @@ temp/
 
 # Electron
 dist_electron/
+release/
+
+# Built UI assets served by apps
+**/public/assets/
+**/public/index.html
 
 # Vite
 .vite/

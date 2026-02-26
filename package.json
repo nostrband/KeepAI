@@ -15,6 +15,10 @@
     "type-check": "turbo run type-check"
   },
   "devDependencies": {
+    "@types/debug": "^4.1.12",
+    "@types/ws": "^8.18.1",
+    "electron": "^33.0.0",
+    "electron-builder": "^26.0.0",
     "rimraf": "^6.1.2",
     "tsup": "^8.5.0",
     "turbo": "^2.6.0",
@@ -24,7 +28,9 @@
   "dependencies": {
     "better-sqlite3": "^11.0.0",
     "bindings": "^1.5.0",
-    "file-uri-to-path": "^1.0.0"
+    "debug": "^4.4.3",
+    "file-uri-to-path": "^1.0.0",
+    "ws": "^8.19.0"
   },
   "engines": {
     "node": ">=22.0.0",

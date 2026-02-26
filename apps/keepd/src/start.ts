@@ -3,8 +3,11 @@
  * Creates and starts the keepd server.
  */
 
+import createDebug from 'debug';
 import { createServer } from './server.js';
 import { DEFAULT_PORT } from '@keepai/proto';
+
+const log = createDebug('keepai:start');
 
 async function main() {
   const port = process.env.KEEPAI_PORT
@@ -15,6 +18,8 @@ async function main() {
     ? process.env.KEEPAI_RELAYS.split(',').map((r) => r.trim())
     : undefined;
 
+  log('starting keepd port:%d relays:%o', port, relays ?? 'default');
+
   const server = await createServer({
     port,
     relays,
@@ -23,7 +28,7 @@ async function main() {
 
   // Handle graceful shutdown
   const shutdown = async () => {
-    console.log('\n[keepd] Shutting down...');
+    log('shutdown signal received');
     await server.close();
     process.exit(0);
   };
@@ -35,6 +40,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('[keepd] Fatal error:', err);
+  log('fatal error: %O', err);
   process.exit(1);
 });

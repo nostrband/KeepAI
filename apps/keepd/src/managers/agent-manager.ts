@@ -5,8 +5,11 @@
  * Pairing codes encode { pubkey, relays, secret, protocolVersion } as base64url.
  */
 
+import createDebug from 'debug';
 import { randomUUID } from 'crypto';
 import type { KeepDBApi } from '@keepai/db';
+
+const log = createDebug('keepai:agent-mgr');
 import type { Agent, PendingPairing } from '@keepai/proto';
 import {
   generateKeypair,
@@ -59,6 +62,7 @@ export class AgentManager {
     };
 
     this.db.pairings.create(pairing);
+    log('created pending pairing id:%s name:%s keepdPubkey:%s', id, name, pubkey);
 
     const code = generatePairingCode({
       pubkey,
@@ -75,10 +79,13 @@ export class AgentManager {
    * Moves keypair from pending_pairings to agents table.
    */
   completePairing(agentPubkey: string, secret: string): Agent {
+    log('completePairing agentPubkey:%s', agentPubkey);
     const pairing = this.db.pairings.getBySecret(secret);
     if (!pairing) {
+      log('no pairing found for secret');
       throw new Error('Invalid or expired pairing secret');
     }
+    log('found pairing id:%s name:%s', pairing.id, pairing.name);
 
     if (pairing.expiresAt < Date.now()) {
       this.db.pairings.delete(pairing.id);
@@ -153,7 +160,10 @@ export class AgentManager {
       .filter((p) => p.expiresAt > Date.now())
       .map((p) => p.keepdPubkey);
 
-    return [...agentPubkeys, ...pairingPubkeys];
+    const all = [...agentPubkeys, ...pairingPubkeys];
+    log('active pubkeys: %d agent(s) + %d pending pairing(s) = %d total',
+      agentPubkeys.length, pairingPubkeys.length, all.length);
+    return all;
   }
 
   /**

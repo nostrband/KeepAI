@@ -11,10 +11,11 @@
     "type-check": "tsc --noEmit",
     "build:main": "node esbuild.main.mjs",
     "copy:frontend": "mkdir -p public && cp -r ../ui/dist/electron/* ./public/",
-    "start": "electron .",
-    "start:dev": "electron . --dev",
+    "rebuild:electron": "node scripts/rebuild-native.mjs",
+    "start": "npm run rebuild:electron && electron .",
+    "start:dev": "npm run rebuild:electron && electron . --dev",
     "clean": "rimraf dist public",
-    "dist": "npm run build && cd ../../ && electron-builder"
+    "dist": "npm run build && npm run rebuild:electron && cd ../../ && electron-builder"
   },
   "dependencies": {
     "@keepai/daemon": "file:../keepd",

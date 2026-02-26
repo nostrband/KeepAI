@@ -1,9 +1,12 @@
+import createDebug from 'debug';
 import { type EventTemplate } from 'nostr-tools';
 import type { RPCRequest, RPCResponse, RPCError } from '@keepai/proto/types.js';
 import { EVENT_KINDS, PROTOCOL_VERSION, SOFTWARE_VERSION, TIMEOUTS } from '@keepai/proto/constants.js';
 import { PeerEncryption } from './encryption.js';
 import { NostrTransport } from './transport.js';
 import crypto from 'crypto';
+
+const log = createDebug('keepai:rpc-caller');
 
 export interface CallerOptions {
   privkey: string;
@@ -30,6 +33,9 @@ export class RPCCaller {
     this.daemonPubkey = options.daemonPubkey;
     this.timeout = options.timeout ?? TIMEOUTS.REQUEST;
 
+    log('creating caller pubkey:%s daemonPubkey:%s relays:%o timeout:%d',
+      options.pubkey, options.daemonPubkey, options.relays, this.timeout);
+
     this.transport = new NostrTransport({ relays: options.relays });
     this.encryption = new PeerEncryption(options.privkey, options.daemonPubkey);
   }
@@ -49,6 +55,8 @@ export class RPCCaller {
     const requestId = crypto.randomBytes(16).toString('hex');
     const timeout = params?.timeout ?? this.timeout;
 
+    log('call method:%s service:%s requestId:%s timeout:%d', method, params?.service ?? '-', requestId, timeout);
+
     const request: RPCRequest = {
       id: requestId,
       method,
@@ -60,6 +68,7 @@ export class RPCCaller {
     };
 
     const encryptedContent = this.encryption.encryptJSON(request);
+    log('encrypted request, publishing to daemon pubkey:%s', this.daemonPubkey);
 
     const template: EventTemplate = {
       kind: EVENT_KINDS.RPC_REQUEST,
@@ -69,9 +78,11 @@ export class RPCCaller {
     };
 
     const event = await this.transport.publishEvent(template, this.privkey);
+    log('published request eventId:%s, subscribing for response...', event.id);
 
     return new Promise<unknown>((resolve, reject) => {
       const timer = setTimeout(() => {
+        log('timeout after %dms for method:%s requestId:%s', timeout, method, requestId);
         sub.close();
         reject(new Error(`RPC timeout after ${timeout}ms`));
       }, timeout);
@@ -84,14 +95,20 @@ export class RPCCaller {
         },
         (responseEvent) => {
           try {
+            log('received response event kind:%d from:%s', responseEvent.kind, responseEvent.pubkey);
             const response = this.encryption.decryptJSON<RPCResponse>(
               responseEvent.content
             );
+            log('decrypted response id:%s', response.id);
 
-            if (response.id !== requestId) return;
+            if (response.id !== requestId) {
+              log('response id mismatch, ignoring (got:%s expected:%s)', response.id, requestId);
+              return;
+            }
 
             // Handle rejection
             if (responseEvent.kind === EVENT_KINDS.RPC_REJECT) {
+              log('RPC rejected: %s', response.error?.message);
               clearTimeout(timer);
               sub.close();
               reject(new RPCCallError(response.error!));
@@ -103,16 +120,19 @@ export class RPCCaller {
               clearTimeout(timer);
               sub.close();
               if (response.error) {
+                log('RPC error response: %s (%s)', response.error.message, response.error.code);
                 reject(new RPCCallError(response.error));
               } else {
+                log('RPC success for method:%s', method);
                 resolve(response.result);
               }
               return;
             }
 
             // RPC_READY is for streamed requests — not implemented in V1 inline flow
-          } catch {
-            // Ignore malformed events
+            log('received RPC_READY (streaming not implemented in V1)');
+          } catch (err) {
+            log('error processing response event: %s', err);
           }
         }
       );
@@ -120,6 +140,7 @@ export class RPCCaller {
   }
 
   close(): void {
+    log('closing caller');
     this.transport.close();
   }
 }

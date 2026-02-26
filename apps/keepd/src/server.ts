@@ -15,10 +15,13 @@
  * - Cleanup jobs
  */
 
+import createDebug from 'debug';
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
 import Fastify from 'fastify';
+
+const log = createDebug('keepai:server');
 import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import { KeepDB, KeepDBApi } from '@keepai/db';
@@ -66,6 +69,8 @@ export async function createServer(config: ServerConfig = {}) {
   const relays = config.relays ?? [...DEFAULT_RELAYS];
   const serveStaticFiles = config.serveStaticFiles ?? true;
   const staticFilesRoot = config.staticFilesRoot ?? path.join(__dirname, '..', 'public');
+
+  log('creating server dataDir:%s relays:%o port:%d', dataDir, relays, port);
 
   // 1. Ensure data directory exists
   fs.mkdirSync(dataDir, { recursive: true });
@@ -139,6 +144,7 @@ export async function createServer(config: ServerConfig = {}) {
   // Start listening on all active pubkeys
   const updateSubscription = () => {
     const pubkeys = agentManager.getActiveKeepdPubkeys();
+    log('updating RPC subscription with %d pubkey(s)', pubkeys.length);
     rpcHandler.updateSubscription(pubkeys);
   };
   updateSubscription();
@@ -188,7 +194,7 @@ export async function createServer(config: ServerConfig = {}) {
       // Update subscription after cleaning up expired pairings
       updateSubscription();
     } catch (err) {
-      console.error('[keepd] Cleanup error:', err);
+      log('cleanup error: %O', err);
     }
   }, CLEANUP.INTERVAL);
 
@@ -206,16 +212,17 @@ export async function createServer(config: ServerConfig = {}) {
 
     async listen() {
       await app.listen({ port, host });
-      console.log(`[keepd] Listening on http://${host}:${port}`);
+      log('listening on http://%s:%d', host, port);
     },
 
     async close() {
+      log('shutting down...');
       clearInterval(cleanupInterval);
       rpcHandler.close();
       connectionManager.shutdown();
       await app.close();
       keepdb.close();
-      console.log('[keepd] Shutdown complete');
+      log('shutdown complete');
     },
   };
 }

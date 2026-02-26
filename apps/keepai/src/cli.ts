@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * KeepAI CLI — agent-facing command-line tool.
  *

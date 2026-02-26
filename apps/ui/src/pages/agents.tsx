@@ -18,7 +18,7 @@ export function AgentsPage() {
     if (!agentName.trim()) return;
     try {
       const result = await createMutation.mutateAsync(agentName.trim());
-      setPairingCode(result.pairingCode);
+      setPairingCode(result.code);
     } catch (err) {
       console.error('Create agent failed:', err);
     }
