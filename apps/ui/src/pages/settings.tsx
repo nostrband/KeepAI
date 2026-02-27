@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Save } from 'lucide-react';
 import { useConfig, useSaveConfig, useStatus } from '../hooks/use-config';
+import { PageTitle } from '../components/page-title';
 
 export function SettingsPage() {
   const { data: config, isLoading: configLoading } = useConfig();
@@ -26,7 +27,7 @@ export function SettingsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Settings</h1>
+      <PageTitle>Settings</PageTitle>
 
       {/* Status */}
       {status && (

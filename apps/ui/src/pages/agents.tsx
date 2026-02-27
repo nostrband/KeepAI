@@ -1,24 +1,38 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Bot, Plus, Copy, Check } from 'lucide-react';
-import { useAgents, useCreateAgent } from '../hooks/use-agents';
+import { Bot, Plus, Copy, Check, Loader2, CheckCircle2 } from 'lucide-react';
+import { useAgents, useCreateAgent, useAgent, useCancelPairing } from '../hooks/use-agents';
 import { StatusBadge } from '../components/status-badge';
 import { EmptyState } from '../components/empty-state';
 import { CodeBlock } from '../components/code-block';
+import { PageTitle } from '../components/page-title';
 
 export function AgentsPage() {
   const { data: agents, isLoading } = useAgents();
   const createMutation = useCreateAgent();
+  const cancelMutation = useCancelPairing();
   const [showDialog, setShowDialog] = useState(false);
   const [agentName, setAgentName] = useState('');
   const [pairingCode, setPairingCode] = useState<string | null>(null);
+  const [pairingId, setPairingId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [connected, setConnected] = useState(false);
+
+  // Watch for pairing completion via useAgent — returns data once agent is created
+  const { data: pairedAgent } = useAgent(pairingId ?? '');
+
+  useEffect(() => {
+    if (pairedAgent && pairingId) {
+      setConnected(true);
+    }
+  }, [pairedAgent, pairingId]);
 
   const handleCreate = async () => {
     if (!agentName.trim()) return;
     try {
       const result = await createMutation.mutateAsync(agentName.trim());
       setPairingCode(result.code);
+      setPairingId(result.id);
     } catch {
       // error toast shown by global mutation handler
     }
@@ -31,17 +45,26 @@ export function AgentsPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleCancel = async () => {
+    if (pairingId) {
+      try { await cancelMutation.mutateAsync(pairingId); } catch { /* ignore */ }
+    }
+    closeDialog();
+  };
+
   const closeDialog = () => {
     setShowDialog(false);
     setAgentName('');
     setPairingCode(null);
+    setPairingId(null);
     setCopied(false);
+    setConnected(false);
   };
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Agents</h1>
+      <div className="flex items-center justify-between">
+        <PageTitle>Agents</PageTitle>
         <button
           onClick={() => setShowDialog(true)}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
@@ -84,31 +107,62 @@ export function AgentsPage() {
                   </button>
                 </div>
               </>
+            ) : connected ? (
+              <>
+                <div className="flex flex-col items-center py-6">
+                  <CheckCircle2 className="w-12 h-12 text-green-500 mb-3" />
+                  <h2 className="text-lg font-semibold mb-1">Agent Connected</h2>
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-medium text-foreground">{agentName}</span> has been paired successfully.
+                  </p>
+                </div>
+                <div className="flex justify-end mt-2">
+                  <button
+                    onClick={closeDialog}
+                    className="px-3 py-1.5 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    Done
+                  </button>
+                </div>
+              </>
             ) : (
               <>
                 <h2 className="text-lg font-semibold mb-2">Pairing Code</h2>
                 <p className="text-sm text-muted-foreground mb-3">
                   Tell your agent to run this command:
                 </p>
-                <div className="relative">
-                  <CodeBlock>npx keepai init {pairingCode}</CodeBlock>
+                <CodeBlock>npx keepai init {pairingCode}</CodeBlock>
+                <div className="flex items-center gap-2 mt-3">
+                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Waiting for agent to connect...
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  The pairing code expires in 5 minutes.
+                </p>
+                <div className="flex justify-end gap-2 mt-4">
+                  <button
+                    onClick={handleCancel}
+                    className="px-3 py-1.5 text-sm rounded-md hover:bg-accent"
+                  >
+                    Cancel
+                  </button>
                   <button
                     onClick={handleCopy}
-                    className="absolute top-2 right-2 p-1.5 rounded-md hover:bg-gray-200"
-                    title="Copy command"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
                   >
-                    {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4 text-muted-foreground" />}
-                  </button>
-                </div>
-                <p className="text-xs text-muted-foreground mt-3">
-                  Waiting for agent to connect... The pairing code expires in 5 minutes.
-                </p>
-                <div className="flex justify-end mt-4">
-                  <button
-                    onClick={closeDialog}
-                    className="px-3 py-1.5 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
-                  >
-                    Done
+                    {copied ? (
+                      <>
+                        <Check className="w-4 h-4" />
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        Copy command
+                      </>
+                    )}
                   </button>
                 </div>
               </>

@@ -3,6 +3,7 @@ import { ScrollText, ChevronDown, ChevronUp } from 'lucide-react';
 import { useLogs } from '../hooks/use-logs';
 import { ServiceIcon, serviceName } from '../components/service-icon';
 import { EmptyState } from '../components/empty-state';
+import { PageTitle } from '../components/page-title';
 
 export function LogsPage() {
   const [filters, setFilters] = useState<Record<string, string>>({
@@ -19,8 +20,8 @@ export function LogsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Logs</h1>
+      <div className="flex items-center justify-between">
+        <PageTitle>Logs</PageTitle>
         <span className="text-sm text-muted-foreground">{total} total entries</span>
       </div>
 
@@ -56,6 +57,7 @@ export function LogsPage() {
                 <tr>
                   <th className="text-left px-3 py-2 font-medium text-muted-foreground">Time</th>
                   <th className="text-left px-3 py-2 font-medium text-muted-foreground">Service</th>
+                  <th className="text-left px-3 py-2 font-medium text-muted-foreground">Account</th>
                   <th className="text-left px-3 py-2 font-medium text-muted-foreground">Method</th>
                   <th className="text-left px-3 py-2 font-medium text-muted-foreground">Agent</th>
                   <th className="text-left px-3 py-2 font-medium text-muted-foreground">Status</th>
@@ -80,6 +82,7 @@ export function LogsPage() {
                           <span>{serviceName(entry.service)}</span>
                         </div>
                       </td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground truncate max-w-[200px]">{entry.accountId || '—'}</td>
                       <td className="px-3 py-2 font-mono text-xs">{entry.method}</td>
                       <td className="px-3 py-2 text-muted-foreground">{entry.agentName || '—'}</td>
                       <td className="px-3 py-2">
@@ -108,7 +111,7 @@ export function LogsPage() {
                     </tr>
                     {expandedId === entry.id && (
                       <tr key={`${entry.id}-detail`}>
-                        <td colSpan={7} className="px-3 py-3 bg-gray-50">
+                        <td colSpan={8} className="px-3 py-3 bg-gray-50">
                           <pre className="text-xs font-mono whitespace-pre-wrap break-all">
                             {JSON.stringify(entry, null, 2)}
                           </pre>

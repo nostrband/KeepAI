@@ -33,7 +33,8 @@ export function Header() {
 
   return (
     <header className="h-[var(--header-height)] border-b border-border bg-white flex items-center px-4 shrink-0">
-      <Link to="/" className="text-lg font-semibold text-foreground mr-auto">
+      <Link to="/" className="text-lg font-semibold text-foreground mr-auto flex items-center gap-2">
+        <img src="/favicon.svg" alt="" className="w-6 h-6" />
         KeepAI
       </Link>
 

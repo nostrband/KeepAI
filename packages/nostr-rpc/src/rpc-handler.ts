@@ -50,7 +50,11 @@ export class RPCHandler {
    * @param pubkeys List of per-agent keepd pubkeys to listen on
    */
   listen(pubkeys: string[]): void {
-    if (this.sub) this.sub.close();
+    if (this.sub) {
+      const oldSub = this.sub;
+      this.sub = null;
+      oldSub.close();
+    }
     this.currentPubkeys = pubkeys;
 
     if (pubkeys.length === 0) {
@@ -74,6 +78,9 @@ export class RPCHandler {
       undefined,
       (reasons) => {
         // Subscription was closed by relay (connection drop, etc.)
+        // Check this.sub to distinguish unexpected closes from intentional ones
+        // (scheduleReconnect and close() null out this.sub before closing)
+        if (!this.sub) return;
         log('subscription closed unexpectedly: %o', reasons);
         if (!this.closed && this.currentPubkeys.length > 0) {
           this.scheduleReconnect();
@@ -89,10 +96,11 @@ export class RPCHandler {
       this.reconnectTimer = null;
       if (this.closed) return;
       log('reconnecting with %d pubkey(s)', this.currentPubkeys.length);
+      // Null out sub before closing to prevent onclose from scheduling another reconnect
+      this.sub = null;
       // Create a fresh transport to get clean relay connections
       this.transport.close();
       this.transport = new NostrTransport({ relays: this.options.relays });
-      this.sub = null;
       this.listen(this.currentPubkeys);
     }, 3000);
   }

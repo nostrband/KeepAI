@@ -10,6 +10,7 @@ files:
   - node_modules/**
   - apps/electron/dist/**
   - apps/electron/public/**
+  - apps/electron/build/**
 
 asarUnpack:
   - "node_modules/better-sqlite3/**"
@@ -25,11 +26,14 @@ asar: true
 win:
   target:
     - portable
+  icon: apps/electron/build/icon.png
 
 mac:
   target:
     - dmg
+  icon: apps/electron/build/icon.png
 
 linux:
   target:
     - AppImage
+  icon: apps/electron/build/icon.png

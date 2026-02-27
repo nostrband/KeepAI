@@ -142,6 +142,14 @@ export class AgentManager {
     this.db.agents.delete(agentId);
   }
 
+  cancelPairing(pairingId: string): boolean {
+    const pairing = this.db.pairings.list().find((p) => p.id === pairingId);
+    if (!pairing) return false;
+    this.db.pairings.delete(pairingId);
+    log('cancelled pairing id:%s name:%s', pairingId, pairing.name);
+    return true;
+  }
+
   touchAgent(agentId: string): void {
     this.db.agents.updateLastSeen(agentId);
   }

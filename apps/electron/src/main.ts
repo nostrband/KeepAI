@@ -65,10 +65,12 @@ let isQuitting = false;
 // --- Window ---
 
 function createWindow() {
+  const iconPath = path.join(__dirname, '..', 'build', 'icon.png');
   mainWindow = new BrowserWindow({
     width: 1000,
     height: 700,
     show: false,
+    icon: fs.existsSync(iconPath) ? iconPath : undefined,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
@@ -107,8 +109,11 @@ function createWindow() {
 // --- Tray ---
 
 function createTray() {
-  // Use a simple 16x16 image; on macOS, use Template image for dark/light mode
-  const icon = nativeImage.createEmpty();
+  const trayIconName = process.platform === 'darwin' ? 'tray-iconTemplate@2x.png' : 'tray-icon.png';
+  const trayIconPath = path.join(__dirname, '..', 'build', trayIconName);
+  const icon = fs.existsSync(trayIconPath)
+    ? nativeImage.createFromPath(trayIconPath)
+    : nativeImage.createEmpty();
   tray = new Tray(icon);
   tray.setToolTip('KeepAI');
   updateTrayMenu();

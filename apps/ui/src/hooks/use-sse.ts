@@ -23,8 +23,14 @@ export function useSSE() {
       queryClient.invalidateQueries({ queryKey: qk.queue() });
     });
 
-    source.addEventListener('pairing_completed', () => {
+    source.addEventListener('pairing_completed', (e: MessageEvent) => {
       queryClient.invalidateQueries({ queryKey: qk.agents() });
+      try {
+        const data = JSON.parse(e.data);
+        if (data?.id) {
+          queryClient.invalidateQueries({ queryKey: qk.agent(data.id) });
+        }
+      } catch { /* ignore parse errors */ }
     });
 
     source.addEventListener('request_completed', () => {

@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Save, RotateCcw } from 'lucide-react';
+import { useParams } from 'react-router-dom';
+import { Save, RotateCcw } from 'lucide-react';
 import { useAgent } from '../hooks/use-agents';
 import { usePolicies, useSavePolicy } from '../hooks/use-policies';
 import { useConnections } from '../hooks/use-connections';
 import { ServiceIcon, serviceName } from '../components/service-icon';
+import { PageTitle } from '../components/page-title';
 
 type Action = 'allow' | 'deny' | 'ask';
 
@@ -102,14 +103,7 @@ export function PoliciesPage() {
 
   return (
     <div>
-      <Link to={`/agents/${agentId}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
-        <ArrowLeft className="w-4 h-4" />
-        Back to {agent?.name || 'agent'}
-      </Link>
-
-      <h1 className="text-2xl font-bold mb-6">
-        Policies for {agent?.name || 'agent'}
-      </h1>
+      <PageTitle>Policies for {agent?.name || 'agent'}</PageTitle>
 
       {connectedServices.length === 0 ? (
         <p className="text-sm text-muted-foreground">

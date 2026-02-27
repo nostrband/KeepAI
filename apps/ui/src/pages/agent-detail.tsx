@@ -1,17 +1,22 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Shield, Trash2, ArrowLeft, Activity } from 'lucide-react';
+import { Shield, Trash2, Activity } from 'lucide-react';
 import { useAgent, useRevokeAgent } from '../hooks/use-agents';
 import { usePolicies } from '../hooks/use-policies';
 import { useLogs } from '../hooks/use-logs';
 import { StatusBadge } from '../components/status-badge';
 import { ServiceIcon, serviceName } from '../components/service-icon';
+import { PageTitle } from '../components/page-title';
 
 export function AgentDetailPage() {
   const { agentId } = useParams<{ agentId: string }>();
   const navigate = useNavigate();
   const { data: agent, isLoading } = useAgent(agentId!);
   const { data: policies } = usePolicies(agentId!);
-  const { data: logsData } = useLogs({ agent: agentId!, limit: '10' });
+  const agentName = agent?.name;
+  const { data: logsData } = useLogs(
+    agentName ? { agent: agentName, limit: '10' } : undefined,
+    { enabled: !!agentName }
+  );
   const revokeMutation = useRevokeAgent();
 
   if (isLoading) return <div className="text-sm text-muted-foreground">Loading...</div>;
@@ -32,20 +37,14 @@ export function AgentDetailPage() {
 
   return (
     <div>
-      <Link to="/agents" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
-        <ArrowLeft className="w-4 h-4" />
-        Back to agents
-      </Link>
+      <PageTitle>{agent.name || 'Unnamed'}</PageTitle>
 
       <div className="flex items-start justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-lg font-semibold">
             {(agent.name || '?')[0].toUpperCase()}
           </div>
-          <div>
-            <h1 className="text-2xl font-bold">{agent.name || 'Unnamed'}</h1>
-            <StatusBadge status={agent.status === 'revoked' ? 'revoked' : 'active'} />
-          </div>
+          <StatusBadge status={agent.status === 'revoked' ? 'revoked' : 'active'} />
         </div>
         {agent.status !== 'revoked' && (
           <button
@@ -132,6 +131,10 @@ export function AgentDetailPage() {
                 className="flex items-center gap-2 p-2 text-sm rounded-md hover:bg-accent/20"
               >
                 <ServiceIcon service={entry.service} className="w-4 h-4 shrink-0" />
+                <span className="text-xs">{serviceName(entry.service)}</span>
+                {entry.accountId && (
+                  <span className="text-xs text-muted-foreground truncate max-w-[150px]">{entry.accountId}</span>
+                )}
                 <span className="font-mono text-xs">{entry.method}</span>
                 <span
                   className={`text-xs px-1.5 py-0.5 rounded ${

@@ -4,6 +4,7 @@ import { useConnections, useConnectService, useDisconnectService, useCheckConnec
 import { ServiceIcon, serviceName } from '../components/service-icon';
 import { StatusBadge } from '../components/status-badge';
 import { EmptyState } from '../components/empty-state';
+import { PageTitle } from '../components/page-title';
 
 const AVAILABLE_SERVICES = ['gmail', 'notion'];
 
@@ -33,8 +34,8 @@ export function ConnectionsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Connections</h1>
+      <div className="flex items-center justify-between">
+        <PageTitle>Connections</PageTitle>
         <button
           onClick={() => setShowPicker(true)}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90"

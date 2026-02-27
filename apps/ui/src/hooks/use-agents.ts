@@ -15,6 +15,7 @@ export function useAgent(agentId: string) {
     queryKey: qk.agent(agentId),
     queryFn: () => api.getAgent(agentId),
     enabled: !!agentId,
+    retry: false,
   });
 }
 
@@ -25,6 +26,12 @@ export function useCreateAgent() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: qk.agents() });
     },
+  });
+}
+
+export function useCancelPairing() {
+  return useMutation({
+    mutationFn: (pairingId: string) => api.cancelPairing(pairingId),
   });
 }
 

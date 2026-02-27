@@ -2,6 +2,7 @@ import { ShieldCheck } from 'lucide-react';
 import { useQueue, useApproveRequest, useDenyRequest } from '../hooks/use-queue';
 import { ApprovalCard } from '../components/approval-card';
 import { EmptyState } from '../components/empty-state';
+import { PageTitle } from '../components/page-title';
 
 export function ApprovalsPage() {
   const { data: queue, isLoading } = useQueue();
@@ -12,7 +13,7 @@ export function ApprovalsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Approvals</h1>
+      <PageTitle>Approvals</PageTitle>
 
       {isLoading ? (
         <div className="text-sm text-muted-foreground">Loading...</div>

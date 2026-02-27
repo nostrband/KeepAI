@@ -66,6 +66,9 @@ export const api = {
   revokeAgent: (agentId: string) =>
     request<void>(`/agents/${agentId}`, { method: 'DELETE' }),
 
+  cancelPairing: (pairingId: string) =>
+    request<void>(`/agents/pairings/${pairingId}`, { method: 'DELETE' }),
+
   // Policies
   listPolicies: (agentId: string) =>
     request<Record<string, any>>(`/agents/${agentId}/policies`),

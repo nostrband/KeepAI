@@ -3,6 +3,7 @@
  *
  * GET    /api/agents               List paired agents
  * POST   /api/agents/new           Generate pairing code
+ * DELETE /api/agents/pairings/:pairingId  Cancel pending pairing
  * GET    /api/agents/:agentId      Get agent details
  * DELETE /api/agents/:agentId      Revoke agent
  */
@@ -51,6 +52,20 @@ export async function registerAgentRoutes(
         reply.status(400);
         return { error: err.message };
       }
+    }
+  );
+
+  // Cancel pending pairing
+  app.delete<{ Params: { pairingId: string } }>(
+    '/api/agents/pairings/:pairingId',
+    async (request, reply) => {
+      const deleted = agentManager.cancelPairing(request.params.pairingId);
+      if (!deleted) {
+        reply.status(404);
+        return { error: 'Pairing not found or already completed' };
+      }
+      onSubscriptionChange();
+      return { success: true };
     }
   );
 
