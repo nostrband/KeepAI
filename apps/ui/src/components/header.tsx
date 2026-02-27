@@ -36,6 +36,10 @@ export function Header() {
       <Link to="/" className="text-lg font-semibold text-foreground mr-auto flex items-center gap-2">
         <img src="/favicon.svg" alt="" className="w-6 h-6" />
         KeepAI
+        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-[#E5372A]/10 text-[#E5372A] border border-[#E5372A]/20">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#E5372A] animate-pulse" />
+          Beta
+        </span>
       </Link>
 
       {pendingCount > 0 && (
