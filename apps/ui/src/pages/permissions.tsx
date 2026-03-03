@@ -165,6 +165,7 @@ export function PermissionsPage() {
                       {accountId}
                     </Link>
                   </div>
+                  {/* Raw JSON toggle – hidden for now, too complex for users
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => {
@@ -181,37 +182,10 @@ export function PermissionsPage() {
                       {isShowingRaw ? 'Visual' : 'Raw JSON'}
                     </button>
                   </div>
+                  */}
                 </div>
 
-                {isShowingRaw ? (
                   <div>
-                    <textarea
-                      value={rawJson}
-                      onChange={(e) => setRawJson(e.target.value)}
-                      className="w-full h-40 px-4 py-3 text-sm font-mono border border-input rounded-xl bg-muted focus:outline-none focus:ring-2 focus:ring-ring/10 focus:border-foreground"
-                    />
-                    {rawError && <p className="text-sm text-destructive mt-1">{rawError}</p>}
-                    <div className="flex justify-end gap-2 mt-2">
-                      <button
-                        onClick={() => handleSaveRaw(service, accountId)}
-                        disabled={saveMutation.isPending}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover disabled:opacity-50"
-                      >
-                        <Save className="w-3.5 h-3.5" />
-                        Save
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <div className="flex items-center gap-3 mb-3">
-                      <span className="text-sm text-muted-foreground w-32">Default action:</span>
-                      <ActionSelect
-                        value={policy.default}
-                        onChange={(v) => updatePolicy(key, { ...policy, default: v })}
-                      />
-                    </div>
-
                     <div className="space-y-2">
                       {OPS.map((op) => {
                         const actions = policyToActions(policy);
@@ -248,7 +222,6 @@ export function PermissionsPage() {
                       </button>
                     </div>
                   </div>
-                )}
               </div>
             );
           })}

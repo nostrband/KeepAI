@@ -8,6 +8,23 @@ import { ServiceIcon, serviceName } from '../components/service-icon';
 import { StatusBadge } from '../components/status-badge';
 import { PageTitle } from '../components/page-title';
 
+function summarizePolicy(policy: any): string {
+  const actions: Record<string, string> = { read: 'ask', write: 'ask', delete: 'ask' };
+  for (const rule of policy?.rules ?? []) {
+    for (const op of rule.operations ?? []) {
+      actions[op] = rule.action;
+    }
+  }
+  const grouped = new Map<string, string[]>();
+  for (const [op, action] of Object.entries(actions)) {
+    if (!grouped.has(action)) grouped.set(action, []);
+    grouped.get(action)!.push(op);
+  }
+  return Array.from(grouped.entries())
+    .map(([action, ops]) => `${action[0].toUpperCase() + action.slice(1)}: ${ops.join(', ')}`)
+    .join(' · ');
+}
+
 export function AppDetailPage() {
   const { service, accountId } = useParams<{ service: string; accountId: string }>();
   const decodedAccountId = decodeURIComponent(accountId!);
@@ -148,7 +165,7 @@ export function AppDetailPage() {
                     {agent.name || 'Unnamed'}
                   </Link>
                   <span className="text-xs text-muted-foreground ml-auto">
-                    default: {entry?.policy?.default ?? 'no permissions'}
+                    {entry ? summarizePolicy(entry.policy) : 'no permissions'}
                   </span>
                   <Link
                     to={`/agents/${agent.id}/policies`}
