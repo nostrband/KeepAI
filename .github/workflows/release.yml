@@ -1,0 +1,78 @@
+name: Build desktop apps
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - 'main'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    environment: production
+    env:
+      NODE_OPTIONS: --max_old_space_size=4096
+      BUILD_GMAIL_SECRET: ${{ secrets.BUILD_GMAIL_SECRET }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            build_target: -l
+            arch: x64
+          - os: windows-latest
+            build_target: -w
+            arch: x64
+          - os: macos-latest
+            build_target: -m
+            arch: universal
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build all packages
+        run: npx turbo run build --filter=@keepai/electron
+
+      - name: Rebuild better-sqlite3 for Electron
+        run: node apps/electron/scripts/rebuild-native.mjs
+        env:
+          ARCH: ${{ matrix.arch }}
+
+      - name: Build distributables with electron-builder
+        run: |
+          npx electron-builder ${{ matrix.build_target }} --${{ matrix.arch }} --publish=never
+          npx rimraf --glob "apps/electron/release/*-unpacked"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.os }}
+          path: apps/electron/release/**
+
+      - name: Create / update GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            apps/electron/release/*.AppImage
+            apps/electron/release/*.exe
+            apps/electron/release/*.dmg
+          draft: false
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

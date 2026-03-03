@@ -16,11 +16,12 @@ const require = createRequire(import.meta.url);
 const electronVersion = require('electron/package.json').version;
 const monorepoRoot = join(__dirname, '..', '..', '..');
 const sqliteDir = join(monorepoRoot, 'node_modules', 'better-sqlite3');
+const arch = process.env.ARCH || process.arch;
 
-console.log(`Rebuilding better-sqlite3 for Electron ${electronVersion}...`);
+console.log(`Rebuilding better-sqlite3 for Electron ${electronVersion} (${arch})...`);
 
 execSync(
-  `npx node-gyp rebuild --target=${electronVersion} --arch=x64 --dist-url=https://electronjs.org/headers --release`,
+  `npx node-gyp rebuild --target=${electronVersion} --arch=${arch} --dist-url=https://electronjs.org/headers --release`,
   { stdio: 'inherit', cwd: sqliteDir }
 );
 
