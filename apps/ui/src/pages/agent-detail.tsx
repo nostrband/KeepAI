@@ -23,7 +23,7 @@ export function AgentDetailPage() {
   if (!agent) return <div className="text-sm text-muted-foreground">Agent not found.</div>;
 
   const handleRevoke = async () => {
-    if (!confirm(`Revoke agent "${agent.name}"? This cannot be undone.`)) return;
+    if (!confirm(`Disconnect agent "${agent.name}"? This cannot be undone.`)) return;
     try {
       await revokeMutation.mutateAsync(agentId!);
       navigate('/agents');
@@ -37,7 +37,7 @@ export function AgentDetailPage() {
 
   return (
     <div>
-      <PageTitle>{agent.name || 'Unnamed'}</PageTitle>
+      <PageTitle>Agent: {agent.name || 'Unnamed'}</PageTitle>
 
       <div className="flex items-start justify-between mb-6">
         <div className="flex items-center gap-3">
@@ -53,7 +53,7 @@ export function AgentDetailPage() {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md text-destructive border border-destructive/30 hover:bg-destructive/10 disabled:opacity-50"
           >
             <Trash2 className="w-4 h-4" />
-            Revoke
+            Disconnect
           </button>
         )}
       </div>

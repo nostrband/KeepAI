@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plug, Bot, Plus, ShieldCheck } from 'lucide-react';
 import { useConnections } from '../hooks/use-connections';
@@ -7,6 +8,8 @@ import { ServiceIcon, serviceName } from '../components/service-icon';
 import { StatusBadge } from '../components/status-badge';
 import { ApprovalCard } from '../components/approval-card';
 import { EmptyState } from '../components/empty-state';
+import { ConnectAppDialog } from '../components/connect-app-dialog';
+import { AddAgentDialog } from '../components/add-agent-dialog';
 import { useApproveRequest, useDenyRequest } from '../hooks/use-queue';
 
 export function DashboardPage() {
@@ -15,6 +18,8 @@ export function DashboardPage() {
   const { data: queue } = useQueue();
   const approveMutation = useApproveRequest();
   const denyMutation = useDenyRequest();
+  const [showConnectDialog, setShowConnectDialog] = useState(false);
+  const [showAgentDialog, setShowAgentDialog] = useState(false);
 
   const pendingApprovals = queue ?? [];
 
@@ -50,35 +55,35 @@ export function DashboardPage() {
         </section>
       )}
 
-      {/* Connected Services */}
+      {/* Apps */}
       <section>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <Plug className="w-5 h-5" />
-            Connected Services
+            Apps
           </h2>
-          <Link
-            to="/connections"
+          <button
+            onClick={() => setShowConnectDialog(true)}
             className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
           >
             <Plus className="w-3.5 h-3.5" />
-            Connect
-          </Link>
+            Add
+          </button>
         </div>
         {connectionsLoading ? (
           <div className="text-sm text-muted-foreground">Loading...</div>
         ) : !connections || connections.length === 0 ? (
           <EmptyState
-            title="No services connected"
+            title="No apps connected"
             description="Connect Gmail or Notion to get started."
             action={
-              <Link
-                to="/connections"
+              <button
+                onClick={() => setShowConnectDialog(true)}
                 className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 <Plus className="w-4 h-4" />
-                Connect a service
-              </Link>
+                Connect an app
+              </button>
             }
           />
         ) : (
@@ -86,7 +91,7 @@ export function DashboardPage() {
             {connections.map((conn: any) => (
               <Link
                 key={`${conn.service}:${conn.accountId}`}
-                to="/connections"
+                to="/apps"
                 className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors"
               >
                 <ServiceIcon service={conn.service} />
@@ -94,42 +99,42 @@ export function DashboardPage() {
                   <div className="text-sm font-medium truncate">{conn.accountId}</div>
                   <div className="text-xs text-muted-foreground">{serviceName(conn.service)}</div>
                 </div>
-                <StatusBadge status={conn.status === 'connected' ? 'connected' : 'error'} />
+                <StatusBadge status={conn.status === 'connected' ? 'active' : 'error'} />
               </Link>
             ))}
           </div>
         )}
       </section>
 
-      {/* Paired Agents */}
+      {/* Agents */}
       <section>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <Bot className="w-5 h-5" />
-            Paired Agents
+            Agents
           </h2>
-          <Link
-            to="/agents"
+          <button
+            onClick={() => setShowAgentDialog(true)}
             className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
           >
             <Plus className="w-3.5 h-3.5" />
-            Add agent
-          </Link>
+            Add
+          </button>
         </div>
         {agentsLoading ? (
           <div className="text-sm text-muted-foreground">Loading...</div>
         ) : !agents || agents.length === 0 ? (
           <EmptyState
             title="No agents paired"
-            description="Pair an AI agent to allow it to access your services."
+            description="Pair an AI agent to allow it to access your apps."
             action={
-              <Link
-                to="/agents"
+              <button
+                onClick={() => setShowAgentDialog(true)}
                 className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 <Plus className="w-4 h-4" />
                 Add an agent
-              </Link>
+              </button>
             }
           />
         ) : (
@@ -155,6 +160,9 @@ export function DashboardPage() {
           </div>
         )}
       </section>
+
+      <ConnectAppDialog open={showConnectDialog} onClose={() => setShowConnectDialog(false)} />
+      <AddAgentDialog open={showAgentDialog} onClose={() => setShowAgentDialog(false)} />
     </div>
   );
 }

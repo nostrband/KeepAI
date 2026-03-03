@@ -28,6 +28,9 @@
   * {
     @apply border-gray-200;
   }
+  button, a, [role="button"] {
+    cursor: pointer;
+  }
   body {
     @apply bg-white text-gray-900;
     margin: 0;

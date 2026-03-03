@@ -107,7 +107,7 @@ export function PoliciesPage() {
 
       {connectedServices.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No services connected. Connect a service first to configure policies.
+          No apps connected. Connect an app first to configure policies.
         </p>
       ) : (
         <div className="space-y-6">

@@ -20,7 +20,7 @@ export default function App() {
         <div className="max-w-5xl mx-auto px-4 py-6">
           <Routes>
             <Route path="/" element={<DashboardPage />} />
-            <Route path="/connections" element={<ConnectionsPage />} />
+            <Route path="/apps" element={<ConnectionsPage />} />
             <Route path="/agents" element={<AgentsPage />} />
             <Route path="/agents/:agentId" element={<AgentDetailPage />} />
             <Route path="/agents/:agentId/policies" element={<PoliciesPage />} />

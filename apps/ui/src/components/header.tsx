@@ -20,7 +20,7 @@ import { cn } from '../lib/cn';
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/connections', label: 'Connections', icon: Plug },
+  { path: '/apps', label: 'Apps', icon: Plug },
   { path: '/agents', label: 'Agents', icon: Bot },
   { path: '/approvals', label: 'Approvals', icon: ShieldCheck },
   { path: '/logs', label: 'Logs', icon: ScrollText },

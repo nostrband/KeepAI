@@ -36,7 +36,7 @@ export function SettingsPage() {
           <dl className="grid grid-cols-2 gap-y-2 text-sm">
             <dt className="text-muted-foreground">Agents</dt>
             <dd>{status.agents ?? 0}</dd>
-            <dt className="text-muted-foreground">Connections</dt>
+            <dt className="text-muted-foreground">Apps</dt>
             <dd>{status.connections ?? 0}</dd>
             <dt className="text-muted-foreground">Pending Approvals</dt>
             <dd>{status.pendingApprovals ?? 0}</dd>

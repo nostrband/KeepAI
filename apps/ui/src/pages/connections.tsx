@@ -1,91 +1,48 @@
 import { useState } from 'react';
 import { Plug, Plus, Trash2, RefreshCw } from 'lucide-react';
-import { useConnections, useConnectService, useDisconnectService, useCheckConnection } from '../hooks/use-connections';
+import { useConnections, useDisconnectService, useCheckConnection } from '../hooks/use-connections';
 import { ServiceIcon, serviceName } from '../components/service-icon';
 import { StatusBadge } from '../components/status-badge';
 import { EmptyState } from '../components/empty-state';
 import { PageTitle } from '../components/page-title';
-
-const AVAILABLE_SERVICES = ['gmail', 'notion'];
+import { ConnectAppDialog } from '../components/connect-app-dialog';
 
 export function ConnectionsPage() {
   const { data: connections, isLoading } = useConnections();
-  const connectMutation = useConnectService();
   const disconnectMutation = useDisconnectService();
   const checkMutation = useCheckConnection();
-  const [showPicker, setShowPicker] = useState(false);
-
-  const handleConnect = async (service: string) => {
-    setShowPicker(false);
-    try {
-      const result = await connectMutation.mutateAsync(service);
-      if (result.authUrl) {
-        // In Electron, open OAuth URL in system browser (not in-app window)
-        if ((window as any).electronAPI?.openExternal) {
-          (window as any).electronAPI.openExternal(result.authUrl);
-        } else {
-          window.open(result.authUrl, '_blank');
-        }
-      }
-    } catch {
-      // error toast shown by global mutation handler
-    }
-  };
+  const [showDialog, setShowDialog] = useState(false);
 
   return (
     <div>
       <div className="flex items-center justify-between">
-        <PageTitle>Connections</PageTitle>
+        <PageTitle>Apps</PageTitle>
         <button
-          onClick={() => setShowPicker(true)}
+          onClick={() => setShowDialog(true)}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
         >
           <Plus className="w-4 h-4" />
-          Connect service
+          Connect app
         </button>
       </div>
 
-      {/* Service Picker */}
-      {showPicker && (
-        <div className="mb-6 p-4 border border-border rounded-lg bg-card">
-          <h3 className="text-sm font-medium mb-3">Choose a service to connect:</h3>
-          <div className="flex gap-3">
-            {AVAILABLE_SERVICES.map((svc) => (
-              <button
-                key={svc}
-                onClick={() => handleConnect(svc)}
-                disabled={connectMutation.isPending}
-                className="flex items-center gap-2 px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors disabled:opacity-50"
-              >
-                <ServiceIcon service={svc} />
-                <span className="text-sm font-medium">{serviceName(svc)}</span>
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={() => setShowPicker(false)}
-            className="mt-3 text-sm text-muted-foreground hover:text-foreground"
-          >
-            Cancel
-          </button>
-        </div>
-      )}
+      <ConnectAppDialog open={showDialog} onClose={() => setShowDialog(false)} />
 
       {/* Connection List */}
       {isLoading ? (
-        <div className="text-sm text-muted-foreground">Loading connections...</div>
+        <div className="text-sm text-muted-foreground">Loading apps...</div>
       ) : !connections || connections.length === 0 ? (
         <EmptyState
           icon={<Plug className="w-12 h-12" />}
-          title="No services connected"
+          title="No apps connected"
           description="Connect Gmail or Notion to allow your AI agents to access them."
           action={
             <button
-              onClick={() => setShowPicker(true)}
+              onClick={() => setShowDialog(true)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <Plus className="w-4 h-4" />
-              Connect a service
+              Connect an app
             </button>
           }
         />
@@ -104,7 +61,7 @@ export function ConnectionsPage() {
                   {conn.lastUsedAt && ` — last used ${new Date(conn.lastUsedAt).toLocaleString()}`}
                 </div>
               </div>
-              <StatusBadge status={conn.status === 'connected' ? 'connected' : 'error'} />
+              <StatusBadge status={conn.status === 'connected' ? 'active' : 'error'} />
               <button
                 onClick={() => checkMutation.mutate({ service: conn.service, accountId: conn.accountId })}
                 disabled={checkMutation.isPending}
