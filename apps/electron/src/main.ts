@@ -33,14 +33,6 @@ import * as path from 'path';
 import { createServer } from '@keepai/daemon';
 import type { KeepServer } from '@keepai/daemon';
 
-// Remember whether user explicitly set DEBUG before we touch it
-const userSetDebug = !!process.env.DEBUG;
-
-// Enable all keepai debug logs by default in electron
-if (!userSetDebug) {
-  createDebug.enable('keepai:*');
-}
-
 // Redirect debug output to log file (in addition to stderr)
 const keepaiDir = path.join(os.homedir(), '.keepai');
 fs.mkdirSync(keepaiDir, { recursive: true });
@@ -292,7 +284,7 @@ app.whenReady().then(async () => {
     createWindow();
 
     // 3. Application menu: hide entirely unless DEBUG is set
-    if (userSetDebug) {
+    if (process.env.DEBUG) {
       const defaultMenu = Menu.getApplicationMenu();
       if (defaultMenu) {
         const filtered = defaultMenu.items.filter((item) => item.role !== 'help');
