@@ -101,6 +101,9 @@ export const api = {
   listQueue: () =>
     request<{ pending: any[] }>('/queue').then((r) => r.pending),
 
+  getRequestParams: (id: string) =>
+    request<{ params: string; truncated: number | null }>(`/queue/${id}/params`),
+
   approveRequest: (id: string) =>
     request<void>(`/queue/${id}/approve`, { method: 'POST' }),
 

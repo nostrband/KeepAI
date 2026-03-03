@@ -199,6 +199,31 @@ export class ApprovalQueue {
     return this.db.approvals.listPending();
   }
 
+  private static readonly PARAMS_MAX_CHARS = 1024;
+
+  /**
+   * Read request params from the temp file, truncating if large.
+   * Returns { params: string, truncated: number | null } where
+   * `params` is the pretty-printed JSON (possibly cut off) and
+   * `truncated` is the number of remaining chars, or null if complete.
+   */
+  readRequestParams(tempFilePath: string): { params: string; truncated: number | null } {
+    try {
+      const content = fs.readFileSync(tempFilePath, 'utf-8');
+      const request = JSON.parse(content);
+      const full = JSON.stringify(request.params ?? null, null, 2);
+      if (full.length <= ApprovalQueue.PARAMS_MAX_CHARS) {
+        return { params: full, truncated: null };
+      }
+      return {
+        params: full.slice(0, ApprovalQueue.PARAMS_MAX_CHARS),
+        truncated: full.length - ApprovalQueue.PARAMS_MAX_CHARS,
+      };
+    } catch {
+      return { params: 'null', truncated: null };
+    }
+  }
+
   getById(id: string): ApprovalEntry | null {
     return this.db.approvals.getById(id);
   }

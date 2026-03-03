@@ -19,6 +19,19 @@ export async function registerQueueRoutes(
     return { pending };
   });
 
+  // Get request params for a specific approval (reads temp file, truncated)
+  app.get<{ Params: { id: string } }>(
+    '/api/queue/:id/params',
+    async (request, reply) => {
+      const entry = approvalQueue.getById(request.params.id);
+      if (!entry || entry.status !== 'pending') {
+        reply.status(404);
+        return { error: 'Approval not found or not pending' };
+      }
+      return approvalQueue.readRequestParams(entry.tempFilePath);
+    }
+  );
+
   // Approve
   app.post<{ Params: { id: string } }>(
     '/api/queue/:id/approve',

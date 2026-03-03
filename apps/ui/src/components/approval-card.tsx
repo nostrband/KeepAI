@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ServiceIcon, serviceName } from './service-icon';
 import { Clock, Check, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { api } from '../lib/api';
 
 interface ApprovalCardProps {
   item: {
@@ -11,7 +12,6 @@ interface ApprovalCardProps {
     accountId?: string;
     description?: string;
     createdAt: number;
-    params?: Record<string, unknown>;
   };
   onApprove: (id: string) => void;
   onDeny: (id: string) => void;
@@ -31,7 +31,27 @@ function timeAgo(ts: number): string {
 
 export function ApprovalCard({ item, onApprove, onDeny, isApproving, isDenying }: ApprovalCardProps) {
   const [expanded, setExpanded] = useState(false);
-  const hasParams = item.params && Object.keys(item.params).length > 0;
+  const [paramsData, setParamsData] = useState<{ params: string; truncated: number | null } | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleToggle = async () => {
+    if (expanded) {
+      setExpanded(false);
+      return;
+    }
+    setExpanded(true);
+    if (!paramsData) {
+      setLoading(true);
+      try {
+        const data = await api.getRequestParams(item.id);
+        setParamsData(data);
+      } catch {
+        setParamsData({ params: 'Failed to load request params', truncated: null });
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
 
   return (
     <div className="border border-border rounded-lg p-4 bg-card">
@@ -76,22 +96,31 @@ export function ApprovalCard({ item, onApprove, onDeny, isApproving, isDenying }
       </div>
 
       {/* Expandable request details */}
-      {hasParams && (
-        <div className="mt-2 pt-2 border-t border-border/50">
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-          >
-            {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-            Request details
-          </button>
-          {expanded && (
-            <pre className="mt-2 p-2 rounded bg-muted/50 text-xs font-mono overflow-x-auto max-h-48 overflow-y-auto">
-              {JSON.stringify(item.params, null, 2)}
-            </pre>
-          )}
-        </div>
-      )}
+      <div className="mt-2 pt-2 border-t border-border/50">
+        <button
+          onClick={handleToggle}
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+        >
+          {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          Request details
+        </button>
+        {expanded && (
+          <pre className="mt-2 p-2 rounded bg-muted/50 text-xs font-mono whitespace-pre-wrap break-all max-h-64 overflow-y-auto">
+            {loading
+              ? 'Loading...'
+              : paramsData
+                ? <>
+                    {paramsData.params}
+                    {paramsData.truncated && (
+                      <span className="text-muted-foreground italic">
+                        {'\n'}...({paramsData.truncated.toLocaleString()} chars more)
+                      </span>
+                    )}
+                  </>
+                : 'null'}
+          </pre>
+        )}
+      </div>
     </div>
   );
 }
