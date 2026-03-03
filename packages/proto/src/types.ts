@@ -71,6 +71,7 @@ export interface ParamSchema {
   description: string;
   default?: unknown;
   enum?: string[];
+  syntax?: string[];
 }
 
 export interface ConnectorMethod {
@@ -83,11 +84,15 @@ export interface ConnectorMethod {
     params: Record<string, unknown>;
     description: string;
   };
+  seeAlso?: string[];
+  responseExample?: unknown;
+  notes?: string[];
 }
 
 export interface ServiceHelp {
   service: string;
   name: string;
+  summary?: string;
   methods: ConnectorMethod[];
   accounts?: Array<{ id: string; label?: string }>;
 }

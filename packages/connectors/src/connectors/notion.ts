@@ -68,24 +68,47 @@ const methods: ConnectorMethod[] = [
     description: 'Query a database with optional filters and sorts',
     operationType: 'read',
     params: [
-      { name: 'database_id', type: 'string', required: true, description: 'Database ID to query' },
+      { name: 'database_id', type: 'string', required: true, description: 'Database ID to query (from search or databases.retrieve)' },
       { name: 'filter', type: 'object', required: false, description: 'Filter conditions (Notion filter object)' },
       { name: 'sorts', type: 'array', required: false, description: 'Sort conditions' },
       { name: 'page_size', type: 'number', required: false, description: 'Results per page', default: 100 },
-      { name: 'start_cursor', type: 'string', required: false, description: 'Pagination cursor' },
+      { name: 'start_cursor', type: 'string', required: false, description: 'Pagination cursor (from previous response)' },
     ],
     returns: 'List of page objects matching the query',
     example: { params: { database_id: 'abc123', page_size: 10 }, description: 'Query first 10 items from a database' },
+    responseExample: {
+      results: [
+        { id: 'page-1', object: 'page', properties: { Name: { title: [{ text: { content: 'Item 1' } }] } } },
+      ],
+      has_more: true,
+      next_cursor: 'cursor-abc',
+    },
+    notes: [
+      'Find database IDs with search (filter by database)',
+      'Use databases.retrieve to see available properties for filtering',
+      "When 'has_more' is true, pass 'next_cursor' as start_cursor to get the next page",
+    ],
+    seeAlso: ['databases.retrieve', 'search'],
   },
   {
     name: 'databases.retrieve',
     description: 'Get database schema and properties',
     operationType: 'read',
     params: [
-      { name: 'database_id', type: 'string', required: true, description: 'Database ID' },
+      { name: 'database_id', type: 'string', required: true, description: 'Database ID (from search)' },
     ],
     returns: 'Database object with properties schema',
     example: { params: { database_id: 'abc123' }, description: 'Get database schema' },
+    responseExample: {
+      id: 'abc123',
+      title: [{ text: { content: 'My Database' } }],
+      properties: {
+        Name: { id: 'title', type: 'title' },
+        Status: { id: 'abc', type: 'select', select: { options: [{ name: 'Done' }] } },
+      },
+    },
+    notes: ['Use this to discover property names and types before querying or creating pages'],
+    seeAlso: ['databases.query', 'search'],
   },
   {
     name: 'pages.create',
@@ -104,26 +127,51 @@ const methods: ConnectorMethod[] = [
       },
       description: 'Create a page in a database',
     },
+    responseExample: {
+      id: 'page-123',
+      object: 'page',
+      parent: { database_id: 'abc123' },
+      properties: { Name: { title: [{ text: { content: 'New Page' } }] } },
+    },
+    notes: [
+      'Use databases.retrieve to see required properties and their types',
+      'The properties format must match the database schema',
+    ],
+    seeAlso: ['pages.retrieve', 'databases.retrieve', 'blocks.children.append'],
   },
   {
     name: 'pages.retrieve',
     description: 'Get a page by ID',
     operationType: 'read',
     params: [
-      { name: 'page_id', type: 'string', required: true, description: 'Page ID' },
+      { name: 'page_id', type: 'string', required: true, description: 'Page ID (from search or databases.query)' },
     ],
     returns: 'Page object with properties',
+    responseExample: {
+      id: 'page-123',
+      object: 'page',
+      properties: { Name: { title: [{ text: { content: 'My Page' } }] } },
+    },
+    notes: [
+      'To read page content (blocks), use blocks.children.list with the page ID',
+    ],
+    seeAlso: ['blocks.children.list', 'search', 'databases.query'],
   },
   {
     name: 'pages.update',
     description: 'Update page properties',
     operationType: 'write',
     params: [
-      { name: 'page_id', type: 'string', required: true, description: 'Page ID' },
-      { name: 'properties', type: 'object', required: true, description: 'Properties to update' },
+      { name: 'page_id', type: 'string', required: true, description: 'Page ID (from search or databases.query)' },
+      { name: 'properties', type: 'object', required: true, description: 'Properties to update (only include changed properties)' },
       { name: 'archived', type: 'boolean', required: false, description: 'Set to true to archive the page' },
     ],
     returns: 'Updated page object',
+    notes: [
+      'Only include the properties you want to change',
+      'Use databases.retrieve to see available properties and types',
+    ],
+    seeAlso: ['pages.retrieve', 'databases.retrieve'],
   },
   {
     name: 'blocks.children.list',
@@ -132,9 +180,20 @@ const methods: ConnectorMethod[] = [
     params: [
       { name: 'block_id', type: 'string', required: true, description: 'Block or page ID' },
       { name: 'page_size', type: 'number', required: false, description: 'Results per page', default: 100 },
-      { name: 'start_cursor', type: 'string', required: false, description: 'Pagination cursor' },
+      { name: 'start_cursor', type: 'string', required: false, description: 'Pagination cursor (from previous response)' },
     ],
     returns: 'List of block objects',
+    responseExample: {
+      results: [
+        { id: 'block-1', type: 'paragraph', paragraph: { rich_text: [{ text: { content: 'Hello world' } }] } },
+      ],
+      has_more: false,
+    },
+    notes: [
+      'Use a page ID to read page content',
+      "When 'has_more' is true, pass 'next_cursor' as start_cursor to get the next page",
+    ],
+    seeAlso: ['blocks.children.append', 'pages.retrieve'],
   },
   {
     name: 'blocks.children.append',
@@ -152,6 +211,8 @@ const methods: ConnectorMethod[] = [
       },
       description: 'Append a paragraph to a page',
     },
+    notes: ['Use blocks.children.list to see existing content before appending'],
+    seeAlso: ['blocks.children.list', 'pages.create'],
   },
   {
     name: 'search',
@@ -162,10 +223,21 @@ const methods: ConnectorMethod[] = [
       { name: 'filter', type: 'object', required: false, description: 'Filter by object type: { value: "page" } or { value: "database" }' },
       { name: 'sort', type: 'object', required: false, description: 'Sort: { direction: "ascending"|"descending", timestamp: "last_edited_time" }' },
       { name: 'page_size', type: 'number', required: false, description: 'Results per page', default: 100 },
-      { name: 'start_cursor', type: 'string', required: false, description: 'Pagination cursor' },
+      { name: 'start_cursor', type: 'string', required: false, description: 'Pagination cursor (from previous response)' },
     ],
     returns: 'List of page and database objects',
     example: { params: { query: 'meeting notes', page_size: 10 }, description: 'Search for meeting notes' },
+    responseExample: {
+      results: [
+        { id: 'page-1', object: 'page', properties: { Name: { title: [{ text: { content: 'Meeting Notes' } }] } } },
+      ],
+      has_more: false,
+    },
+    notes: [
+      'Use filter to search only pages or only databases: { value: "database" }',
+      'Without a query, returns recently edited pages',
+    ],
+    seeAlso: ['databases.query', 'pages.retrieve'],
   },
 ];
 
@@ -292,12 +364,14 @@ export const notionConnector: Connector = {
       return {
         service: 'notion',
         name: 'Notion',
+        summary: 'Documents & databases — read, create, search',
         methods: m ? [m] : [],
       };
     }
     return {
       service: 'notion',
       name: 'Notion',
+      summary: 'Documents & databases — read, create, search',
       methods,
     };
   },

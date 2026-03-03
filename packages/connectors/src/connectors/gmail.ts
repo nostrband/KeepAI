@@ -72,37 +72,74 @@ function describeGmailRequest(method: string, params: Record<string, unknown>): 
   }
 }
 
+const GMAIL_SEARCH_SYNTAX: string[] = [
+  'from:user@example.com          Messages from a sender',
+  'to:user@example.com            Messages to a recipient',
+  'subject:meeting                Word in subject line',
+  '"exact phrase"                 Exact phrase match',
+  'is:unread                      Unread messages',
+  'is:starred                     Starred messages',
+  'has:attachment                 Has attachments',
+  'after:2024/01/15               Sent after date',
+  'before:2024/02/01              Sent before date',
+  'label:important                Has label',
+  'Combine with spaces (AND) or use OR',
+];
+
 const methods: ConnectorMethod[] = [
   {
     name: 'messages.list',
     description: 'List messages matching a query',
     operationType: 'read',
     params: [
-      { name: 'q', type: 'string', required: false, description: 'Gmail search query (e.g., "from:alice subject:hello")' },
+      { name: 'q', type: 'string', required: false, description: 'Gmail search query (e.g., "from:alice subject:hello")', syntax: GMAIL_SEARCH_SYNTAX },
       { name: 'maxResults', type: 'number', required: false, description: 'Maximum number of messages to return', default: 10 },
       { name: 'labelIds', type: 'array', required: false, description: 'Only return messages with these label IDs' },
       { name: 'pageToken', type: 'string', required: false, description: 'Page token for pagination' },
     ],
     returns: 'List of message objects with id, threadId, snippet',
     example: { params: { q: 'from:alice@example.com', maxResults: 5 }, description: 'Search for emails from Alice' },
+    responseExample: {
+      messages: [
+        { id: 'abc123', threadId: 'def456', snippet: 'Hey, about the...' },
+      ],
+      nextPageToken: 'token123',
+    },
+    notes: [
+      "To get the full message, use the 'id' with messages.get",
+      "When 'nextPageToken' is present, pass it as pageToken to get the next page",
+    ],
+    seeAlso: ['messages.get', 'threads.list'],
   },
   {
     name: 'messages.get',
     description: 'Get a message by ID',
     operationType: 'read',
     params: [
-      { name: 'id', type: 'string', required: true, description: 'Message ID' },
+      { name: 'id', type: 'string', required: true, description: 'Message ID (from messages.list or threads.get)' },
       { name: 'format', type: 'string', required: false, description: 'Message format', default: 'full', enum: ['minimal', 'full', 'raw', 'metadata'] },
     ],
     returns: 'Full message object with headers, body, and attachments',
     example: { params: { id: '18a1b2c3d4e5f6' }, description: 'Get a specific message' },
+    responseExample: {
+      id: '18a1b2c3d4e5f6',
+      threadId: '18a1b2c3d4e5f6',
+      from: 'alice@example.com',
+      to: 'you@gmail.com',
+      subject: 'Hello',
+      date: '2024-01-15T10:30:00Z',
+      body: 'Hi, just wanted to check in...',
+      labelIds: ['INBOX', 'UNREAD'],
+    },
+    notes: ['Find a message ID first with messages.list'],
+    seeAlso: ['messages.list', 'threads.get'],
   },
   {
     name: 'messages.send',
     description: 'Send an email',
     operationType: 'write',
     params: [
-      { name: 'to', type: 'string', required: true, description: 'Recipient email address' },
+      { name: 'to', type: 'string', required: true, description: 'Recipient email (comma-separated for multiple)' },
       { name: 'subject', type: 'string', required: true, description: 'Email subject' },
       { name: 'body', type: 'string', required: true, description: 'Email body (plain text)' },
       { name: 'cc', type: 'string', required: false, description: 'CC recipients (comma-separated)' },
@@ -112,42 +149,63 @@ const methods: ConnectorMethod[] = [
     ],
     returns: 'Sent message object with id and threadId',
     example: { params: { to: 'bob@example.com', subject: 'Hello', body: 'Hi Bob!' }, description: 'Send a simple email' },
+    responseExample: {
+      id: '18a1b2c3d4e5f6',
+      threadId: '18a1b2c3d4e5f6',
+      labelIds: ['SENT'],
+    },
+    seeAlso: ['drafts.create', 'drafts.send'],
   },
   {
     name: 'messages.trash',
     description: 'Move a message to trash',
     operationType: 'delete',
     params: [
-      { name: 'id', type: 'string', required: true, description: 'Message ID to trash' },
+      { name: 'id', type: 'string', required: true, description: 'Message ID to trash (from messages.list)' },
     ],
     returns: 'Trashed message object',
     example: { params: { id: '18a1b2c3d4e5f6' }, description: 'Trash a message' },
+    responseExample: { id: '18a1b2c3d4e5f6', labelIds: ['TRASH'] },
+    notes: ['Find a message ID first with messages.list'],
+    seeAlso: ['messages.list', 'messages.modify'],
   },
   {
     name: 'messages.modify',
     description: 'Modify message labels (add or remove)',
     operationType: 'write',
     params: [
-      { name: 'id', type: 'string', required: true, description: 'Message ID' },
+      { name: 'id', type: 'string', required: true, description: 'Message ID (from messages.list)' },
       { name: 'addLabelIds', type: 'array', required: false, description: 'Label IDs to add' },
       { name: 'removeLabelIds', type: 'array', required: false, description: 'Label IDs to remove' },
     ],
     returns: 'Modified message object',
     example: { params: { id: '18a1b2c3d4e5f6', addLabelIds: ['STARRED'] }, description: 'Star a message' },
+    responseExample: { id: '18a1b2c3d4e5f6', labelIds: ['INBOX', 'STARRED'] },
+    notes: [
+      'Use labels.list to find available label IDs',
+      'Find a message ID first with messages.list',
+    ],
+    seeAlso: ['labels.list', 'messages.list'],
   },
   {
     name: 'drafts.create',
     description: 'Create a draft email',
     operationType: 'write',
     params: [
-      { name: 'to', type: 'string', required: true, description: 'Recipient email address' },
+      { name: 'to', type: 'string', required: true, description: 'Recipient email (comma-separated for multiple)' },
       { name: 'subject', type: 'string', required: true, description: 'Email subject' },
       { name: 'body', type: 'string', required: true, description: 'Email body (plain text)' },
-      { name: 'cc', type: 'string', required: false, description: 'CC recipients' },
-      { name: 'bcc', type: 'string', required: false, description: 'BCC recipients' },
+      { name: 'cc', type: 'string', required: false, description: 'CC recipients (comma-separated)' },
+      { name: 'bcc', type: 'string', required: false, description: 'BCC recipients (comma-separated)' },
     ],
     returns: 'Draft object with id and message',
     example: { params: { to: 'bob@example.com', subject: 'Draft', body: 'Working on this...' }, description: 'Create a draft' },
+    responseExample: {
+      id: 'r-123456789',
+      message: { id: 'abc123', threadId: 'abc123', labelIds: ['DRAFT'] },
+    },
+    notes: ["Use the returned 'id' with drafts.send to send the draft"],
+    seeAlso: ['drafts.send', 'drafts.list', 'messages.send'],
   },
   {
     name: 'drafts.list',
@@ -155,29 +213,52 @@ const methods: ConnectorMethod[] = [
     operationType: 'read',
     params: [
       { name: 'maxResults', type: 'number', required: false, description: 'Maximum number of drafts', default: 10 },
-      { name: 'pageToken', type: 'string', required: false, description: 'Page token' },
+      { name: 'pageToken', type: 'string', required: false, description: 'Page token for pagination' },
     ],
     returns: 'List of draft objects',
+    responseExample: {
+      drafts: [
+        { id: 'r-123', message: { id: 'abc123', threadId: 'abc123' } },
+      ],
+      nextPageToken: 'token123',
+    },
+    notes: [
+      "When 'nextPageToken' is present, pass it as pageToken to get the next page",
+    ],
+    seeAlso: ['drafts.get', 'drafts.create'],
   },
   {
     name: 'drafts.get',
     description: 'Get a draft by ID',
     operationType: 'read',
     params: [
-      { name: 'id', type: 'string', required: true, description: 'Draft ID' },
+      { name: 'id', type: 'string', required: true, description: 'Draft ID (from drafts.list)' },
       { name: 'format', type: 'string', required: false, description: 'Message format', default: 'full', enum: ['minimal', 'full', 'raw', 'metadata'] },
     ],
     returns: 'Draft object with full message',
+    responseExample: {
+      id: 'r-123',
+      message: { id: 'abc123', threadId: 'abc123', subject: 'Draft subject', body: '...' },
+    },
+    notes: ['Find a draft ID first with drafts.list'],
+    seeAlso: ['drafts.list', 'drafts.send'],
   },
   {
     name: 'drafts.send',
     description: 'Send a draft',
     operationType: 'write',
     params: [
-      { name: 'id', type: 'string', required: true, description: 'Draft ID to send' },
+      { name: 'id', type: 'string', required: true, description: 'Draft ID to send (from drafts.list)' },
     ],
     returns: 'Sent message object',
     example: { params: { id: 'r-abc123' }, description: 'Send an existing draft' },
+    responseExample: {
+      id: '18a1b2c3d4e5f6',
+      threadId: '18a1b2c3d4e5f6',
+      labelIds: ['SENT'],
+    },
+    notes: ['Find a draft ID first with drafts.list'],
+    seeAlso: ['drafts.list', 'drafts.create'],
   },
   {
     name: 'labels.list',
@@ -185,48 +266,89 @@ const methods: ConnectorMethod[] = [
     operationType: 'read',
     params: [],
     returns: 'List of label objects with id, name, type',
+    responseExample: {
+      labels: [
+        { id: 'INBOX', name: 'INBOX', type: 'system' },
+        { id: 'Label_1', name: 'My Label', type: 'user' },
+      ],
+    },
+    seeAlso: ['labels.get', 'messages.modify'],
   },
   {
     name: 'labels.get',
     description: 'Get a label by ID',
     operationType: 'read',
     params: [
-      { name: 'id', type: 'string', required: true, description: 'Label ID' },
+      { name: 'id', type: 'string', required: true, description: 'Label ID (from labels.list)' },
     ],
     returns: 'Label object with counts and settings',
+    responseExample: {
+      id: 'INBOX',
+      name: 'INBOX',
+      type: 'system',
+      messagesTotal: 1234,
+      messagesUnread: 5,
+    },
+    notes: ['Find label IDs with labels.list'],
+    seeAlso: ['labels.list'],
   },
   {
     name: 'threads.list',
     description: 'List email threads',
     operationType: 'read',
     params: [
-      { name: 'q', type: 'string', required: false, description: 'Search query' },
-      { name: 'maxResults', type: 'number', required: false, description: 'Maximum threads', default: 10 },
+      { name: 'q', type: 'string', required: false, description: 'Gmail search query', syntax: GMAIL_SEARCH_SYNTAX },
+      { name: 'maxResults', type: 'number', required: false, description: 'Maximum threads to return', default: 10 },
       { name: 'labelIds', type: 'array', required: false, description: 'Filter by label IDs' },
-      { name: 'pageToken', type: 'string', required: false, description: 'Page token' },
+      { name: 'pageToken', type: 'string', required: false, description: 'Page token for pagination' },
     ],
     returns: 'List of thread objects with id and snippet',
+    responseExample: {
+      threads: [
+        { id: 'thread123', snippet: 'Latest message in thread...' },
+      ],
+      nextPageToken: 'token123',
+    },
+    notes: [
+      "To get all messages in a thread, use the 'id' with threads.get",
+      "When 'nextPageToken' is present, pass it as pageToken to get the next page",
+    ],
+    seeAlso: ['threads.get', 'messages.list'],
   },
   {
     name: 'threads.get',
     description: 'Get a thread with all messages',
     operationType: 'read',
     params: [
-      { name: 'id', type: 'string', required: true, description: 'Thread ID' },
+      { name: 'id', type: 'string', required: true, description: 'Thread ID (from threads.list or messages.list)' },
       { name: 'format', type: 'string', required: false, description: 'Message format', default: 'full', enum: ['minimal', 'full', 'raw', 'metadata'] },
     ],
     returns: 'Thread object with all messages',
+    responseExample: {
+      id: 'thread123',
+      messages: [
+        { id: 'msg1', from: 'alice@example.com', snippet: 'First message...' },
+        { id: 'msg2', from: 'you@gmail.com', snippet: 'Reply...' },
+      ],
+    },
+    notes: ['Find a thread ID first with threads.list or messages.list'],
+    seeAlso: ['threads.list', 'messages.get'],
   },
   {
     name: 'threads.modify',
     description: 'Modify thread labels',
     operationType: 'write',
     params: [
-      { name: 'id', type: 'string', required: true, description: 'Thread ID' },
+      { name: 'id', type: 'string', required: true, description: 'Thread ID (from threads.list)' },
       { name: 'addLabelIds', type: 'array', required: false, description: 'Label IDs to add' },
       { name: 'removeLabelIds', type: 'array', required: false, description: 'Label IDs to remove' },
     ],
     returns: 'Modified thread object',
+    notes: [
+      'Use labels.list to find available label IDs',
+      'Find a thread ID first with threads.list',
+    ],
+    seeAlso: ['labels.list', 'threads.list'],
   },
   {
     name: 'profile.get',
@@ -234,6 +356,11 @@ const methods: ConnectorMethod[] = [
     operationType: 'read',
     params: [],
     returns: 'Profile with emailAddress, messagesTotal, threadsTotal, historyId',
+    responseExample: {
+      emailAddress: 'user@gmail.com',
+      messagesTotal: 12345,
+      threadsTotal: 6789,
+    },
   },
 ];
 
@@ -416,12 +543,14 @@ export const gmailConnector: Connector = {
       return {
         service: 'gmail',
         name: 'Gmail',
+        summary: 'Email — read, send, draft, organize',
         methods: m ? [m] : [],
       };
     }
     return {
       service: 'gmail',
       name: 'Gmail',
+      summary: 'Email — read, send, draft, organize',
       methods,
     };
   },
