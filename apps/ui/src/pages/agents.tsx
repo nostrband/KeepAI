@@ -17,7 +17,7 @@ export function AgentsPage() {
         <PageTitle>Agents</PageTitle>
         <button
           onClick={() => setShowDialog(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover"
         >
           <Plus className="w-4 h-4" />
           Add agent
@@ -37,7 +37,7 @@ export function AgentsPage() {
           action={
             <button
               onClick={() => setShowDialog(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover"
             >
               <Plus className="w-4 h-4" />
               Add an agent
@@ -50,7 +50,7 @@ export function AgentsPage() {
             <Link
               key={agent.id}
               to={`/agents/${agent.id}`}
-              className="flex items-center gap-3 p-4 border border-border rounded-lg hover:bg-accent/50 transition-colors"
+              className="flex items-center gap-3 p-4 border border-border rounded-xl bg-card shadow-sm hover:shadow-md hover:border-[#D1CBC4] transition-all"
             >
               <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-semibold">
                 {(agent.name || '?')[0].toUpperCase()}

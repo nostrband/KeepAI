@@ -54,7 +54,7 @@ export function ApprovalCard({ item, onApprove, onDeny, isApproving, isDenying }
   };
 
   return (
-    <div className="border border-border rounded-lg p-4 bg-card">
+    <div className="border border-border rounded-xl p-4 bg-card shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
@@ -79,7 +79,7 @@ export function ApprovalCard({ item, onApprove, onDeny, isApproving, isDenying }
           <button
             onClick={() => onApprove(item.id)}
             disabled={isApproving || isDenying}
-            className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
+            className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
           >
             <Check className="w-3.5 h-3.5" />
             Allow
@@ -87,7 +87,7 @@ export function ApprovalCard({ item, onApprove, onDeny, isApproving, isDenying }
           <button
             onClick={() => onDeny(item.id)}
             disabled={isApproving || isDenying}
-            className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+            className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
           >
             <X className="w-3.5 h-3.5" />
             Deny

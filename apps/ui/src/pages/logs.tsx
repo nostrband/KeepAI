@@ -31,13 +31,13 @@ export function LogsPage() {
           type="text"
           placeholder="Filter by service..."
           onChange={(e) => setFilters((prev) => ({ ...prev, service: e.target.value || '', offset: '0' }))}
-          className="px-3 py-1.5 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring w-40"
+          className="px-4 py-2 text-sm border border-input rounded-xl bg-card focus:outline-none focus:ring-2 focus:ring-ring/10 focus:border-foreground w-40"
         />
         <input
           type="text"
           placeholder="Filter by agent..."
           onChange={(e) => setFilters((prev) => ({ ...prev, agent: e.target.value || '', offset: '0' }))}
-          className="px-3 py-1.5 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring w-40"
+          className="px-4 py-2 text-sm border border-input rounded-xl bg-card focus:outline-none focus:ring-2 focus:ring-ring/10 focus:border-foreground w-40"
         />
       </div>
 
@@ -51,7 +51,7 @@ export function LogsPage() {
         />
       ) : (
         <>
-          <div className="border border-border rounded-lg overflow-hidden">
+          <div className="border border-border rounded-xl overflow-hidden bg-card shadow-sm">
             <table className="w-full text-sm">
               <thead className="bg-muted/50">
                 <tr>
@@ -111,7 +111,7 @@ export function LogsPage() {
                     </tr>
                     {expandedId === entry.id && (
                       <tr key={`${entry.id}-detail`}>
-                        <td colSpan={8} className="px-3 py-3 bg-gray-50">
+                        <td colSpan={8} className="px-3 py-3 bg-muted">
                           <pre className="text-xs font-mono whitespace-pre-wrap break-all">
                             {JSON.stringify(entry, null, 2)}
                           </pre>
@@ -130,7 +130,7 @@ export function LogsPage() {
               <button
                 disabled={offset === 0}
                 onClick={() => setFilters((prev) => ({ ...prev, offset: String(Math.max(0, offset - limit)) }))}
-                className="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent disabled:opacity-50"
+                className="px-3 py-1.5 text-sm rounded-lg border border-border hover:bg-accent disabled:opacity-50"
               >
                 Previous
               </button>
@@ -140,7 +140,7 @@ export function LogsPage() {
               <button
                 disabled={offset + limit >= total}
                 onClick={() => setFilters((prev) => ({ ...prev, offset: String(offset + limit) }))}
-                className="px-3 py-1.5 text-sm rounded-md border border-border hover:bg-accent disabled:opacity-50"
+                className="px-3 py-1.5 text-sm rounded-lg border border-border hover:bg-accent disabled:opacity-50"
               >
                 Next
               </button>

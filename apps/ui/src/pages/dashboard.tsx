@@ -79,7 +79,7 @@ export function DashboardPage() {
             action={
               <button
                 onClick={() => setShowConnectDialog(true)}
-                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover"
               >
                 <Plus className="w-4 h-4" />
                 Connect an app
@@ -92,7 +92,7 @@ export function DashboardPage() {
               <Link
                 key={`${conn.service}:${conn.accountId}`}
                 to={`/apps/${conn.service}/${encodeURIComponent(conn.accountId)}`}
-                className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors"
+                className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card shadow-sm hover:shadow-md hover:border-[#D1CBC4] transition-all"
               >
                 <ServiceIcon service={conn.service} />
                 <div className="flex-1 min-w-0">
@@ -130,7 +130,7 @@ export function DashboardPage() {
             action={
               <button
                 onClick={() => setShowAgentDialog(true)}
-                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover"
               >
                 <Plus className="w-4 h-4" />
                 Add an agent
@@ -143,7 +143,7 @@ export function DashboardPage() {
               <Link
                 key={agent.id}
                 to={`/agents/${agent.id}`}
-                className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors"
+                className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card shadow-sm hover:shadow-md hover:border-[#D1CBC4] transition-all"
               >
                 <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-medium">
                   {(agent.name || '?')[0].toUpperCase()}

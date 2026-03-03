@@ -74,7 +74,7 @@ export function AppDetailPage() {
             <button
               onClick={handlePauseToggle}
               disabled={pauseMutation.isPending || unpauseMutation.isPending}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md border disabled:opacity-50 ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border disabled:opacity-50 ${
                 connection.status === 'paused'
                   ? 'text-green-700 border-green-300 hover:bg-green-50'
                   : 'text-yellow-700 border-yellow-300 hover:bg-yellow-50'
@@ -91,7 +91,7 @@ export function AppDetailPage() {
             <button
               onClick={() => checkMutation.mutate({ service: service!, accountId: decodedAccountId })}
               disabled={checkMutation.isPending}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md border border-border hover:bg-accent disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-border hover:bg-accent disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${checkMutation.isPending ? 'animate-spin' : ''}`} />
               Test connection
@@ -100,7 +100,7 @@ export function AppDetailPage() {
           <button
             onClick={handleDisconnect}
             disabled={disconnectMutation.isPending}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md text-destructive border border-destructive/30 hover:bg-destructive/10 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg text-destructive border border-destructive/30 hover:bg-destructive/10 disabled:opacity-50"
           >
             <Trash2 className="w-4 h-4" />
             Disconnect
@@ -109,7 +109,7 @@ export function AppDetailPage() {
       </div>
 
       {/* Connection Info */}
-      <div className="border border-border rounded-lg p-4 mb-6">
+      <div className="border border-border rounded-xl p-4 bg-card shadow-sm mb-6">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Details</h2>
         <dl className="grid grid-cols-2 gap-y-2 text-sm">
           <dt className="text-muted-foreground">Service</dt>
@@ -126,7 +126,7 @@ export function AppDetailPage() {
       </div>
 
       {/* Agent Policies */}
-      <div className="border border-border rounded-lg p-4 mb-6">
+      <div className="border border-border rounded-xl p-4 bg-card shadow-sm mb-6">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
             <Shield className="w-4 h-4" />
@@ -164,7 +164,7 @@ export function AppDetailPage() {
       </div>
 
       {/* Recent Activity */}
-      <div className="border border-border rounded-lg p-4">
+      <div className="border border-border rounded-xl p-4 bg-card shadow-sm">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
             <Activity className="w-4 h-4" />

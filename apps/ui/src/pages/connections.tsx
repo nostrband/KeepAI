@@ -20,7 +20,7 @@ export function ConnectionsPage() {
         <PageTitle>Apps</PageTitle>
         <button
           onClick={() => setShowDialog(true)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover"
         >
           <Plus className="w-4 h-4" />
           Add app
@@ -40,7 +40,7 @@ export function ConnectionsPage() {
           action={
             <button
               onClick={() => setShowDialog(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover"
             >
               <Plus className="w-4 h-4" />
               Add an app
@@ -53,7 +53,7 @@ export function ConnectionsPage() {
             <Link
               key={`${conn.service}:${conn.accountId}`}
               to={`/apps/${conn.service}/${encodeURIComponent(conn.accountId)}`}
-              className="flex items-center gap-3 p-4 border border-border rounded-lg hover:bg-accent/50 transition-colors"
+              className="flex items-center gap-3 p-4 border border-border rounded-xl bg-card shadow-sm hover:shadow-md hover:border-[#D1CBC4] transition-all"
             >
               <ServiceIcon service={conn.service} className="w-6 h-6" />
               <div className="flex-1 min-w-0">

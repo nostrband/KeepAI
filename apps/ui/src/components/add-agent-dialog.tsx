@@ -63,7 +63,7 @@ export function AddAgentDialog({ open, onClose }: AddAgentDialogProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-card border border-border rounded-xl shadow-lg p-6 w-full max-w-md mx-4">
+      <div className="bg-card border border-border rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4">
         {!pairingCode ? (
           <>
             <h2 className="text-lg font-semibold mb-4">Add Agent</h2>
@@ -73,21 +73,21 @@ export function AddAgentDialog({ open, onClose }: AddAgentDialogProps) {
               value={agentName}
               onChange={(e) => setAgentName(e.target.value)}
               placeholder="e.g. my-assistant"
-              className="w-full px-3 py-2 border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full px-4 py-3 border border-input rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ring/10 focus:border-foreground"
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
               autoFocus
             />
             <div className="flex justify-end gap-2 mt-4">
               <button
                 onClick={handleClose}
-                className="px-3 py-1.5 text-sm rounded-md hover:bg-accent"
+                className="px-3 py-1.5 text-sm rounded-lg hover:bg-accent"
               >
                 Cancel
               </button>
               <button
                 onClick={handleCreate}
                 disabled={!agentName.trim() || createMutation.isPending}
-                className="px-3 py-1.5 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                className="px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover disabled:opacity-50"
               >
                 {createMutation.isPending ? 'Creating...' : 'Generate Code'}
               </button>
@@ -105,7 +105,7 @@ export function AddAgentDialog({ open, onClose }: AddAgentDialogProps) {
             <div className="flex justify-end mt-2">
               <button
                 onClick={handleClose}
-                className="px-3 py-1.5 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
+                className="px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover"
               >
                 Done
               </button>
@@ -130,13 +130,13 @@ export function AddAgentDialog({ open, onClose }: AddAgentDialogProps) {
             <div className="flex justify-end gap-2 mt-4">
               <button
                 onClick={handleCancel}
-                className="px-3 py-1.5 text-sm rounded-md hover:bg-accent"
+                className="px-3 py-1.5 text-sm rounded-lg hover:bg-accent"
               >
                 Cancel
               </button>
               <button
                 onClick={handleCopy}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover"
               >
                 {copied ? (
                   <>

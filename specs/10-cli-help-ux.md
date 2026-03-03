@@ -384,18 +384,145 @@ $ npx keepai run gmail messages.list --q="is:unread" --maxResults=2 --raw
 
 No formatting, no footer. For piping into `jq` or programmatic use.
 
-## Where Help Data Comes From
+## Architecture: Ultra-Thin Client
 
-Method metadata (parameter names, types, required/optional, descriptions,
-examples, response shapes) should be defined as structured data in each
-connector's implementation — not hardcoded in the CLI. The CLI's help
-formatter is generic: it takes the metadata and renders it.
+The CLI client knows almost nothing. It doesn't know what services exist,
+what methods are available, what parameters they take, or how to format
+help text. All of that lives on the server (keepd).
 
-This means:
-- Adding a new connector automatically gets full help support.
-- The `help` RPC returns the structured metadata from keepd.
-- The CLI formats it for terminal display.
-- The SDK exposes the same metadata programmatically via `keep.help()`.
+### Why
+
+The deployment reality is asymmetric:
+- `npx keepai` auto-updates on every run (npm fetch) — but users may pin
+  old versions, cache them, or work offline after initial install.
+- The desktop app (keepd) updates less frequently — users defer updates,
+  run old versions for months.
+- If we move keepd to cloud, the server updates instantly but old npx
+  clients are out there forever.
+
+The thinner the client, the fewer version-mismatch problems. If the client
+is just a transport layer, there's nothing to get out of sync.
+
+### What the client knows (hardcoded)
+
+Only what's needed before a server connection exists:
+
+1. **Command parsing**: extract `(command, service, method, params)` from argv.
+2. **Pairing flow**: `init <code>` — decode, generate keypair, handshake.
+3. **Transport**: connect to nostr relays, send RPC, receive response.
+4. **Transport errors**: "cannot reach server", "connection timed out" —
+   these must be client-side since the server is unreachable.
+5. **Level 0 help**: the bare `npx keepai` output listing commands — this
+   is the only help text in the client, because it describes client commands,
+   not server capabilities.
+6. **Print response**: take what the server returns and print it.
+
+That's it. ~150 lines of meaningful code.
+
+### What the server owns (everything else)
+
+All help and error content comes from the server via RPC:
+
+| Client sends | Server returns |
+|---|---|
+| `help` (no args) | Pre-formatted text: service list with accounts |
+| `help gmail` | Pre-formatted text: method list with param previews |
+| `help gmail drafts.create` | Pre-formatted text: params, examples, response |
+| `run gmail drafts.create {...}` | JSON result on success |
+| `run gmail drafts.create {}` (missing params) | Error with pre-formatted help |
+| `run gmail draft.create` (typo) | Error with "did you mean?" suggestion |
+| `run email messages.list` (bad service) | Error with available services list |
+
+### Pre-formatted text, not structured data
+
+The server returns **ready-to-print plain text** for all help and error
+responses, not structured JSON that the client formats. This matters:
+
+- **Structured data** = client needs a formatter. Formatter has opinions
+  about layout, column widths, grouping. Formatter becomes a second source
+  of UX bugs. Old formatters misrender new fields they don't know about.
+- **Pre-formatted text** = client does `console.log(response.text)`. Done.
+  Server has full control over the UX. Fix a typo, improve an example,
+  add a new section — all clients see it instantly.
+
+The server can accept an optional `{cols: N}` hint from the client for
+line-wrapping, but this is purely optional (default: 80).
+
+### RPC shape
+
+```
+// Client → Server
+{
+  "method": "help",                         // or "run"
+  "params": {
+    "service": "gmail",                     // optional for top-level help
+    "method": "drafts.create",              // optional for service-level help
+    "args": { "to": "...", ... },           // only for "run"
+    "cols": 120                             // optional terminal width hint
+  }
+}
+
+// Server → Client (help/error)
+{
+  "text": "gmail drafts.create — Create a draft email\n\nParameters:\n  ...",
+  "error": false
+}
+
+// Server → Client (run result)
+{
+  "result": { "id": "r-123", "message": { ... } },
+  "error": false
+}
+
+// Server → Client (run error — also pre-formatted)
+{
+  "text": "Error: missing required parameters: to, subject, body\n\n...",
+  "error": true
+}
+```
+
+### Where method metadata lives
+
+Each connector defines its metadata as structured data (parameter schemas,
+descriptions, examples, response shapes). This is used by keepd both for:
+1. Rendering help text (server-side formatting).
+2. Validating parameters before calling the underlying API.
+3. Generating MCP tool schemas (future).
+
+The structured metadata never reaches the CLI client — it's an internal
+server concern. The client only sees the rendered output.
+
+### What this means for the `--help` flag
+
+When the client sees `--help` or detects `run <service> <method>` with no
+params, it simply rewrites the request as a `help` RPC:
+
+```
+npx keepai run gmail drafts.create --help
+  → RPC: { method: "help", params: { service: "gmail", method: "drafts.create" } }
+
+npx keepai run gmail drafts.create  (no params)
+  → RPC: { method: "run", params: { service: "gmail", method: "drafts.create", args: {} } }
+  → Server detects missing required params, returns error with help text
+```
+
+Both paths produce helpful output. The client doesn't need to know the
+difference.
+
+### Client-side error handling
+
+The only errors the client generates itself (because the server is unreachable):
+
+```
+Error: cannot reach KeepAI daemon — is the desktop app running?
+
+Error: connection timed out after 30s
+
+Error: not paired — run 'npx keepai init <code>' to connect
+       Get a pairing code from the KeepAI app on your computer.
+```
+
+These are the only hardcoded messages in the client.
 
 ## Summary of Key Behaviors
 

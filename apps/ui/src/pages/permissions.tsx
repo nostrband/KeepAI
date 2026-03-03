@@ -58,7 +58,7 @@ function ActionSelect({ value, onChange }: { value: Action; onChange: (v: Action
     <select
       value={value}
       onChange={(e) => onChange(e.target.value as Action)}
-      className="px-2 py-1 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+      className="px-2 py-1 text-sm border border-input rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-ring/10 focus:border-foreground"
     >
       <option value="allow">Allow</option>
       <option value="deny">Deny</option>
@@ -154,7 +154,7 @@ export function PermissionsPage() {
             const policy = localPolicies[key] ?? DEFAULT_POLICY;
             const isShowingRaw = showRaw === key;
             return (
-              <div key={key} className="border border-border rounded-lg p-4">
+              <div key={key} className="border border-border rounded-xl p-4 bg-card shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <ServiceIcon service={service} />
@@ -188,14 +188,14 @@ export function PermissionsPage() {
                     <textarea
                       value={rawJson}
                       onChange={(e) => setRawJson(e.target.value)}
-                      className="w-full h-40 px-3 py-2 text-sm font-mono border border-input rounded-md bg-gray-50 focus:outline-none focus:ring-2 focus:ring-ring"
+                      className="w-full h-40 px-4 py-3 text-sm font-mono border border-input rounded-xl bg-muted focus:outline-none focus:ring-2 focus:ring-ring/10 focus:border-foreground"
                     />
                     {rawError && <p className="text-sm text-destructive mt-1">{rawError}</p>}
                     <div className="flex justify-end gap-2 mt-2">
                       <button
                         onClick={() => handleSaveRaw(service, accountId)}
                         disabled={saveMutation.isPending}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover disabled:opacity-50"
                       >
                         <Save className="w-3.5 h-3.5" />
                         Save
@@ -233,7 +233,7 @@ export function PermissionsPage() {
                     <div className="flex justify-end gap-2 mt-4">
                       <button
                         onClick={() => handleReset(key)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-md hover:bg-accent text-muted-foreground"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg hover:bg-accent text-muted-foreground"
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
                         Reset
@@ -241,7 +241,7 @@ export function PermissionsPage() {
                       <button
                         onClick={() => handleSave(service, accountId)}
                         disabled={saveMutation.isPending}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                        className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover disabled:opacity-50"
                       >
                         <Save className="w-3.5 h-3.5" />
                         Save

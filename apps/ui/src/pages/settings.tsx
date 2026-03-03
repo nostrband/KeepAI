@@ -31,7 +31,7 @@ export function SettingsPage() {
 
       {/* Status */}
       {status && (
-        <div className="border border-border rounded-lg p-4 mb-6">
+        <div className="border border-border rounded-xl p-4 bg-card shadow-sm mb-6">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Status</h2>
           <dl className="grid grid-cols-2 gap-y-2 text-sm">
             <dt className="text-muted-foreground">Agents</dt>
@@ -47,7 +47,7 @@ export function SettingsPage() {
       )}
 
       {/* Configuration */}
-      <div className="border border-border rounded-lg p-4 mb-6">
+      <div className="border border-border rounded-xl p-4 bg-card shadow-sm mb-6">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">Configuration</h2>
 
         {configLoading ? (
@@ -61,7 +61,7 @@ export function SettingsPage() {
                 onChange={(e) => setRelays(e.target.value)}
                 placeholder="wss://relay.example.com (one per line)"
                 rows={3}
-                className="w-full px-3 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+                className="w-full px-4 py-3 text-sm border border-input rounded-xl bg-card focus:outline-none focus:ring-2 focus:ring-ring/10 focus:border-foreground font-mono"
               />
               <p className="text-xs text-muted-foreground mt-1">
                 Comma-separated list of nostr relay URLs for agent communication.
@@ -74,7 +74,7 @@ export function SettingsPage() {
                 type="number"
                 value={approvalTimeout}
                 onChange={(e) => setApprovalTimeout(e.target.value)}
-                className="w-32 px-3 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                className="w-32 px-4 py-3 text-sm border border-input rounded-xl bg-card focus:outline-none focus:ring-2 focus:ring-ring/10 focus:border-foreground"
               />
               <p className="text-xs text-muted-foreground mt-1">
                 How long to wait for approval before timing out. Default: 300 seconds (5 minutes).
@@ -85,7 +85,7 @@ export function SettingsPage() {
               <button
                 onClick={handleSave}
                 disabled={saveMutation.isPending}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover disabled:opacity-50"
               >
                 <Save className="w-4 h-4" />
                 {saveMutation.isPending ? 'Saving...' : 'Save'}
@@ -96,7 +96,7 @@ export function SettingsPage() {
       </div>
 
       {/* About */}
-      <div className="border border-border rounded-lg p-4">
+      <div className="border border-border rounded-xl p-4 bg-card shadow-sm">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">About</h2>
         <dl className="grid grid-cols-2 gap-y-2 text-sm">
           <dt className="text-muted-foreground">Version</dt>

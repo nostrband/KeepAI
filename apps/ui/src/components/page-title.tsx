@@ -12,7 +12,7 @@ export function PageTitle({ children, className }: { children: React.ReactNode; 
       >
         <ChevronLeft className="w-6 h-6" />
       </button>
-      <h1 className="text-2xl font-bold">{children}</h1>
+      <h1 className="text-2xl font-black">{children}</h1>
     </div>
   );
 }
