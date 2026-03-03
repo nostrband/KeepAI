@@ -58,7 +58,7 @@ program
 // --- run ---
 
 program
-  .command('run <service> <method>')
+  .command('run <service> [method]')
   .description('Execute a service operation')
   .option('--account <id>', 'Account ID to use')
   .option('--params <json>', 'Parameters as JSON')
@@ -68,11 +68,30 @@ program
   .action(
     async (
       service: string,
-      method: string,
+      method: string | undefined,
       opts: { account?: string; params?: string; timeout?: string; raw?: boolean },
       cmd: Command
     ) => {
       try {
+        // Check for --help in unknown args → redirect to help RPC
+        const rawArgs = cmd.args || [];
+        if (rawArgs.includes('--help') || rawArgs.includes('-h')) {
+          const keep = new KeepAI();
+          const result = await keep.help(service, method);
+          console.log(result.text);
+          keep.close();
+          return;
+        }
+
+        // No method → show service help
+        if (!method) {
+          const keep = new KeepAI();
+          const result = await keep.help(service);
+          console.log(result.text);
+          keep.close();
+          return;
+        }
+
         const keep = new KeepAI({
           timeout: opts.timeout ? Number(opts.timeout) : undefined,
         });
@@ -89,8 +108,9 @@ program
           }
         }
 
-        // Parse remaining flags as params
-        const args = cmd.args.slice(2); // skip service and method
+        // Parse remaining flags as params (skip service and method in args)
+        const argStart = method ? 2 : 1;
+        const args = cmd.args.slice(argStart);
         for (const arg of args) {
           if (arg.startsWith('--') && arg.includes('=')) {
             const eqIdx = arg.indexOf('=');
@@ -115,6 +135,12 @@ program
           process.stdout.write(JSON.stringify(result));
         } else {
           console.log(JSON.stringify(result, null, 2));
+
+          // Pagination hint (to stderr so it doesn't corrupt piped JSON)
+          if (result && typeof result === 'object' && 'nextPageToken' in (result as any)) {
+            const token = (result as any).nextPageToken;
+            console.error(`\nMore results available. Next page: --pageToken=${token}`);
+          }
         }
 
         keep.close();
