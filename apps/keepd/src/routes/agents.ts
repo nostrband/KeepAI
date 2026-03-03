@@ -104,7 +104,7 @@ export async function registerAgentRoutes(
       agentManager.revokeAgent(agent.id);
 
       // Delete policies
-      policyEngine.deleteAgentPolicies(agent.agentPubkey);
+      policyEngine.deleteByAgent(agent.id);
 
       // Emit agent_disconnected SSE event
       sse?.broadcast('agent_disconnected', {

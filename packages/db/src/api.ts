@@ -6,6 +6,7 @@ import { RpcRequestStore } from './stores/rpc-request-store.js';
 import { ApprovalStore } from './stores/approval-store.js';
 import { AuditStore } from './stores/audit-store.js';
 import { SettingsStore } from './stores/settings-store.js';
+import { PolicyStore } from './stores/policy-store.js';
 
 export class KeepDBApi {
   readonly agents: AgentStore;
@@ -15,6 +16,7 @@ export class KeepDBApi {
   readonly approvals: ApprovalStore;
   readonly audit: AuditStore;
   readonly settings: SettingsStore;
+  readonly policies: PolicyStore;
 
   constructor(db: Database.Database) {
     this.agents = new AgentStore(db);
@@ -24,5 +26,6 @@ export class KeepDBApi {
     this.approvals = new ApprovalStore(db);
     this.audit = new AuditStore(db);
     this.settings = new SettingsStore(db);
+    this.policies = new PolicyStore(db);
   }
 }

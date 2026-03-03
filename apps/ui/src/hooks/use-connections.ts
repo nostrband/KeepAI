@@ -35,6 +35,14 @@ export function useDisconnectService() {
   });
 }
 
+export function useConnection(service: string, accountId: string) {
+  const { data: connections, ...rest } = useConnections();
+  const connection = connections?.find(
+    (c: any) => c.service === service && c.accountId === accountId
+  );
+  return { data: connection, ...rest };
+}
+
 export function useCheckConnection() {
   return useMutation({
     mutationFn: ({ service, accountId }: { service: string; accountId: string }) =>

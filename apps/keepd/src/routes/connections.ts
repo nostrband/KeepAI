@@ -12,6 +12,8 @@
 import type { FastifyInstance } from 'fastify';
 import type { ConnectionManager, ConnectorExecutor } from '@keepai/connectors';
 import type { SSEBroadcaster } from '../sse.js';
+import type { AgentManager } from '../managers/agent-manager.js';
+import type { PolicyEngine } from '../managers/policy-engine.js';
 
 const HEALTH_CHECK_METHODS: Record<string, { method: string; params: Record<string, unknown> }> = {
   gmail: { method: 'profile.get', params: {} },
@@ -23,7 +25,9 @@ export async function registerConnectionRoutes(
   connectionManager: ConnectionManager,
   getServerBaseUrl: () => string,
   connectorExecutor?: ConnectorExecutor,
-  sse?: SSEBroadcaster
+  sse?: SSEBroadcaster,
+  agentManager?: AgentManager,
+  policyEngine?: PolicyEngine
 ): Promise<void> {
   // List all connections
   app.get('/api/connections', async () => {
@@ -89,6 +93,13 @@ export async function registerConnectionRoutes(
 
     reply.type('text/html');
     if (result.success) {
+      // Auto-create default policies for all paired agents
+      if (agentManager && policyEngine && result.connection?.accountId) {
+        const agents = agentManager.listAgents().filter((a) => a.status === 'paired');
+        const agentIds = agents.map((a) => a.id);
+        policyEngine.createDefaultsForConnection(service, result.connection.accountId, agentIds);
+      }
+
       sse?.broadcast('connection_updated', { service, action: 'connected' });
       return `<html><body><h2>Connected!</h2><p>${escapeHtml(service)} account connected successfully.</p><p>You can close this window.</p><script>window.close();</script></body></html>`;
     } else {
@@ -103,6 +114,9 @@ export async function registerConnectionRoutes(
       const { service, accountId } = request.params;
 
       try {
+        // Delete policies for this connection
+        policyEngine?.deleteByConnection(service, accountId);
+
         await connectionManager.disconnect({ service, accountId });
         return { success: true };
       } catch (err: any) {

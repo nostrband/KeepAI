@@ -7,3 +7,5 @@ export { RpcRequestStore } from './stores/rpc-request-store.js';
 export { ApprovalStore } from './stores/approval-store.js';
 export { AuditStore, type AuditFilters } from './stores/audit-store.js';
 export { SettingsStore } from './stores/settings-store.js';
+export { PolicyStore } from './stores/policy-store.js';
+export type { PolicyEntry } from './stores/policy-store.js';

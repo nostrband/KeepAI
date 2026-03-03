@@ -235,9 +235,17 @@ export class RPCRouter {
       const agent = this.agentManager.completePairing(agentPubkey, secret);
       log('pairing completed: agent %s (%s)', agent.name, agent.id);
 
-      // Create default policies
-      const services = this.connectorExecutor.getRegisteredServices();
-      this.policyEngine.createDefaults(agent.agentPubkey, services);
+      // Create default policies for all connected accounts
+      const connectedAccounts: { service: string; accountId: string }[] = [];
+      for (const svc of this.connectorExecutor.getRegisteredServices()) {
+        const conns = await this.connectionManager.listConnectionsByService(svc);
+        for (const c of conns) {
+          if (c.status === 'connected') {
+            connectedAccounts.push({ service: svc, accountId: c.accountId });
+          }
+        }
+      }
+      this.policyEngine.createDefaultsForAgent(agent.id, connectedAccounts);
 
       // Emit SSE event
       this.sse.broadcast('pairing_completed', {
@@ -327,7 +335,7 @@ export class RPCRouter {
     );
 
     // Policy check
-    const decision = this.policyEngine.evaluate(agent.agentPubkey, metadata);
+    const decision = this.policyEngine.evaluate(agent.id, metadata);
 
     if (decision === 'deny') {
       this.auditLogger.log({

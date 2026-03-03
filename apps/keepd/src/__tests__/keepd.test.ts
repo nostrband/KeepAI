@@ -144,14 +144,24 @@ describe('AgentManager', () => {
 
 describe('PolicyEngine', () => {
   let engine: PolicyEngine;
+  const agentId = 'agent-pe';
 
   beforeEach(() => {
-    engine = new PolicyEngine(tmpDir);
+    // Create a test agent for FK constraint
+    db.agents.create({
+      id: agentId,
+      name: 'policy-test-agent',
+      agentPubkey: 'a'.repeat(64),
+      keepdPubkey: 'b'.repeat(64),
+      keepdPrivkey: 'c'.repeat(64),
+      pairedAt: Date.now(),
+    });
+
+    engine = new PolicyEngine(db);
   });
 
-  it('should return default policy when no file exists', () => {
-    const pubkey = '0'.repeat(64); // Valid hex, no file on disk
-    const decision = engine.evaluate(pubkey, {
+  it('should return default policy when no row exists', () => {
+    const decision = engine.evaluate(agentId, {
       service: 'gmail',
       accountId: 'user@test.com',
       method: 'messages.list',
@@ -162,7 +172,6 @@ describe('PolicyEngine', () => {
   });
 
   it('should save and load a policy', () => {
-    const pubkey = 'a'.repeat(64);
     const policy: Policy = {
       default: 'deny',
       rules: [
@@ -170,9 +179,9 @@ describe('PolicyEngine', () => {
       ],
     };
 
-    engine.savePolicy(pubkey, 'gmail', policy);
+    engine.savePolicy('gmail', 'user@test.com', agentId, policy);
 
-    const decision = engine.evaluate(pubkey, {
+    const decision = engine.evaluate(agentId, {
       service: 'gmail',
       accountId: 'user@test.com',
       method: 'messages.list',
@@ -181,7 +190,7 @@ describe('PolicyEngine', () => {
     });
     expect(decision).toBe('allow');
 
-    const writeDec = engine.evaluate(pubkey, {
+    const writeDec = engine.evaluate(agentId, {
       service: 'gmail',
       accountId: 'user@test.com',
       method: 'messages.send',
@@ -192,7 +201,6 @@ describe('PolicyEngine', () => {
   });
 
   it('should match first rule that applies', () => {
-    const pubkey = 'b'.repeat(64);
     const policy: Policy = {
       default: 'ask',
       rules: [
@@ -202,11 +210,11 @@ describe('PolicyEngine', () => {
       ],
     };
 
-    engine.savePolicy(pubkey, 'gmail', policy);
+    engine.savePolicy('gmail', 'x', agentId, policy);
 
     // messages.send should match first rule → deny
     expect(
-      engine.evaluate(pubkey, {
+      engine.evaluate(agentId, {
         service: 'gmail',
         accountId: 'x',
         method: 'messages.send',
@@ -217,7 +225,7 @@ describe('PolicyEngine', () => {
 
     // drafts.create should match second rule → ask
     expect(
-      engine.evaluate(pubkey, {
+      engine.evaluate(agentId, {
         service: 'gmail',
         accountId: 'x',
         method: 'drafts.create',
@@ -227,75 +235,93 @@ describe('PolicyEngine', () => {
     ).toBe('ask');
   });
 
-  it('should filter by accounts', () => {
-    const pubkey = 'c'.repeat(64);
-    const policy: Policy = {
+  it('should scope policies per account', () => {
+    // Different policies for different accounts
+    engine.savePolicy('gmail', 'trusted@test.com', agentId, {
+      default: 'allow',
+      rules: [],
+    });
+    engine.savePolicy('gmail', 'untrusted@test.com', agentId, {
       default: 'deny',
-      rules: [
-        { operations: ['read'], accounts: ['trusted@test.com'], action: 'allow' },
-      ],
-    };
-
-    engine.savePolicy(pubkey, 'gmail', policy);
+      rules: [],
+    });
 
     expect(
-      engine.evaluate(pubkey, {
+      engine.evaluate(agentId, {
         service: 'gmail',
         accountId: 'trusted@test.com',
-        method: 'messages.list',
-        operationType: 'read',
-        description: 'List emails',
+        method: 'messages.send',
+        operationType: 'write',
+        description: 'Send email',
       })
     ).toBe('allow');
 
     expect(
-      engine.evaluate(pubkey, {
+      engine.evaluate(agentId, {
         service: 'gmail',
-        accountId: 'other@test.com',
-        method: 'messages.list',
-        operationType: 'read',
-        description: 'List emails',
+        accountId: 'untrusted@test.com',
+        method: 'messages.send',
+        operationType: 'write',
+        description: 'Send email',
       })
     ).toBe('deny');
   });
 
-  it('should create default policies', () => {
-    const pubkey = 'd'.repeat(64);
-    engine.createDefaults(pubkey, ['gmail', 'notion']);
+  it('should create default policies for agent', () => {
+    engine.createDefaultsForAgent(agentId, [
+      { service: 'gmail', accountId: 'user@test.com' },
+      { service: 'notion', accountId: 'workspace-1' },
+    ]);
 
-    const policy = engine.getPolicy(pubkey, 'gmail');
+    const policies = engine.listByAgent(agentId);
+    expect(policies.length).toBe(2);
+
+    const policy = engine.getPolicy('gmail', 'user@test.com', agentId);
     expect(policy.default).toBe(DEFAULT_POLICY.default);
     expect(policy.rules.length).toBe(DEFAULT_POLICY.rules.length);
   });
 
+  it('should create default policies for connection', () => {
+    const agentId2 = 'agent-pe-2';
+    db.agents.create({
+      id: agentId2,
+      name: 'policy-test-agent-2',
+      agentPubkey: 'd'.repeat(64),
+      keepdPubkey: 'e'.repeat(64),
+      keepdPrivkey: 'f'.repeat(64),
+      pairedAt: Date.now(),
+    });
+
+    engine.createDefaultsForConnection('gmail', 'user@test.com', [agentId, agentId2]);
+
+    const policies = engine.listByConnection('gmail', 'user@test.com');
+    expect(policies.length).toBe(2);
+  });
+
   it('should delete agent policies', () => {
-    const pubkey = 'e'.repeat(64);
-    engine.savePolicy(pubkey, 'gmail', DEFAULT_POLICY);
-    engine.savePolicy(pubkey, 'notion', DEFAULT_POLICY);
+    engine.savePolicy('gmail', 'user@test.com', agentId, DEFAULT_POLICY);
+    engine.savePolicy('notion', 'workspace-1', agentId, DEFAULT_POLICY);
 
-    // Verify files exist
-    const agentDir = path.join(tmpDir, 'agents', pubkey);
-    expect(fs.existsSync(agentDir)).toBe(true);
+    expect(engine.listByAgent(agentId).length).toBe(2);
 
-    engine.deleteAgentPolicies(pubkey);
-    expect(fs.existsSync(agentDir)).toBe(false);
+    engine.deleteByAgent(agentId);
+    expect(engine.listByAgent(agentId).length).toBe(0);
   });
 
-  it('should reject invalid pubkey format', () => {
-    expect(() => engine.savePolicy('../evil', 'gmail', DEFAULT_POLICY)).toThrow('Invalid agent pubkey');
+  it('should delete connection policies', () => {
+    engine.savePolicy('gmail', 'user@test.com', agentId, DEFAULT_POLICY);
+
+    expect(engine.listByConnection('gmail', 'user@test.com').length).toBe(1);
+
+    engine.deleteByConnection('gmail', 'user@test.com');
+    expect(engine.listByConnection('gmail', 'user@test.com').length).toBe(0);
   });
 
-  it('should reject invalid service ID', () => {
-    const pubkey = 'f'.repeat(64);
-    expect(() => engine.savePolicy(pubkey, '../evil', DEFAULT_POLICY)).toThrow('Invalid service ID');
-  });
+  it('should cache policies by updatedAt', () => {
+    engine.savePolicy('gmail', 'x', agentId, { default: 'deny', rules: [] });
 
-  it('should cache policies by mtime', () => {
-    const pubkey = 'a1'.padEnd(64, '0');
-    engine.savePolicy(pubkey, 'gmail', { default: 'deny', rules: [] });
-
-    // First read → loads from file
-    expect(engine.evaluate(pubkey, {
+    // First read → loads from DB
+    expect(engine.evaluate(agentId, {
       service: 'gmail',
       accountId: 'x',
       method: 'messages.list',
@@ -303,8 +329,8 @@ describe('PolicyEngine', () => {
       description: '',
     })).toBe('deny');
 
-    // Second read → from cache (same mtime)
-    expect(engine.evaluate(pubkey, {
+    // Second read → from cache (same updatedAt)
+    expect(engine.evaluate(agentId, {
       service: 'gmail',
       accountId: 'x',
       method: 'messages.list',

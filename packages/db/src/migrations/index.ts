@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3';
 
-export const MAX_VERSION = 1;
+export const MAX_VERSION = 2;
 
 export const migrations = new Map<number, (db: Database.Database) => void>();
 
@@ -110,4 +110,21 @@ migrations.set(1, (db) => {
       value TEXT NOT NULL
     )
   `);
+});
+
+migrations.set(2, (db) => {
+  db.exec(`
+    CREATE TABLE policies (
+      service TEXT NOT NULL,
+      account_id TEXT NOT NULL,
+      agent_id TEXT NOT NULL,
+      policy TEXT NOT NULL,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch('now') * 1000),
+      updated_at INTEGER NOT NULL DEFAULT (unixepoch('now') * 1000),
+      PRIMARY KEY (service, account_id, agent_id),
+      FOREIGN KEY (agent_id) REFERENCES agents(id)
+    )
+  `);
+  db.exec(`CREATE INDEX idx_policies_agent ON policies(agent_id)`);
+  db.exec(`CREATE INDEX idx_policies_connection ON policies(service, account_id)`);
 });

@@ -91,7 +91,7 @@ export function DashboardPage() {
             {connections.map((conn: any) => (
               <Link
                 key={`${conn.service}:${conn.accountId}`}
-                to="/apps"
+                to={`/apps/${conn.service}/${encodeURIComponent(conn.accountId)}`}
                 className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors"
               >
                 <ServiceIcon service={conn.service} />

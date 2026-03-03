@@ -6,7 +6,7 @@
  * - ConnectionManager (OAuth + credential store)
  * - ConnectorExecutor (Gmail + Notion)
  * - AgentManager (pairing lifecycle)
- * - PolicyEngine (file-based policies)
+ * - PolicyEngine (DB-backed policies)
  * - ApprovalQueue (approval flow with temp file + hash)
  * - AuditLogger (request logging)
  * - RPCHandler (nostr RPC)
@@ -108,7 +108,10 @@ export async function createServer(config: ServerConfig = {}) {
   const agentManager = new AgentManager({ db, relays });
 
   // 10. Initialize PolicyEngine
-  const policyEngine = new PolicyEngine(dataDir);
+  const policyEngine = new PolicyEngine(db);
+
+  // 10a. Migrate file-based policies to DB (idempotent)
+  migrateFilePolicies(dataDir, db, policyEngine);
 
   // 11. Initialize ApprovalQueue
   const approvalQueue = new ApprovalQueue({
@@ -157,9 +160,9 @@ export async function createServer(config: ServerConfig = {}) {
   });
 
   // Register routes
-  await registerConnectionRoutes(app, connectionManager, () => `http://${host}:${port}`, connectorExecutor, sse);
+  await registerConnectionRoutes(app, connectionManager, () => `http://${host}:${port}`, connectorExecutor, sse, agentManager, policyEngine);
   await registerAgentRoutes(app, agentManager, policyEngine, updateSubscription, sse);
-  await registerPolicyRoutes(app, agentManager, policyEngine, connectorExecutor);
+  await registerPolicyRoutes(app, agentManager, policyEngine);
   await registerQueueRoutes(app, approvalQueue);
   await registerLogRoutes(app, auditLogger);
   await registerConfigRoutes(app, db, sse, () => port);
@@ -233,6 +236,73 @@ function resolveDataDir(): string {
 
   const defaultDir = path.join(os.homedir(), '.keepai', 'server');
   return defaultDir;
+}
+
+/**
+ * One-time migration: convert file-based policies to DB rows.
+ * Scans {dataDir}/agents/{pubkey}/policies/{service}.json,
+ * looks up the agent by pubkey, and upserts policy rows for each
+ * connected account of that service. Deletes files after migration.
+ */
+function migrateFilePolicies(dataDir: string, db: KeepDBApi, policyEngine: PolicyEngine): void {
+  const agentsDir = path.join(dataDir, 'agents');
+  if (!fs.existsSync(agentsDir)) return;
+
+  let dirs: string[];
+  try {
+    dirs = fs.readdirSync(agentsDir);
+  } catch {
+    return;
+  }
+
+  for (const pubkeyDir of dirs) {
+    const policiesDir = path.join(agentsDir, pubkeyDir, 'policies');
+    if (!fs.existsSync(policiesDir)) continue;
+
+    const agent = db.agents.getByPubkey(pubkeyDir);
+    if (!agent) continue;
+
+    let files: string[];
+    try {
+      files = fs.readdirSync(policiesDir).filter((f) => f.endsWith('.json'));
+    } catch {
+      continue;
+    }
+
+    for (const file of files) {
+      const service = file.replace('.json', '');
+      const filePath = path.join(policiesDir, file);
+      try {
+        const content = fs.readFileSync(filePath, 'utf-8');
+        const policy = JSON.parse(content);
+        const connections = db.connections.listByService(service);
+        for (const conn of connections) {
+          if (conn.status === 'connected') {
+            policyEngine.savePolicy(service, conn.accountId, agent.id, policy);
+          }
+        }
+        fs.unlinkSync(filePath);
+        log('migrated policy file %s for agent %s', file, agent.name);
+      } catch (err) {
+        log('failed to migrate policy file %s: %O', filePath, err);
+      }
+    }
+
+    // Clean up empty directories
+    try {
+      fs.rmdirSync(policiesDir);
+      fs.rmdirSync(path.join(agentsDir, pubkeyDir));
+    } catch {
+      // Not empty or already gone
+    }
+  }
+
+  // Try to remove the agents dir if empty
+  try {
+    fs.rmdirSync(agentsDir);
+  } catch {
+    // Not empty
+  }
 }
 
 export type KeepServer = Awaited<ReturnType<typeof createServer>>;

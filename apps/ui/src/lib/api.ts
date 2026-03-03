@@ -71,16 +71,19 @@ export const api = {
 
   // Policies
   listPolicies: (agentId: string) =>
-    request<Record<string, any>>(`/agents/${agentId}/policies`),
+    request<{ policies: any[] }>(`/agents/${agentId}/policies`).then((r) => r.policies),
 
-  getPolicy: (agentId: string, service: string) =>
-    request<any>(`/agents/${agentId}/policies/${service}`),
+  getPolicy: (agentId: string, service: string, accountId: string) =>
+    request<{ policy: any }>(`/agents/${agentId}/policies/${service}/${encodeURIComponent(accountId)}`).then((r) => r.policy),
 
-  savePolicy: (agentId: string, service: string, policy: any) =>
-    request<void>(`/agents/${agentId}/policies/${service}`, {
+  savePolicy: (agentId: string, service: string, accountId: string, policy: any) =>
+    request<void>(`/agents/${agentId}/policies/${service}/${encodeURIComponent(accountId)}`, {
       method: 'PUT',
       body: JSON.stringify(policy),
     }),
+
+  listConnectionPolicies: (service: string, accountId: string) =>
+    request<{ policies: any[] }>(`/connections/${service}/${encodeURIComponent(accountId)}/policies`).then((r) => r.policies),
 
   // Approval Queue
   listQueue: () =>

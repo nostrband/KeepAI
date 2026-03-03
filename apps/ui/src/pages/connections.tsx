@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Plug, Plus, Trash2, RefreshCw } from 'lucide-react';
 import { useConnections, useDisconnectService, useCheckConnection } from '../hooks/use-connections';
 import { ServiceIcon, serviceName } from '../components/service-icon';
@@ -49,9 +50,10 @@ export function ConnectionsPage() {
       ) : (
         <div className="space-y-3">
           {connections.map((conn: any) => (
-            <div
+            <Link
               key={`${conn.service}:${conn.accountId}`}
-              className="flex items-center gap-3 p-4 border border-border rounded-lg"
+              to={`/apps/${conn.service}/${encodeURIComponent(conn.accountId)}`}
+              className="flex items-center gap-3 p-4 border border-border rounded-lg hover:bg-accent/50 transition-colors"
             >
               <ServiceIcon service={conn.service} className="w-6 h-6" />
               <div className="flex-1 min-w-0">
@@ -63,7 +65,7 @@ export function ConnectionsPage() {
               </div>
               <StatusBadge status={conn.status === 'connected' ? 'active' : 'error'} />
               <button
-                onClick={() => checkMutation.mutate({ service: conn.service, accountId: conn.accountId })}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); checkMutation.mutate({ service: conn.service, accountId: conn.accountId }); }}
                 disabled={checkMutation.isPending}
                 className="p-2 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground"
                 title="Test connection"
@@ -71,7 +73,9 @@ export function ConnectionsPage() {
                 <RefreshCw className={`w-4 h-4 ${checkMutation.isPending ? 'animate-spin' : ''}`} />
               </button>
               <button
-                onClick={() => {
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   if (confirm(`Disconnect ${conn.accountId}?`)) {
                     disconnectMutation.mutate({ service: conn.service, accountId: conn.accountId });
                   }
@@ -82,7 +86,7 @@ export function ConnectionsPage() {
               >
                 <Trash2 className="w-4 h-4" />
               </button>
-            </div>
+            </Link>
           ))}
         </div>
       )}

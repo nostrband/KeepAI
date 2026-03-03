@@ -184,7 +184,7 @@ beforeEach(() => {
 
   sse = new SSEBroadcaster();
   agentManager = new AgentManager({ db, relays: ['wss://relay.test'] });
-  policyEngine = new PolicyEngine(tmpDir);
+  policyEngine = new PolicyEngine(db);
 
   approvalQueue = new ApprovalQueue({
     db,
@@ -224,9 +224,10 @@ function pairAgent(name: string): { agent: Agent; agentKeys: AgentKeys } {
   const agentPubkey = 'a'.repeat(64);
   const agent = agentManager.completePairing(agentPubkey, pairing.secret);
 
-  // Create default policies
-  const services = connectorExecutor.getRegisteredServices();
-  policyEngine.createDefaults(agent.agentPubkey, services);
+  // Create default policies for all mock connections
+  policyEngine.createDefaultsForAgent(agent.id, [
+    { service: 'testservice', accountId: 'test@example.com' },
+  ]);
 
   const agentKeys: AgentKeys = {
     keepdPubkey: agent.keepdPubkey,
@@ -513,7 +514,7 @@ describe('RPCRouter — Full Pipeline', () => {
           { operations: ['read'], action: 'allow' },
         ],
       };
-      policyEngine.savePolicy(agent.agentPubkey, 'testservice', policy);
+      policyEngine.savePolicy('testservice', 'test@example.com', agent.id, policy);
 
       const request = makeRequest({
         method: 'items.create',
@@ -544,7 +545,7 @@ describe('RPCRouter — Full Pipeline', () => {
           { operations: ['read'], action: 'allow' },
         ],
       };
-      policyEngine.savePolicy(agent.agentPubkey, 'testservice', policy);
+      policyEngine.savePolicy('testservice', 'test@example.com', agent.id, policy);
 
       // Read should succeed
       const readReq = makeRequest({
@@ -576,7 +577,7 @@ describe('RPCRouter — Full Pipeline', () => {
           { operations: ['delete'], methods: ['items.delete'], action: 'deny' },
         ],
       };
-      policyEngine.savePolicy(agent.agentPubkey, 'testservice', policy);
+      policyEngine.savePolicy('testservice', 'test@example.com', agent.id, policy);
 
       // delete should be denied
       const deleteReq = makeRequest({
@@ -678,7 +679,7 @@ describe('RPCRouter — Full Pipeline', () => {
       const { agent, agentKeys } = pairAgent('exec-error-agent');
 
       // Set policy to allow all
-      policyEngine.savePolicy(agent.agentPubkey, 'testservice', {
+      policyEngine.savePolicy('testservice', 'test@example.com', agent.id, {
         default: 'allow',
         rules: [],
       });
@@ -700,8 +701,10 @@ describe('RPCRouter — Full Pipeline', () => {
       });
 
       // Create default policies for errorservice
-      policyEngine.createDefaults(agent.agentPubkey, ['errorservice']);
-      policyEngine.savePolicy(agent.agentPubkey, 'errorservice', {
+      policyEngine.createDefaultsForAgent(agent.id, [
+        { service: 'errorservice', accountId: 'test@example.com' },
+      ]);
+      policyEngine.savePolicy('errorservice', 'test@example.com', agent.id, {
         default: 'allow',
         rules: [],
       });
@@ -788,7 +791,7 @@ describe('HTTP API — Fastify inject', () => {
 
     await registerAgentRoutes(app, agentManager, policyEngine, () => {});
     await registerQueueRoutes(app, approvalQueue);
-    await registerPolicyRoutes(app, agentManager, policyEngine, connectorExecutor);
+    await registerPolicyRoutes(app, agentManager, policyEngine);
     await registerLogRoutes(app, auditLogger);
     await registerConfigRoutes(app, db, sse, () => 9090);
 
@@ -985,23 +988,25 @@ describe('HTTP API — Fastify inject', () => {
 
       expect(res.statusCode).toBe(200);
       const body = res.json();
-      expect(body.policies.testservice).toBeDefined();
-      expect(body.policies.testservice.default).toBe(DEFAULT_POLICY.default);
+      expect(body.policies).toBeInstanceOf(Array);
+      expect(body.policies.length).toBe(1);
+      expect(body.policies[0].service).toBe('testservice');
+      expect(body.policies[0].policy.default).toBe(DEFAULT_POLICY.default);
     });
 
-    it('GET /api/agents/:id/policies/:service — returns specific policy', async () => {
+    it('GET /api/agents/:id/policies/:service/:accountId — returns specific policy', async () => {
       const { agent } = pairAgent('policy-get-agent');
 
       const res = await app.inject({
         method: 'GET',
-        url: `/api/agents/${agent.id}/policies/testservice`,
+        url: `/api/agents/${agent.id}/policies/testservice/${encodeURIComponent('test@example.com')}`,
       });
 
       expect(res.statusCode).toBe(200);
       expect(res.json().policy.default).toBe(DEFAULT_POLICY.default);
     });
 
-    it('PUT /api/agents/:id/policies/:service — saves policy', async () => {
+    it('PUT /api/agents/:id/policies/:service/:accountId — saves policy', async () => {
       const { agent } = pairAgent('policy-save-agent');
 
       const newPolicy: Policy = {
@@ -1014,7 +1019,7 @@ describe('HTTP API — Fastify inject', () => {
 
       const res = await app.inject({
         method: 'PUT',
-        url: `/api/agents/${agent.id}/policies/testservice`,
+        url: `/api/agents/${agent.id}/policies/testservice/${encodeURIComponent('test@example.com')}`,
         payload: newPolicy,
       });
 
@@ -1024,29 +1029,29 @@ describe('HTTP API — Fastify inject', () => {
       // Verify saved
       const getRes = await app.inject({
         method: 'GET',
-        url: `/api/agents/${agent.id}/policies/testservice`,
+        url: `/api/agents/${agent.id}/policies/testservice/${encodeURIComponent('test@example.com')}`,
       });
       const savedPolicy = getRes.json().policy;
       expect(savedPolicy.default).toBe('deny');
       expect(savedPolicy.rules.length).toBe(2);
     });
 
-    it('PUT /api/agents/:id/policies/:service — rejects invalid policy', async () => {
+    it('PUT /api/agents/:id/policies/:service/:accountId — rejects invalid policy', async () => {
       const { agent } = pairAgent('policy-invalid-agent');
 
       const res = await app.inject({
         method: 'PUT',
-        url: `/api/agents/${agent.id}/policies/testservice`,
+        url: `/api/agents/${agent.id}/policies/testservice/${encodeURIComponent('test@example.com')}`,
         payload: { default: 'invalid', rules: [] },
       });
 
       expect(res.statusCode).toBe(400);
     });
 
-    it('PUT /api/agents/:id/policies/:service — 404 for unknown agent', async () => {
+    it('PUT /api/agents/:id/policies/:service/:accountId — 404 for unknown agent', async () => {
       const res = await app.inject({
         method: 'PUT',
-        url: '/api/agents/nonexistent/policies/testservice',
+        url: `/api/agents/nonexistent/policies/testservice/${encodeURIComponent('test@example.com')}`,
         payload: DEFAULT_POLICY,
       });
 
@@ -1457,7 +1462,7 @@ describe('Full Agent Lifecycle', () => {
 
     // 7. Revoke agent
     agentManager.revokeAgent(agent.id);
-    policyEngine.deleteAgentPolicies(agent.agentPubkey);
+    policyEngine.deleteByAgent(agent.id);
 
     expect(agentManager.getAgent(agent.id)!.status).toBe('revoked');
 

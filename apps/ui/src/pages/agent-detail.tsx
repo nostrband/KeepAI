@@ -32,7 +32,7 @@ export function AgentDetailPage() {
     }
   };
 
-  const policyServices = policies ? Object.keys(policies) : [];
+  const policyEntries = policies ?? [];
   const recentLogs = logsData?.entries ?? [];
 
   return (
@@ -78,31 +78,31 @@ export function AgentDetailPage() {
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
             <Shield className="w-4 h-4" />
-            Policies
+            Permissions
           </h2>
-          <Link
-            to={`/agents/${agentId}/policies`}
-            className="text-sm text-primary hover:underline"
-          >
-            Edit policies
-          </Link>
         </div>
-        {policyServices.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No policies configured.</p>
+        {policyEntries.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No permissions configured.</p>
         ) : (
           <div className="space-y-2">
-            {policyServices.map((svc) => {
-              const policy = policies![svc];
-              return (
-                <div key={svc} className="flex items-center gap-2 p-2 rounded-md bg-accent/30">
-                  <ServiceIcon service={svc} className="w-4 h-4" />
-                  <span className="text-sm font-medium">{serviceName(svc)}</span>
-                  <span className="text-xs text-muted-foreground ml-auto">
-                    default: {policy?.default ?? 'ask'}
-                  </span>
-                </div>
-              );
-            })}
+            {policyEntries.map((entry: any) => (
+              <div key={`${entry.service}:${entry.accountId}`} className="flex items-center gap-2 p-2 rounded-md bg-accent/30">
+                <ServiceIcon service={entry.service} className="w-4 h-4" />
+                <Link to={`/apps/${entry.service}/${encodeURIComponent(entry.accountId)}`} className="text-sm font-medium hover:underline">
+                  {serviceName(entry.service)}
+                </Link>
+                <span className="text-xs text-muted-foreground truncate max-w-[200px]">{entry.accountId}</span>
+                <span className="text-xs text-muted-foreground ml-auto">
+                  default: {entry.policy?.default ?? 'ask'}
+                </span>
+                <Link
+                  to={`/agents/${agentId}/policies`}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Edit
+                </Link>
+              </div>
+            ))}
           </div>
         )}
       </div>
