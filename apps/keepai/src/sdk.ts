@@ -49,12 +49,14 @@ export interface StatusResult {
 export class KeepAIError extends Error {
   code: string;
   exitCode: number;
+  text?: string;
 
-  constructor(message: string, code: string, exitCode: number) {
+  constructor(message: string, code: string, exitCode: number, text?: string) {
     super(message);
     this.name = 'KeepAIError';
     this.code = code;
     this.exitCode = exitCode;
+    this.text = text;
   }
 }
 
@@ -279,7 +281,7 @@ export class KeepAI extends EventEmitter {
             break;
         }
 
-        throw new KeepAIError(err.message, code, exitCode);
+        throw new KeepAIError(err.message, code, exitCode, err.text);
       }
       throw err;
     }

@@ -16,6 +16,12 @@ import createDebug from 'debug';
 import type { RPCRequest, RPCError, Agent, ServiceHelp } from '@keepai/proto';
 import { PROTOCOL_VERSION, SOFTWARE_VERSION } from '@keepai/proto';
 import { renderServiceList, renderServiceMethods, renderMethodDetail } from './help-renderer.js';
+import {
+  renderUnknownService,
+  renderUnknownMethod,
+  renderMissingParams,
+  renderMultipleAccounts,
+} from './error-help.js';
 
 const log = createDebug('keepai:router');
 import { AuthError, isClassifiedError } from '@keepai/proto';
@@ -149,16 +155,33 @@ export class RPCRouter {
     // Validate service exists
     const connector = this.connectorExecutor.getConnector(service);
     if (!connector) {
+      const available = (this.connectorExecutor.getHelp() as ServiceHelp[]).map(s => ({
+        service: s.service,
+        summary: s.summary,
+      }));
+      const text = renderUnknownService(service, available);
       return {
-        error: { code: 'not_found', message: `Unknown service: ${service}` },
+        error: { code: 'not_found', message: `Unknown service: ${service}`, text },
       };
     }
 
     // Validate method exists
     const methodDef = connector.methods.find((m) => m.name === method);
     if (!methodDef) {
+      const text = renderUnknownMethod(service, method, connector.methods);
       return {
-        error: { code: 'not_found', message: `Unknown method: ${service}.${method}` },
+        error: { code: 'not_found', message: `Unknown method: ${service}.${method}`, text },
+      };
+    }
+
+    // Validate required parameters
+    const missingParams = methodDef.params
+      .filter(p => p.required && !(p.name in params))
+      .map(p => p.name);
+    if (missingParams.length > 0) {
+      const text = renderMissingParams(service, method, missingParams, methodDef.params);
+      return {
+        error: { code: 'invalid_request', message: `Missing required parameters: ${missingParams.join(', ')}`, text },
       };
     }
 
@@ -183,10 +206,11 @@ export class RPCRouter {
         };
       }
     } else {
-      // If no account specified, find first connected account
+      // If no account specified, find first connected account or require --account
       const connections = await this.connectionManager.listConnectionsByService(service);
-      const firstConnected = connections.find((c) => c.status === 'connected');
-      if (!firstConnected) {
+      const connected = connections.filter((c) => c.status === 'connected');
+
+      if (connected.length === 0) {
         // Check if all accounts are paused
         const paused = connections.find((c) => c.status === 'paused');
         if (paused) {
@@ -204,8 +228,20 @@ export class RPCRouter {
           },
         };
       }
-      // Use the first connected account
-      (params as any).__accountId = firstConnected.accountId;
+
+      if (connected.length > 1) {
+        const accounts = connected.map(c => ({
+          id: c.accountId,
+          label: (c.metadata as any)?.displayName as string | undefined,
+        }));
+        const text = renderMultipleAccounts(service, connector.name, method, accounts);
+        return {
+          error: { code: 'invalid_request', message: 'Multiple accounts available, specify --account', text },
+        };
+      }
+
+      // Use the single connected account
+      (params as any).__accountId = connected[0].accountId;
     }
 
     const effectiveAccountId = accountId || (params as any).__accountId;
@@ -321,8 +357,13 @@ export class RPCRouter {
     // Validate service exists
     const connector = this.connectorExecutor.getConnector(service);
     if (!connector) {
+      const available = (this.connectorExecutor.getHelp() as ServiceHelp[]).map(s => ({
+        service: s.service,
+        summary: s.summary,
+      }));
+      const text = renderUnknownService(service, available);
       return {
-        error: { code: 'not_found', message: `Unknown service: ${service}` },
+        error: { code: 'not_found', message: `Unknown service: ${service}`, text },
       };
     }
 
@@ -337,8 +378,9 @@ export class RPCRouter {
     // Validate method exists
     const methodDef = connector.methods.find((m) => m.name === method);
     if (!methodDef) {
+      const text = renderUnknownMethod(service, method, connector.methods);
       return {
-        error: { code: 'not_found', message: `Unknown method: ${service}.${method}` },
+        error: { code: 'not_found', message: `Unknown method: ${service}.${method}`, text },
       };
     }
 

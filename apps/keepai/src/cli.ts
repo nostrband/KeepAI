@@ -197,7 +197,11 @@ program
 
 function handleError(err: unknown): never {
   if (err instanceof KeepAIError) {
-    console.error(`Error: ${err.message}`);
+    if (err.text) {
+      console.error(err.text);
+    } else {
+      console.error(`Error: ${err.message}`);
+    }
     process.exit(err.exitCode);
   }
 

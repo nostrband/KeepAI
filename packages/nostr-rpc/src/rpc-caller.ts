@@ -147,10 +147,12 @@ export class RPCCaller {
 
 export class RPCCallError extends Error {
   readonly code: string;
+  readonly text?: string;
 
   constructor(rpcError: RPCError) {
     super(rpcError.message);
     this.name = 'RPCCallError';
     this.code = rpcError.code;
+    this.text = rpcError.text;
   }
 }

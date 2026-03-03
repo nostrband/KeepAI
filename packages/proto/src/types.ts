@@ -23,6 +23,7 @@ export interface RPCResponse {
 export interface RPCError {
   code: RPCErrorCode;
   message: string;
+  text?: string;
 }
 
 export type RPCErrorCode =

@@ -1,5 +1,5 @@
-// NIP-44 v3 encryption — copied from ../keep.ai/packages/sync/src/nostr/nip44-v3.ts
-// Changes from standard NIP-44:
+// NIP-44 v3 encryption
+// Changes from standard NIP-44 v2 (https://github.com/nostr-protocol/nips/blob/master/44.md):
 // - 4 bytes for payload size, instead of 2
 // - version 0x3
 // - max payload size 0xfffff instead of 0xffff
@@ -9,7 +9,7 @@ import { equalBytes } from '@noble/ciphers/utils';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { extract as hkdf_extract, expand as hkdf_expand } from '@noble/hashes/hkdf';
 import { hmac } from '@noble/hashes/hmac';
-import { sha256 } from '@noble/hashes/sha256';
+import { sha256 } from '@noble/hashes/sha2';
 import { concatBytes, randomBytes } from '@noble/hashes/utils';
 import { base64 } from '@scure/base';
 import { utf8Decoder, utf8Encoder } from 'nostr-tools/utils';
