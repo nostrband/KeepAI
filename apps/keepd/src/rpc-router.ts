@@ -13,8 +13,9 @@
  */
 
 import createDebug from 'debug';
-import type { RPCRequest, RPCError, Agent } from '@keepai/proto';
+import type { RPCRequest, RPCError, Agent, ServiceHelp } from '@keepai/proto';
 import { PROTOCOL_VERSION, SOFTWARE_VERSION } from '@keepai/proto';
+import { renderServiceList, renderServiceMethods, renderMethodDetail } from './help-renderer.js';
 
 const log = createDebug('keepai:router');
 import { AuthError, isClassifiedError } from '@keepai/proto';
@@ -307,26 +308,48 @@ export class RPCRouter {
     request: RPCRequest
   ): Promise<{ result?: unknown; error?: RPCError }> {
     const service = request.service;
-    if (service) {
-      try {
-        const help = this.connectorExecutor.getHelp(service);
-        await this.enrichHelpWithAccounts([help]);
-        return { result: help };
-      } catch {
-        return {
-          error: { code: 'not_found', message: `Unknown service: ${service}` },
-        };
-      }
+    const params = request.params as Record<string, unknown> | undefined;
+    const method = params?.method as string | undefined;
+
+    if (!service) {
+      // Level 1: list all services
+      const help = this.connectorExecutor.getHelp() as ServiceHelp[];
+      await this.enrichHelpWithAccounts(help);
+      return { result: { text: renderServiceList(help) } };
     }
 
-    // List all services
-    const help = this.connectorExecutor.getHelp() as import('@keepai/proto').ServiceHelp[];
-    await this.enrichHelpWithAccounts(help);
-    return { result: help };
+    // Validate service exists
+    const connector = this.connectorExecutor.getConnector(service);
+    if (!connector) {
+      return {
+        error: { code: 'not_found', message: `Unknown service: ${service}` },
+      };
+    }
+
+    const svcHelp = connector.help(method);
+    await this.enrichHelpWithAccounts([svcHelp]);
+
+    if (!method) {
+      // Level 2: service methods
+      return { result: { text: renderServiceMethods(svcHelp) } };
+    }
+
+    // Validate method exists
+    const methodDef = connector.methods.find((m) => m.name === method);
+    if (!methodDef) {
+      return {
+        error: { code: 'not_found', message: `Unknown method: ${service}.${method}` },
+      };
+    }
+
+    // Level 3: method detail — need full service help for rendering context
+    const fullHelp = connector.help();
+    await this.enrichHelpWithAccounts([fullHelp]);
+    return { result: { text: renderMethodDetail(fullHelp, method) } };
   }
 
   private async enrichHelpWithAccounts(
-    services: import('@keepai/proto').ServiceHelp[]
+    services: ServiceHelp[]
   ): Promise<void> {
     for (const svc of services) {
       const connections = await this.connectionManager.listConnectionsByService(svc.service);

@@ -4,7 +4,7 @@
  * Commands:
  *   init <code>       Pair with KeepAI daemon
  *   run <svc> <method> Execute a service operation
- *   help [service]    List services/methods or detailed help
+ *   help [svc] [method] Explore services, methods, or method details
  *   status            Check connection status
  *   disconnect        Remove pairing and local identity
  */
@@ -13,7 +13,6 @@ import { Command } from 'commander';
 import { KeepAI, KeepAIError } from './sdk.js';
 import { isPaired, getConfigDir } from './storage.js';
 import { EXIT_CODES } from '@keepai/proto';
-import type { ServiceHelp } from '@keepai/proto';
 
 const program = new Command();
 
@@ -45,12 +44,8 @@ program
 
       console.log('✓ Paired successfully\n');
 
-      if (result.services.length > 0) {
-        console.log('Available services:');
-        for (const svc of result.services) {
-          const accounts = svc.accounts?.map((a) => a.id).join(', ') ?? 'none';
-          console.log(`  ${svc.service} (${accounts}) — ${svc.methods.length} methods`);
-        }
+      if (result.helpText) {
+        console.log(result.helpText);
       }
 
       console.log(`\nConfig saved to ${configDir}/`);
@@ -132,23 +127,13 @@ program
 // --- help ---
 
 program
-  .command('help [service]')
-  .description('List available services and methods')
-  .action(async (service?: string) => {
+  .command('help [service] [method]')
+  .description('Explore available services and methods')
+  .action(async (service?: string, method?: string) => {
     try {
       const keep = new KeepAI();
-      const result = await keep.help(service);
-
-      if (Array.isArray(result)) {
-        // All services
-        console.log('Available services:\n');
-        for (const svc of result) {
-          printServiceHelp(svc);
-        }
-      } else {
-        printServiceHelp(result as ServiceHelp);
-      }
-
+      const result = await keep.help(service, method);
+      console.log(result.text);
       keep.close();
     } catch (err) {
       handleError(err);
@@ -173,12 +158,9 @@ program
 
       console.log('Daemon: connected');
 
-      if (result.services && result.services.length > 0) {
-        console.log('\nServices:');
-        for (const svc of result.services) {
-          const accounts = svc.accounts?.map((a) => a.id).join(', ') ?? 'none';
-          console.log(`  ${svc.service}: ${accounts}`);
-        }
+      if (result.helpText) {
+        console.log('');
+        console.log(result.helpText);
       }
 
       keep.close();
@@ -212,20 +194,6 @@ program
   });
 
 // --- helpers ---
-
-function printServiceHelp(svc: ServiceHelp): void {
-  const accounts = svc.accounts?.map((a) => a.label ?? a.id).join(', ');
-  console.log(`  ${svc.name ?? svc.service}`);
-  if (accounts) {
-    console.log(`    accounts: ${accounts}`);
-  }
-
-  for (const m of svc.methods) {
-    const padded = m.name.padEnd(28);
-    console.log(`    ${padded}${m.description}`);
-  }
-  console.log('');
-}
 
 function handleError(err: unknown): never {
   if (err instanceof KeepAIError) {

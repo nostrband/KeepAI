@@ -20,7 +20,6 @@ import {
 import { EXIT_CODES } from '@keepai/proto';
 
 const log = createDebug('keepai:sdk');
-import type { ServiceHelp } from '@keepai/proto';
 import {
   loadIdentity,
   loadConfig,
@@ -44,7 +43,7 @@ export interface KeepAIOptions {
 
 export interface StatusResult {
   paired: boolean;
-  services?: ServiceHelp[];
+  helpText?: string;
 }
 
 export class KeepAIError extends Error {
@@ -123,7 +122,7 @@ export class KeepAI extends EventEmitter {
   static async init(
     pairingCode: string,
     options: { configDir?: string; timeout?: number } = {}
-  ): Promise<{ services: ServiceHelp[] }> {
+  ): Promise<{ helpText: string }> {
     const configDir = options.configDir ?? getConfigDir();
     const timeout = options.timeout ?? 30_000;
 
@@ -175,20 +174,20 @@ export class KeepAI extends EventEmitter {
       );
       log('saved config to %s', configDir);
 
-      // Fetch available services
-      let services: ServiceHelp[] = [];
+      // Fetch available services help text
+      let helpText = '';
       try {
         log('fetching available services...');
         const helpResult = await caller.call('help', {});
-        if (Array.isArray(helpResult)) {
-          services = helpResult as ServiceHelp[];
+        if (helpResult && typeof helpResult === 'object' && 'text' in (helpResult as any)) {
+          helpText = (helpResult as any).text;
         }
-        log('got %d service(s)', services.length);
+        log('got help text (%d chars)', helpText.length);
       } catch (err) {
         log('help fetch failed (non-fatal): %s', err);
       }
 
-      return { services };
+      return { helpText };
     } finally {
       caller.close();
     }
@@ -206,10 +205,12 @@ export class KeepAI extends EventEmitter {
       const result = await this.getCaller().call('ping', {});
       if (result) {
         this.emit('connected');
-        // Also fetch services
+        // Also fetch services help text
         const helpResult = await this.getCaller().call('help', {});
-        const services = Array.isArray(helpResult) ? (helpResult as ServiceHelp[]) : [];
-        return { paired: true, services };
+        const helpText = helpResult && typeof helpResult === 'object' && 'text' in (helpResult as any)
+          ? (helpResult as any).text
+          : '';
+        return { paired: true, helpText };
       }
     } catch {
       return { paired: true }; // Paired but daemon unreachable
@@ -219,18 +220,20 @@ export class KeepAI extends EventEmitter {
   }
 
   /**
-   * Get help for all services or a specific service.
+   * Get help text for services or a specific method.
    */
-  async help(service?: string): Promise<ServiceHelp | ServiceHelp[]> {
+  async help(service?: string, method?: string): Promise<{ text: string }> {
     const caller = this.getCaller();
-
-    if (service) {
-      const result = await caller.call('help', { service });
-      return result as ServiceHelp;
+    const result = await caller.call('help', {
+      service,
+      params: method ? { method } : undefined,
+    });
+    // Handle both new format ({ text }) and old server format (ServiceHelp)
+    if (result && typeof result === 'object' && 'text' in (result as any)) {
+      return result as { text: string };
     }
-
-    const result = await caller.call('help');
-    return result as ServiceHelp[];
+    // Fallback for old servers: return raw JSON
+    return { text: JSON.stringify(result, null, 2) };
   }
 
   /**
