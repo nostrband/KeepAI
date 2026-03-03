@@ -65,6 +65,13 @@ export class ConnectionStore {
     return row ? rowToConnection(row) : null;
   }
 
+  getByServiceAndAccount(service: string, accountId: string): Connection | null {
+    const row = this.db
+      .prepare('SELECT * FROM connections WHERE service = ? AND account_id = ?')
+      .get(service, accountId) as ConnectionRow | undefined;
+    return row ? rowToConnection(row) : null;
+  }
+
   listByService(service: string): Connection[] {
     const rows = this.db
       .prepare('SELECT * FROM connections WHERE service = ? ORDER BY created_at DESC')
@@ -77,6 +84,14 @@ export class ConnectionStore {
       .prepare('SELECT * FROM connections ORDER BY created_at DESC')
       .all() as ConnectionRow[];
     return rows.map(rowToConnection);
+  }
+
+  pause(id: string): void {
+    this.db.prepare("UPDATE connections SET status = 'paused' WHERE id = ? AND status = 'connected'").run(id);
+  }
+
+  unpause(id: string): void {
+    this.db.prepare("UPDATE connections SET status = 'connected' WHERE id = ? AND status = 'paused'").run(id);
   }
 
   updateStatus(id: string, status: string, error?: string): void {

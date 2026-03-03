@@ -61,8 +61,8 @@ export class RPCRouter {
   getAgentKeys(keepdPubkey: string): AgentKeys | null {
     // Check paired agents first
     const agent = this.agentManager.getAgentByKeepdPubkey(keepdPubkey);
-    if (agent && agent.status === 'paired') {
-      log('getAgentKeys: found paired agent %s for pubkey:%s', agent.name, keepdPubkey);
+    if (agent && (agent.status === 'paired' || agent.status === 'paused')) {
+      log('getAgentKeys: found %s agent %s for pubkey:%s', agent.status, agent.name, keepdPubkey);
       return {
         keepdPubkey: agent.keepdPubkey,
         keepdPrivkey: agent.keepdPrivkey,
@@ -106,11 +106,18 @@ export class RPCRouter {
         return this.handleHelp(request);
     }
 
-    // Service methods require a paired agent
+    // Service methods require a paired (or paused) agent
     const agent = this.agentManager.getAgentByKeepdPubkey(agentKeys.keepdPubkey);
-    if (!agent || agent.status !== 'paired') {
+    if (!agent || agent.status === 'revoked') {
       return {
         error: { code: 'not_paired', message: 'Agent not paired' },
+      };
+    }
+
+    // Paused agents get immediate rejection
+    if (agent.status === 'paused') {
+      return {
+        error: { code: 'permission_denied', message: 'Agent is paused' },
       };
     }
 
@@ -157,14 +164,20 @@ export class RPCRouter {
     // Validate account is connected
     if (accountId) {
       const connections = await this.connectionManager.listConnectionsByService(service);
-      const connected = connections.find(
-        (c) => c.accountId === accountId && c.status === 'connected'
-      );
-      if (!connected) {
+      const match = connections.find((c) => c.accountId === accountId);
+      if (!match || (match.status !== 'connected' && match.status !== 'paused')) {
         return {
           error: {
             code: 'not_connected',
             message: `Account ${accountId} is not connected for ${service}`,
+          },
+        };
+      }
+      if (match.status === 'paused') {
+        return {
+          error: {
+            code: 'permission_denied',
+            message: `App ${service} (${accountId}) is paused`,
           },
         };
       }
@@ -173,6 +186,16 @@ export class RPCRouter {
       const connections = await this.connectionManager.listConnectionsByService(service);
       const firstConnected = connections.find((c) => c.status === 'connected');
       if (!firstConnected) {
+        // Check if all accounts are paused
+        const paused = connections.find((c) => c.status === 'paused');
+        if (paused) {
+          return {
+            error: {
+              code: 'permission_denied',
+              message: `App ${service} is paused`,
+            },
+          };
+        }
         return {
           error: {
             code: 'not_connected',

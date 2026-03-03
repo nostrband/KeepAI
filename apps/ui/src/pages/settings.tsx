@@ -35,9 +35,9 @@ export function SettingsPage() {
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Status</h2>
           <dl className="grid grid-cols-2 gap-y-2 text-sm">
             <dt className="text-muted-foreground">Agents</dt>
-            <dd>{status.agents ?? 0}</dd>
+            <dd>{status.agents?.paired ?? 0} / {status.agents?.total ?? 0}</dd>
             <dt className="text-muted-foreground">Apps</dt>
-            <dd>{status.connections ?? 0}</dd>
+            <dd>{status.connections?.connected ?? 0} / {status.connections?.total ?? 0}</dd>
             <dt className="text-muted-foreground">Pending Approvals</dt>
             <dd>{status.pendingApprovals ?? 0}</dd>
             <dt className="text-muted-foreground">SSE Clients</dt>

@@ -50,6 +50,12 @@ export const api = {
   disconnectService: (service: string, accountId: string) =>
     request<void>(`/connections/${service}/${encodeURIComponent(accountId)}`, { method: 'DELETE' }),
 
+  pauseConnection: (service: string, accountId: string) =>
+    request<void>(`/connections/${service}/${encodeURIComponent(accountId)}/pause`, { method: 'POST' }),
+
+  unpauseConnection: (service: string, accountId: string) =>
+    request<void>(`/connections/${service}/${encodeURIComponent(accountId)}/unpause`, { method: 'POST' }),
+
   checkConnection: (service: string, accountId: string) =>
     request<{ ok: boolean }>(`/connections/${service}/${encodeURIComponent(accountId)}/check`, { method: 'POST' }),
 
@@ -65,6 +71,12 @@ export const api = {
 
   revokeAgent: (agentId: string) =>
     request<void>(`/agents/${agentId}`, { method: 'DELETE' }),
+
+  pauseAgent: (agentId: string) =>
+    request<void>(`/agents/${agentId}/pause`, { method: 'POST' }),
+
+  unpauseAgent: (agentId: string) =>
+    request<void>(`/agents/${agentId}/unpause`, { method: 'POST' }),
 
   cancelPairing: (pairingId: string) =>
     request<void>(`/agents/pairings/${pairingId}`, { method: 'DELETE' }),

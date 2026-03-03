@@ -126,6 +126,46 @@ export async function registerConnectionRoutes(
     }
   );
 
+  // Pause connection
+  app.post<{ Params: { service: string; accountId: string } }>(
+    '/api/connections/:service/:accountId/pause',
+    async (request, reply) => {
+      const { service, accountId } = request.params;
+      const connection = await connectionManager.getConnection({ service, accountId });
+      if (!connection) {
+        reply.status(404);
+        return { error: 'Connection not found' };
+      }
+      if (connection.status !== 'connected') {
+        reply.status(400);
+        return { error: `Cannot pause connection with status "${connection.status}"` };
+      }
+      await connectionManager.pauseConnection({ service, accountId });
+      sse?.broadcast('connection_updated', { service, accountId, status: 'paused' });
+      return { success: true };
+    }
+  );
+
+  // Unpause connection
+  app.post<{ Params: { service: string; accountId: string } }>(
+    '/api/connections/:service/:accountId/unpause',
+    async (request, reply) => {
+      const { service, accountId } = request.params;
+      const connection = await connectionManager.getConnection({ service, accountId });
+      if (!connection) {
+        reply.status(404);
+        return { error: 'Connection not found' };
+      }
+      if (connection.status !== 'paused') {
+        reply.status(400);
+        return { error: `Cannot unpause connection with status "${connection.status}"` };
+      }
+      await connectionManager.unpauseConnection({ service, accountId });
+      sse?.broadcast('connection_updated', { service, accountId, status: 'connected' });
+      return { success: true };
+    }
+  );
+
   // Check connection (test by making a live API call)
   app.post<{ Params: { service: string; accountId: string } }>(
     '/api/connections/:service/:accountId/check',

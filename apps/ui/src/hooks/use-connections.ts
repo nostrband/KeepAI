@@ -43,6 +43,30 @@ export function useConnection(service: string, accountId: string) {
   return { data: connection, ...rest };
 }
 
+export function usePauseConnection() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ service, accountId }: { service: string; accountId: string }) =>
+      api.pauseConnection(service, accountId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: qk.connections() });
+      toast.success('App paused');
+    },
+  });
+}
+
+export function useUnpauseConnection() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ service, accountId }: { service: string; accountId: string }) =>
+      api.unpauseConnection(service, accountId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: qk.connections() });
+      toast.success('App resumed');
+    },
+  });
+}
+
 export function useCheckConnection() {
   return useMutation({
     mutationFn: ({ service, accountId }: { service: string; accountId: string }) =>

@@ -99,7 +99,7 @@ export function DashboardPage() {
                   <div className="text-sm font-medium truncate">{conn.accountId}</div>
                   <div className="text-xs text-muted-foreground">{serviceName(conn.service)}</div>
                 </div>
-                <StatusBadge status={conn.status === 'connected' ? 'active' : 'error'} />
+                <StatusBadge status={conn.status === 'connected' ? 'active' : conn.status === 'paused' ? 'paused' : 'error'} />
               </Link>
             ))}
           </div>
@@ -154,7 +154,7 @@ export function DashboardPage() {
                     {agent.lastSeenAt ? `Last seen ${new Date(agent.lastSeenAt).toLocaleString()}` : 'Never connected'}
                   </div>
                 </div>
-                <StatusBadge status={agent.status === 'revoked' ? 'revoked' : 'active'} />
+                <StatusBadge status={agent.status === 'revoked' ? 'revoked' : agent.status === 'paused' ? 'paused' : 'active'} />
               </Link>
             ))}
           </div>

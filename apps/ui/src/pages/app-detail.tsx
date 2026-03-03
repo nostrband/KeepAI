@@ -1,6 +1,6 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Shield, Trash2, Activity, RefreshCw, Bot } from 'lucide-react';
-import { useConnection, useDisconnectService, useCheckConnection } from '../hooks/use-connections';
+import { Shield, Trash2, Activity, RefreshCw, Bot, Pause, Play } from 'lucide-react';
+import { useConnection, useDisconnectService, useCheckConnection, usePauseConnection, useUnpauseConnection } from '../hooks/use-connections';
 import { useAgents } from '../hooks/use-agents';
 import { useConnectionPolicies } from '../hooks/use-policies';
 import { useLogs } from '../hooks/use-logs';
@@ -20,6 +20,8 @@ export function AppDetailPage() {
   );
   const disconnectMutation = useDisconnectService();
   const checkMutation = useCheckConnection();
+  const pauseMutation = usePauseConnection();
+  const unpauseMutation = useUnpauseConnection();
 
   if (isLoading) return <div className="text-sm text-muted-foreground">Loading...</div>;
   if (!connection) return <div className="text-sm text-muted-foreground">App not found.</div>;
@@ -29,6 +31,18 @@ export function AppDetailPage() {
     try {
       await disconnectMutation.mutateAsync({ service: service!, accountId: decodedAccountId });
       navigate('/apps');
+    } catch {
+      // error toast shown by global handler
+    }
+  };
+
+  const handlePauseToggle = async () => {
+    try {
+      if (connection.status === 'paused') {
+        await unpauseMutation.mutateAsync({ service: service!, accountId: decodedAccountId });
+      } else {
+        await pauseMutation.mutateAsync({ service: service!, accountId: decodedAccountId });
+      }
     } catch {
       // error toast shown by global handler
     }
@@ -52,18 +66,37 @@ export function AppDetailPage() {
           <ServiceIcon service={service!} className="w-12 h-12" />
           <div>
             <div className="font-medium">{decodedAccountId}</div>
-            <StatusBadge status={connection.status === 'connected' ? 'active' : 'error'} />
+            <StatusBadge status={connection.status === 'connected' ? 'active' : connection.status === 'paused' ? 'paused' : 'error'} />
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => checkMutation.mutate({ service: service!, accountId: decodedAccountId })}
-            disabled={checkMutation.isPending}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md border border-border hover:bg-accent disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${checkMutation.isPending ? 'animate-spin' : ''}`} />
-            Test connection
-          </button>
+          {(connection.status === 'connected' || connection.status === 'paused') && (
+            <button
+              onClick={handlePauseToggle}
+              disabled={pauseMutation.isPending || unpauseMutation.isPending}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md border disabled:opacity-50 ${
+                connection.status === 'paused'
+                  ? 'text-green-700 border-green-300 hover:bg-green-50'
+                  : 'text-yellow-700 border-yellow-300 hover:bg-yellow-50'
+              }`}
+            >
+              {connection.status === 'paused' ? (
+                <><Play className="w-4 h-4" /> Resume</>
+              ) : (
+                <><Pause className="w-4 h-4" /> Pause</>
+              )}
+            </button>
+          )}
+          {connection.status !== 'paused' && (
+            <button
+              onClick={() => checkMutation.mutate({ service: service!, accountId: decodedAccountId })}
+              disabled={checkMutation.isPending}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md border border-border hover:bg-accent disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${checkMutation.isPending ? 'animate-spin' : ''}`} />
+              Test connection
+            </button>
+          )}
           <button
             onClick={handleDisconnect}
             disabled={disconnectMutation.isPending}

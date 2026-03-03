@@ -121,7 +121,7 @@ export interface Connector {
 
 // --- Database Row Types ---
 
-export type AgentStatus = 'paired' | 'revoked';
+export type AgentStatus = 'paired' | 'paused' | 'revoked';
 
 export interface Agent {
   id: string;
@@ -145,7 +145,7 @@ export interface PendingPairing {
   createdAt: number;
 }
 
-export type ConnectionStatus = 'connected' | 'expired' | 'error';
+export type ConnectionStatus = 'connected' | 'paused' | 'expired' | 'error';
 
 export interface Connection {
   id: string;

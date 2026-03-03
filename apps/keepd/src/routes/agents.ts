@@ -90,6 +90,52 @@ export async function registerAgentRoutes(
     }
   );
 
+  // Pause agent
+  app.post<{ Params: { agentId: string } }>(
+    '/api/agents/:agentId/pause',
+    async (request, reply) => {
+      const agent = agentManager.getAgent(request.params.agentId);
+      if (!agent) {
+        reply.status(404);
+        return { error: 'Agent not found' };
+      }
+      if (agent.status !== 'paired') {
+        reply.status(400);
+        return { error: `Cannot pause agent with status "${agent.status}"` };
+      }
+      agentManager.pauseAgent(agent.id);
+      sse?.broadcast('agent_disconnected', {
+        id: agent.id,
+        name: agent.name,
+        agentPubkey: agent.agentPubkey,
+      });
+      return { success: true };
+    }
+  );
+
+  // Unpause agent
+  app.post<{ Params: { agentId: string } }>(
+    '/api/agents/:agentId/unpause',
+    async (request, reply) => {
+      const agent = agentManager.getAgent(request.params.agentId);
+      if (!agent) {
+        reply.status(404);
+        return { error: 'Agent not found' };
+      }
+      if (agent.status !== 'paused') {
+        reply.status(400);
+        return { error: `Cannot unpause agent with status "${agent.status}"` };
+      }
+      agentManager.unpauseAgent(agent.id);
+      sse?.broadcast('agent_connected', {
+        id: agent.id,
+        name: agent.name,
+        agentPubkey: agent.agentPubkey,
+      });
+      return { success: true };
+    }
+  );
+
   // Revoke agent
   app.delete<{ Params: { agentId: string } }>(
     '/api/agents/:agentId',

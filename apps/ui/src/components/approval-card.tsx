@@ -62,7 +62,7 @@ export function ApprovalCard({ item, onApprove, onDeny, isApproving, isDenying }
             className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
           >
             <Check className="w-3.5 h-3.5" />
-            Approve
+            Allow
           </button>
           <button
             onClick={() => onDeny(item.id)}

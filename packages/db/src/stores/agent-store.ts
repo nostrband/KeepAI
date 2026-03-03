@@ -94,6 +94,14 @@ export class AgentStore {
       .run(id);
   }
 
+  pause(id: string): void {
+    this.db.prepare("UPDATE agents SET status = 'paused' WHERE id = ? AND status = 'paired'").run(id);
+  }
+
+  unpause(id: string): void {
+    this.db.prepare("UPDATE agents SET status = 'paired' WHERE id = ? AND status = 'paused'").run(id);
+  }
+
   revoke(id: string): void {
     this.db.prepare("UPDATE agents SET status = 'revoked' WHERE id = ?").run(id);
   }

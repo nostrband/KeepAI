@@ -35,12 +35,37 @@ export function useCancelPairing() {
   });
 }
 
+export function usePauseAgent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (agentId: string) => api.pauseAgent(agentId),
+    onSuccess: (_data, agentId) => {
+      queryClient.invalidateQueries({ queryKey: qk.agents() });
+      queryClient.invalidateQueries({ queryKey: qk.agent(agentId) });
+      toast.success('Agent paused');
+    },
+  });
+}
+
+export function useUnpauseAgent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (agentId: string) => api.unpauseAgent(agentId),
+    onSuccess: (_data, agentId) => {
+      queryClient.invalidateQueries({ queryKey: qk.agents() });
+      queryClient.invalidateQueries({ queryKey: qk.agent(agentId) });
+      toast.success('Agent resumed');
+    },
+  });
+}
+
 export function useRevokeAgent() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (agentId: string) => api.revokeAgent(agentId),
-    onSuccess: () => {
+    onSuccess: (_data, agentId) => {
       queryClient.invalidateQueries({ queryKey: qk.agents() });
+      queryClient.invalidateQueries({ queryKey: qk.agent(agentId) });
       toast.success('Agent revoked');
     },
   });

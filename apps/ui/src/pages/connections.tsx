@@ -23,7 +23,7 @@ export function ConnectionsPage() {
           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
         >
           <Plus className="w-4 h-4" />
-          Connect app
+          Add app
         </button>
       </div>
 
@@ -43,7 +43,7 @@ export function ConnectionsPage() {
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <Plus className="w-4 h-4" />
-              Connect an app
+              Add an app
             </button>
           }
         />
@@ -63,7 +63,7 @@ export function ConnectionsPage() {
                   {conn.lastUsedAt && ` — last used ${new Date(conn.lastUsedAt).toLocaleString()}`}
                 </div>
               </div>
-              <StatusBadge status={conn.status === 'connected' ? 'active' : 'error'} />
+              <StatusBadge status={conn.status === 'connected' ? 'active' : conn.status === 'paused' ? 'paused' : 'error'} />
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); checkMutation.mutate({ service: conn.service, accountId: conn.accountId }); }}
                 disabled={checkMutation.isPending}

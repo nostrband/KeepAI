@@ -46,7 +46,7 @@ export interface OAuthCredentials {
   metadata?: Record<string, unknown>;
 }
 
-export type ConnectionStatus = 'connected' | 'expired' | 'error' | 'disconnected';
+export type ConnectionStatus = 'connected' | 'paused' | 'expired' | 'error' | 'disconnected';
 
 export interface Connection {
   id: string;

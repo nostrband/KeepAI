@@ -33,8 +33,11 @@ import * as path from 'path';
 import { createServer } from '@keepai/daemon';
 import type { KeepServer } from '@keepai/daemon';
 
+// Remember whether user explicitly set DEBUG before we touch it
+const userSetDebug = !!process.env.DEBUG;
+
 // Enable all keepai debug logs by default in electron
-if (!process.env.DEBUG) {
+if (!userSetDebug) {
   createDebug.enable('keepai:*');
 }
 
@@ -288,16 +291,30 @@ app.whenReady().then(async () => {
     // 2. Create window
     createWindow();
 
-    // 3. Create tray
+    // 3. Application menu: hide entirely unless DEBUG is set
+    if (userSetDebug) {
+      const defaultMenu = Menu.getApplicationMenu();
+      if (defaultMenu) {
+        const filtered = defaultMenu.items.filter((item) => item.role !== 'help');
+        Menu.setApplicationMenu(Menu.buildFromTemplate(
+          filtered.map((item) => ({ role: item.role as any, label: item.label, submenu: item.submenu as any }))
+        ));
+      }
+    } else {
+      Menu.setApplicationMenu(null);
+      mainWindow?.removeMenu();
+    }
+
+    // 4. Create tray
     createTray();
 
-    // 4. SSE listener for notifications
+    // 5. SSE listener for notifications
     sseCleanup = setupSSEListener();
 
-    // 5. Setup IPC
+    // 6. Setup IPC
     setupIPC();
 
-    // 6. Hide macOS dock icon (tray-only app)
+    // 7. Hide macOS dock icon
     if (process.platform === 'darwin') {
       app.dock?.hide();
     }

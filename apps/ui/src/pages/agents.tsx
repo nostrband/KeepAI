@@ -62,7 +62,7 @@ export function AgentsPage() {
                   {agent.lastSeenAt && ` — last seen ${new Date(agent.lastSeenAt).toLocaleString()}`}
                 </div>
               </div>
-              <StatusBadge status={agent.status === 'revoked' ? 'revoked' : 'active'} />
+              <StatusBadge status={agent.status === 'revoked' ? 'revoked' : agent.status === 'paused' ? 'paused' : 'active'} />
             </Link>
           ))}
         </div>

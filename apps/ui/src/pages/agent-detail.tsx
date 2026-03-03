@@ -1,6 +1,6 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Shield, Trash2, Activity } from 'lucide-react';
-import { useAgent, useRevokeAgent } from '../hooks/use-agents';
+import { Shield, Trash2, Activity, Pause, Play } from 'lucide-react';
+import { useAgent, useRevokeAgent, usePauseAgent, useUnpauseAgent } from '../hooks/use-agents';
 import { usePolicies } from '../hooks/use-policies';
 import { useLogs } from '../hooks/use-logs';
 import { StatusBadge } from '../components/status-badge';
@@ -18,6 +18,8 @@ export function AgentDetailPage() {
     { enabled: !!agentName }
   );
   const revokeMutation = useRevokeAgent();
+  const pauseMutation = usePauseAgent();
+  const unpauseMutation = useUnpauseAgent();
 
   if (isLoading) return <div className="text-sm text-muted-foreground">Loading...</div>;
   if (!agent) return <div className="text-sm text-muted-foreground">Agent not found.</div>;
@@ -27,6 +29,18 @@ export function AgentDetailPage() {
     try {
       await revokeMutation.mutateAsync(agentId!);
       navigate('/agents');
+    } catch {
+      // error toast shown by global mutation handler
+    }
+  };
+
+  const handlePauseToggle = async () => {
+    try {
+      if (agent.status === 'paused') {
+        await unpauseMutation.mutateAsync(agentId!);
+      } else {
+        await pauseMutation.mutateAsync(agentId!);
+      }
     } catch {
       // error toast shown by global mutation handler
     }
@@ -44,17 +58,34 @@ export function AgentDetailPage() {
           <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-lg font-semibold">
             {(agent.name || '?')[0].toUpperCase()}
           </div>
-          <StatusBadge status={agent.status === 'revoked' ? 'revoked' : 'active'} />
+          <StatusBadge status={agent.status === 'revoked' ? 'revoked' : agent.status === 'paused' ? 'paused' : 'active'} />
         </div>
         {agent.status !== 'revoked' && (
-          <button
-            onClick={handleRevoke}
-            disabled={revokeMutation.isPending}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md text-destructive border border-destructive/30 hover:bg-destructive/10 disabled:opacity-50"
-          >
-            <Trash2 className="w-4 h-4" />
-            Disconnect
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handlePauseToggle}
+              disabled={pauseMutation.isPending || unpauseMutation.isPending}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md border disabled:opacity-50 ${
+                agent.status === 'paused'
+                  ? 'text-green-700 border-green-300 hover:bg-green-50'
+                  : 'text-yellow-700 border-yellow-300 hover:bg-yellow-50'
+              }`}
+            >
+              {agent.status === 'paused' ? (
+                <><Play className="w-4 h-4" /> Resume</>
+              ) : (
+                <><Pause className="w-4 h-4" /> Pause</>
+              )}
+            </button>
+            <button
+              onClick={handleRevoke}
+              disabled={revokeMutation.isPending}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md text-destructive border border-destructive/30 hover:bg-destructive/10 disabled:opacity-50"
+            >
+              <Trash2 className="w-4 h-4" />
+              Disconnect
+            </button>
+          </div>
         )}
       </div>
 

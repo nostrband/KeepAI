@@ -134,6 +134,16 @@ export class AgentManager {
     return this.db.pairings.list();
   }
 
+  pauseAgent(agentId: string): void {
+    this.db.agents.pause(agentId);
+    log('paused agent id:%s', agentId);
+  }
+
+  unpauseAgent(agentId: string): void {
+    this.db.agents.unpause(agentId);
+    log('unpaused agent id:%s', agentId);
+  }
+
   revokeAgent(agentId: string): void {
     this.db.agents.revoke(agentId);
   }
@@ -160,7 +170,7 @@ export class AgentManager {
   getActiveKeepdPubkeys(): string[] {
     const agentPubkeys = this.db.agents
       .list()
-      .filter((a) => a.status === 'paired')
+      .filter((a) => a.status === 'paired' || a.status === 'paused')
       .map((a) => a.keepdPubkey);
 
     const pairingPubkeys = this.db.pairings

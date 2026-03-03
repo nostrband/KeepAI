@@ -259,6 +259,22 @@ export class ConnectionManager {
     await this.db.deleteConnection(connectionId);
   }
 
+  async pauseConnection(id: ConnectionId): Promise<void> {
+    const connectionId = `${id.service}:${id.accountId}`;
+    const connection = await this.db.getConnection(connectionId);
+    if (connection && connection.status === 'connected') {
+      await this.db.upsertConnection({ ...connection, status: 'paused' });
+    }
+  }
+
+  async unpauseConnection(id: ConnectionId): Promise<void> {
+    const connectionId = `${id.service}:${id.accountId}`;
+    const connection = await this.db.getConnection(connectionId);
+    if (connection && connection.status === 'paused') {
+      await this.db.upsertConnection({ ...connection, status: 'connected' });
+    }
+  }
+
   async updateLabel(id: ConnectionId, label: string): Promise<void> {
     const connection = await this.db.getConnection(
       `${id.service}:${id.accountId}`
