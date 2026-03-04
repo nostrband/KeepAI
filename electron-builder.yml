@@ -34,8 +34,6 @@ mac:
   icon: apps/electron/build/icon.png
   hardenedRuntime: true
   gatekeeperAssess: false
-  entitlements: entitlements.mac.plist
-  entitlementsInherit: entitlements.mac.plist
   notarize: true
 
 linux:
