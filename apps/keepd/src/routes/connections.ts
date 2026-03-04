@@ -112,16 +112,17 @@ export async function registerConnectionRoutes(
   }>('/api/connections/:service/callback', async (request, reply) => {
     const { service } = request.params;
     const { code, state, error } = request.query;
+    const serviceName = connectionManager.getService(service)?.name ?? service;
 
     if (error) {
       reply.type('text/html');
-      return `<html><body><h2>Connection Failed</h2><p>${escapeHtml(error)}</p><p>You can close this window.</p></body></html>`;
+      return callbackPage(`Failed to connect to ${escapeHtml(serviceName)}`, `${escapeHtml(error)}<br/>You can close this window.`);
     }
 
     if (!code || !state) {
       reply.status(400);
       reply.type('text/html');
-      return '<html><body><h2>Invalid Request</h2><p>Missing code or state parameter.</p></body></html>';
+      return callbackPage(`Failed to connect to ${escapeHtml(serviceName)}`, 'Missing code or state parameter.');
     }
 
     const result = await connectionManager.completeOAuthFlow(
@@ -140,9 +141,9 @@ export async function registerConnectionRoutes(
       }
 
       sse?.broadcast('connection_updated', { service, action: 'connected' });
-      return `<html><body><h2>Connected!</h2><p>${escapeHtml(service)} account connected successfully.</p><p>You can close this window.</p><script>window.close();</script></body></html>`;
+      return callbackPage(`Connected to ${escapeHtml(serviceName)}`, 'You can close this window.', { autoClose: true });
     } else {
-      return `<html><body><h2>Connection Failed</h2><p>${escapeHtml(result.error || 'Unknown error')}</p><p>You can close this window.</p></body></html>`;
+      return callbackPage(`Failed to connect to ${escapeHtml(serviceName)}`, `${escapeHtml(result.error || 'Unknown error')}<br/>You can close this window.`);
     }
   });
 
@@ -238,4 +239,37 @@ function escapeHtml(str: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function callbackPage(title: string, message: string, { autoClose = false }: { autoClose?: boolean } = {}): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>KeepAI – ${escapeHtml(title)}</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;
+    background:#f9fafb;color:#1a1a1a}
+  .card{text-align:center;padding:3rem 2rem}
+  .logo{display:flex;align-items:center;justify-content:center;gap:.5rem;margin-bottom:2rem}
+  .logo svg{width:28px;height:28px}
+  .logo span{font-size:1.25rem;font-weight:600;color:#1a1a1a}
+  h2{font-size:1.125rem;font-weight:600;margin-bottom:.5rem}
+  p{color:#6b7280;font-size:.875rem;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#E5372A"/><g transform="translate(5.5 5) scale(0.875)"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></g></svg>
+    <span>KeepAI</span>
+  </div>
+  <h2>${title}</h2>
+  <p>${message}</p>
+</div>${autoClose ? '\n<script>window.close();</script>' : ''}
+</body>
+</html>`;
 }
