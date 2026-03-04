@@ -116,10 +116,15 @@ program
             const eqIdx = arg.indexOf('=');
             const key = arg.slice(2, eqIdx);
             const value = arg.slice(eqIdx + 1);
-            // Try to parse as JSON, fallback to string
-            try {
-              params[key] = JSON.parse(value);
-            } catch {
+            // Parse JSON objects/arrays/booleans/null, keep strings as-is
+            // (avoids precision loss for large numeric tokens like pageToken)
+            if (value.startsWith('{') || value.startsWith('[') || value === 'true' || value === 'false' || value === 'null') {
+              try {
+                params[key] = JSON.parse(value);
+              } catch {
+                params[key] = value;
+              }
+            } else {
               params[key] = value;
             }
           }

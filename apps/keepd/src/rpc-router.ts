@@ -152,13 +152,17 @@ export class RPCRouter {
     const params = (request.params as Record<string, unknown>) ?? {};
     const accountId = request.account ?? '';
 
-    // Validate service exists
+    // Validate service exists and is connected
     const connector = this.connectorExecutor.getConnector(service);
     if (!connector) {
-      const available = (this.connectorExecutor.getHelp() as ServiceHelp[]).map(s => ({
-        service: s.service,
-        summary: s.summary,
-      }));
+      const allHelp = this.connectorExecutor.getHelp() as ServiceHelp[];
+      await this.enrichHelpWithAccounts(allHelp);
+      const available = allHelp
+        .filter((s) => s.accounts && s.accounts.length > 0)
+        .map((s) => ({
+          service: s.service,
+          summary: s.summary,
+        }));
       const text = renderUnknownService(service, available);
       return {
         error: { code: 'not_found', message: `Unknown service: ${service}`, text },
@@ -348,19 +352,24 @@ export class RPCRouter {
     const method = params?.method as string | undefined;
 
     if (!service) {
-      // Level 1: list all services
+      // Level 1: list connected services only
       const help = this.connectorExecutor.getHelp() as ServiceHelp[];
       await this.enrichHelpWithAccounts(help);
-      return { result: { text: renderServiceList(help) } };
+      const connected = help.filter((s) => s.accounts && s.accounts.length > 0);
+      return { result: { text: renderServiceList(connected) } };
     }
 
-    // Validate service exists
+    // Validate service exists and is connected
     const connector = this.connectorExecutor.getConnector(service);
     if (!connector) {
-      const available = (this.connectorExecutor.getHelp() as ServiceHelp[]).map(s => ({
-        service: s.service,
-        summary: s.summary,
-      }));
+      const allHelp = this.connectorExecutor.getHelp() as ServiceHelp[];
+      await this.enrichHelpWithAccounts(allHelp);
+      const available = allHelp
+        .filter((s) => s.accounts && s.accounts.length > 0)
+        .map((s) => ({
+          service: s.service,
+          summary: s.summary,
+        }));
       const text = renderUnknownService(service, available);
       return {
         error: { code: 'not_found', message: `Unknown service: ${service}`, text },
