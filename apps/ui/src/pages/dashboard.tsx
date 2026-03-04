@@ -12,6 +12,63 @@ import { ConnectAppDialog } from '../components/connect-app-dialog';
 import { AddAgentDialog } from '../components/add-agent-dialog';
 import { useApproveRequest, useDenyRequest } from '../hooks/use-queue';
 
+function WelcomeScreen({
+  onConnectApp,
+  onAddAgent,
+}: {
+  onConnectApp: () => void;
+  onAddAgent: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+      {/* Background shield watermark */}
+      <svg
+        className="absolute pointer-events-none select-none opacity-[0.04]"
+        style={{ width: '420px', height: '420px' }}
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"
+          className="text-primary"
+          fill="currentColor"
+        />
+      </svg>
+
+      <div className="relative z-10 text-center max-w-md mx-auto px-4">
+        <h1 className="text-2xl font-bold tracking-tight mb-3">
+          Welcome to KeepAI
+        </h1>
+        <p className="text-muted-foreground text-sm leading-relaxed mb-6">
+          Give AI agents controlled access to your Gmail and other
+          services&nbsp;&mdash; without sharing your passwords, tokens, or
+          content with anyone. Your credentials never leave your device.
+        </p>
+        <p className="text-sm text-muted-foreground mb-6">
+          To get started, connect your apps and pair your agents.
+        </p>
+        <div className="flex items-center justify-center gap-3">
+          <button
+            onClick={onAddAgent}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover transition-colors"
+          >
+            <Bot className="w-4 h-4" />
+            Add agent
+          </button>
+          <button
+            onClick={onConnectApp}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-border bg-card hover:bg-accent transition-colors"
+          >
+            <Plug className="w-4 h-4" />
+            Add app
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function DashboardPage() {
   const { data: connections, isLoading: connectionsLoading } = useConnections();
   const { data: agents, isLoading: agentsLoading } = useAgents();
@@ -22,6 +79,25 @@ export function DashboardPage() {
   const [showAgentDialog, setShowAgentDialog] = useState(false);
 
   const pendingApprovals = queue ?? [];
+  const isEmpty =
+    !connectionsLoading &&
+    !agentsLoading &&
+    (!connections || connections.length === 0) &&
+    (!agents || agents.length === 0) &&
+    pendingApprovals.length === 0;
+
+  if (isEmpty) {
+    return (
+      <>
+        <WelcomeScreen
+          onConnectApp={() => setShowConnectDialog(true)}
+          onAddAgent={() => setShowAgentDialog(true)}
+        />
+        <ConnectAppDialog open={showConnectDialog} onClose={() => setShowConnectDialog(false)} />
+        <AddAgentDialog open={showAgentDialog} onClose={() => setShowAgentDialog(false)} />
+      </>
+    );
+  }
 
   return (
     <div className="space-y-8">
