@@ -10,7 +10,7 @@
     "build:app": "npm run type-check && npm run build:main",
     "type-check": "tsc --noEmit",
     "build:main": "node esbuild.main.mjs",
-    "copy:frontend": "mkdir -p public && cp -r ../ui/dist/electron/* ./public/",
+    "copy:frontend": "node -e \"const fs=require('fs');fs.cpSync('../ui/dist/electron','./public',{recursive:true})\"",
     "rebuild:electron": "node scripts/rebuild-native.mjs",
     "start": "npm run rebuild:electron && electron .",
     "start:dev": "npm run rebuild:electron && electron . --dev",
