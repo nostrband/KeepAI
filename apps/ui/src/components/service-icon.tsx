@@ -1,4 +1,4 @@
-import { Mail, FileText, Globe } from 'lucide-react';
+import { FileText, Globe } from 'lucide-react';
 import { cn } from '../lib/cn';
 
 interface ServiceIconProps {
@@ -11,7 +11,7 @@ export function ServiceIcon({ service, className }: ServiceIconProps) {
 
   switch (service) {
     case 'gmail':
-      return <Mail className={cn(iconClass, 'text-red-500')} />;
+      return <img src="/gmail.png" alt="Gmail" className={iconClass} />;
     case 'notion':
       return <FileText className={cn(iconClass, 'text-gray-800')} />;
     default:
