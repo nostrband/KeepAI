@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ServiceIcon, serviceName } from './service-icon';
-import { Clock, Check, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Bot, ArrowRight, Check, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { api } from '../lib/api';
 
 interface ApprovalCardProps {
@@ -57,22 +57,32 @@ export function ApprovalCard({ item, onApprove, onDeny, isApproving, isDenying }
     <div className="border border-border rounded-xl p-4 bg-card shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+          {/* Row 1: Agent → Service (account) */}
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <Bot className="w-4 h-4 shrink-0 text-muted-foreground" />
+            <span className="font-semibold text-sm">{item.agentName || 'Unknown agent'}</span>
+            <ArrowRight className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
             <ServiceIcon service={item.service} className="w-4 h-4 shrink-0" />
-            <span className="font-medium text-sm truncate">
-              {serviceName(item.service)} — {item.method}
-            </span>
+            <span className="font-medium text-sm">{serviceName(item.service)}</span>
+            {item.accountId && (
+              <span className="text-sm text-muted-foreground">({item.accountId})</span>
+            )}
           </div>
+          {/* Row 2: Human-readable description */}
           {item.description && (
-            <p className="text-sm text-muted-foreground mb-1">{item.description}</p>
+            <p className="text-sm text-foreground mb-1">{item.description}</p>
           )}
+          {/* Row 3: Method + time + request details toggle in grey */}
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            {item.agentName && <span>Agent: {item.agentName}</span>}
-            {item.accountId && <span>Account: {item.accountId}</span>}
-            <span className="flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              {timeAgo(item.createdAt)}
-            </span>
+            <span>Method: {item.method}</span>
+            <span>{timeAgo(item.createdAt)}</span>
+            <button
+              onClick={handleToggle}
+              className="flex items-center gap-1 hover:text-foreground cursor-pointer"
+            >
+              {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              Request details
+            </button>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -96,16 +106,9 @@ export function ApprovalCard({ item, onApprove, onDeny, isApproving, isDenying }
       </div>
 
       {/* Expandable request details */}
-      <div className="mt-2 pt-2 border-t border-border/50">
-        <button
-          onClick={handleToggle}
-          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-        >
-          {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-          Request details
-        </button>
-        {expanded && (
-          <pre className="mt-2 p-2 rounded bg-muted/50 text-xs font-mono whitespace-pre-wrap break-all max-h-64 overflow-y-auto">
+      {expanded && (
+        <div className="mt-2 pt-2 border-t border-border/50">
+          <pre className="p-2 rounded bg-muted/50 text-xs font-mono whitespace-pre-wrap break-all max-h-64 overflow-y-auto">
             {loading
               ? 'Loading...'
               : paramsData
@@ -119,8 +122,8 @@ export function ApprovalCard({ item, onApprove, onDeny, isApproving, isDenying }
                   </>
                 : 'null'}
           </pre>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

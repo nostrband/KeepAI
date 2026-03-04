@@ -222,8 +222,9 @@ function handleSSEEvent(event: string, dataStr: string) {
 
       if (Notification.isSupported()) {
         const notification = new Notification({
-          title: 'KeepAI — Approval Required',
-          body: data.description || `${data.agentName || 'Agent'} requests approval`,
+          title: `${data.agentName || 'Agent'} to ${(data.service || 'Unknown').charAt(0).toUpperCase() + (data.service || 'unknown').slice(1)}${data.accountId ? ` (${data.accountId})` : ''}`,
+          body: data.description || `Requests ${data.method} approval`,
+          icon: path.join(__dirname, '..', 'build', 'icon.png'),
         });
 
         notification.on('click', () => {
