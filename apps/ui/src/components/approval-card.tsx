@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useReducer } from 'react';
 import { ServiceIcon, serviceName } from './service-icon';
 import { Bot, ArrowRight, Check, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { api } from '../lib/api';
@@ -30,6 +30,11 @@ function timeAgo(ts: number): string {
 }
 
 export function ApprovalCard({ item, onApprove, onDeny, isApproving, isDenying }: ApprovalCardProps) {
+  const [, forceUpdate] = useReducer((x: number) => x + 1, 0);
+  useEffect(() => {
+    const id = setInterval(forceUpdate, 15_000);
+    return () => clearInterval(id);
+  }, []);
   const [expanded, setExpanded] = useState(false);
   const [paramsData, setParamsData] = useState<{ params: string; truncated: number | null } | null>(null);
   const [loading, setLoading] = useState(false);

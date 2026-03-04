@@ -15,6 +15,7 @@ if (!globalThis.WebSocket) {
   (globalThis as any).WebSocket = WebSocket;
 }
 
+import { autoUpdater } from 'electron-updater';
 import createDebug from 'debug';
 import * as os from 'os';
 import * as fs from 'fs';
@@ -310,6 +311,19 @@ app.whenReady().then(async () => {
     // 7. Hide macOS dock icon
     if (process.platform === 'darwin') {
       app.dock?.hide();
+    }
+
+    // 8. Auto-update (packaged builds only)
+    if (app.isPackaged) {
+      autoUpdater.logger = {
+        info: (...args: any[]) => log('updater: %s', args.join(' ')),
+        warn: (...args: any[]) => log('updater warn: %s', args.join(' ')),
+        error: (...args: any[]) => log('updater error: %s', args.join(' ')),
+        debug: (...args: any[]) => log('updater debug: %s', args.join(' ')),
+      };
+      autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+        log('update check failed (expected if no releases exist yet): %O', err);
+      });
     }
   } catch (err) {
     log('startup failed: %O', err);

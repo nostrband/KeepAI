@@ -28,9 +28,15 @@ win:
     - portable
   icon: apps/electron/build/icon.png
 
+publish:
+  provider: github
+  owner: nostrband
+  repo: KeepAI
+
 mac:
   target:
     - dmg
+    - zip
   icon: apps/electron/build/icon.png
   hardenedRuntime: true
   gatekeeperAssess: false
