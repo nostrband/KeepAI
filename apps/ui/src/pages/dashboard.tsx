@@ -75,7 +75,7 @@ export function DashboardPage() {
         ) : !connections || connections.length === 0 ? (
           <EmptyState
             title="No apps connected"
-            description="Connect Gmail or Notion to get started."
+            description="Connect your apps to get started."
             action={
               <button
                 onClick={() => setShowConnectDialog(true)}

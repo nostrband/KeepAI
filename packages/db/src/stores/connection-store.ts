@@ -96,7 +96,7 @@ export class ConnectionStore {
 
   updateStatus(id: string, status: string, error?: string): void {
     this.db
-      .prepare('UPDATE connections SET status = ?, error = ? WHERE id = ?')
+      .prepare('UPDATE connections SET status = ?, error = ?, last_health_check_at = (unixepoch(\'now\') * 1000) WHERE id = ?')
       .run(status, error ?? null, id);
   }
 

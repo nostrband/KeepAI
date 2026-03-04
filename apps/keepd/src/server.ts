@@ -45,7 +45,7 @@ import { PolicyEngine } from './managers/policy-engine.js';
 import { ApprovalQueue } from './managers/approval-queue.js';
 import { AuditLogger } from './managers/audit-logger.js';
 import { RPCRouter } from './rpc-router.js';
-import { registerConnectionRoutes } from './routes/connections.js';
+import { registerConnectionRoutes, checkConnectionHealth, HEALTH_CHECK_METHODS } from './routes/connections.js';
 import { registerAgentRoutes } from './routes/agents.js';
 import { registerPolicyRoutes } from './routes/policies.js';
 import { registerQueueRoutes } from './routes/queue.js';
@@ -201,6 +201,44 @@ export async function createServer(config: ServerConfig = {}) {
     }
   }, CLEANUP.INTERVAL);
 
+  // 17. Periodic health check (every 15 min)
+  const HEALTH_CHECK_INTERVAL = 15 * 60 * 1000;
+
+  const runHealthChecks = async () => {
+    try {
+      const connections = await connectionManager.listConnections();
+      const connected = connections.filter((c) => c.status === 'connected');
+      log('health check: probing %d connected connection(s)', connected.length);
+
+      for (const conn of connected) {
+        if (!HEALTH_CHECK_METHODS[conn.service]) continue;
+
+        const id = { service: conn.service, accountId: conn.accountId };
+        const result = await checkConnectionHealth(id, connectionManager, connectorExecutor);
+
+        if (result.success) {
+          await connectionManager.markConnected(id);
+        } else if (result.errorType === 'auth') {
+          await connectionManager.markError(id, result.error);
+          sse.broadcast('connection_updated', {
+            service: conn.service,
+            accountId: conn.accountId,
+            status: 'error',
+            error: result.error,
+          });
+          log('health check: connection %s:%s marked error: %s', conn.service, conn.accountId, result.error);
+        }
+        // Network errors: skip (transient)
+      }
+    } catch (err) {
+      log('health check error: %O', err);
+    }
+  };
+
+  // Run health checks on startup (after reconciliation) and periodically
+  runHealthChecks();
+  const healthCheckInterval = setInterval(runHealthChecks, HEALTH_CHECK_INTERVAL);
+
   return {
     app,
     db: keepdb,
@@ -221,6 +259,7 @@ export async function createServer(config: ServerConfig = {}) {
     async close() {
       log('shutting down...');
       clearInterval(cleanupInterval);
+      clearInterval(healthCheckInterval);
       rpcHandler.close();
       connectionManager.shutdown();
       await app.close();

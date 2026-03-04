@@ -68,8 +68,20 @@ export function useUnpauseConnection() {
 }
 
 export function useCheckConnection() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ service, accountId }: { service: string; accountId: string }) =>
       api.checkConnection(service, accountId),
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success('Connection is working');
+      } else if (data.errorType === 'network') {
+        toast.warning(data.error || 'Network error');
+      } else {
+        toast.error(data.error || 'Authentication error');
+      }
+      // Invalidate to pick up any status changes (error ↔ connected)
+      queryClient.invalidateQueries({ queryKey: qk.connections() });
+    },
   });
 }

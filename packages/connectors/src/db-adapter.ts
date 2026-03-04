@@ -88,6 +88,10 @@ export class ConnectionDbAdapter implements ConnectionDb {
   async updateLastUsed(id: string, timestamp: number): Promise<void> {
     await this.store.updateLastUsed(id, timestamp);
   }
+
+  async updateStatus(id: string, status: string, error?: string): Promise<void> {
+    await this.store.updateStatus(id, status as 'connected' | 'expired' | 'error', error);
+  }
 }
 
 export function createConnectionDbAdapter(

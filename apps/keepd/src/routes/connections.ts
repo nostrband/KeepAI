@@ -10,15 +10,54 @@
  */
 
 import type { FastifyInstance } from 'fastify';
-import type { ConnectionManager, ConnectorExecutor } from '@keepai/connectors';
+import type { ConnectionManager, ConnectorExecutor, ConnectionId } from '@keepai/connectors';
+import { isErrorType } from '@keepai/proto';
 import type { SSEBroadcaster } from '../sse.js';
 import type { AgentManager } from '../managers/agent-manager.js';
 import type { PolicyEngine } from '../managers/policy-engine.js';
 
-const HEALTH_CHECK_METHODS: Record<string, { method: string; params: Record<string, unknown> }> = {
+export const HEALTH_CHECK_METHODS: Record<string, { method: string; params: Record<string, unknown> }> = {
   gmail: { method: 'profile.get', params: {} },
   notion: { method: 'search', params: { query: '', page_size: 1 } },
 };
+
+export type HealthCheckResult =
+  | { success: true }
+  | { success: false; error: string; errorType: 'auth' | 'network' };
+
+/**
+ * Run a health check probe on a single connection.
+ * Returns a classified result without side effects (caller handles markConnected/markError).
+ */
+export async function checkConnectionHealth(
+  connectionId: ConnectionId,
+  connectionManager: ConnectionManager,
+  connectorExecutor: ConnectorExecutor
+): Promise<HealthCheckResult> {
+  try {
+    const creds = await connectionManager.getCredentials(connectionId);
+
+    if (!creds.accessToken) {
+      return { success: false, error: 'No access token', errorType: 'auth' };
+    }
+
+    const probe = HEALTH_CHECK_METHODS[connectionId.service];
+    if (probe) {
+      await connectorExecutor.execute(connectionId.service, probe.method, probe.params, creds);
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    if (isErrorType(err, 'auth')) {
+      return { success: false, error: err.message, errorType: 'auth' };
+    }
+    if (isErrorType(err, 'network')) {
+      return { success: false, error: err.message, errorType: 'network' };
+    }
+    // Unknown errors treated as auth (credential issue is most likely for a health check)
+    return { success: false, error: err.message, errorType: 'auth' };
+  }
+}
 
 export async function registerConnectionRoutes(
   app: FastifyInstance,
@@ -169,30 +208,26 @@ export async function registerConnectionRoutes(
   // Check connection (test by making a live API call)
   app.post<{ Params: { service: string; accountId: string } }>(
     '/api/connections/:service/:accountId/check',
-    async (request, reply) => {
+    async (request) => {
       const { service, accountId } = request.params;
+      const id = { service, accountId };
 
-      try {
-        const creds = await connectionManager.getCredentials({
-          service,
-          accountId,
-        });
-
-        if (!creds.accessToken) {
-          return { success: false, error: 'No access token' };
-        }
-
-        // Make a live API probe if connector executor is available
-        const probe = HEALTH_CHECK_METHODS[service];
-        if (connectorExecutor && probe) {
-          await connectorExecutor.execute(service, probe.method, probe.params, creds);
-        }
-
-        return { success: true };
-      } catch (err: any) {
-        reply.status(500);
-        return { success: false, error: err.message };
+      if (!connectorExecutor) {
+        return { success: false, error: 'No connector executor', errorType: 'network' as const };
       }
+
+      const result = await checkConnectionHealth(id, connectionManager, connectorExecutor);
+
+      if (result.success) {
+        await connectionManager.markConnected(id);
+        sse?.broadcast('connection_updated', { service, accountId, status: 'connected' });
+      } else if (result.errorType === 'auth') {
+        await connectionManager.markError(id, result.error);
+        sse?.broadcast('connection_updated', { service, accountId, status: 'error', error: result.error });
+      }
+      // Network errors: don't change status (transient)
+
+      return result;
     }
   );
 }

@@ -36,7 +36,7 @@ export function ConnectionsPage() {
         <EmptyState
           icon={<Plug className="w-12 h-12" />}
           title="No apps connected"
-          description="Connect Gmail or Notion to allow your AI agents to access them."
+          description="Connect your apps to allow AI agents to access them."
           action={
             <button
               onClick={() => setShowDialog(true)}

@@ -390,16 +390,14 @@ export class ConnectionManager {
     return newCreds;
   }
 
+  async markConnected(id: ConnectionId): Promise<void> {
+    const connectionId = `${id.service}:${id.accountId}`;
+    await this.db.updateStatus(connectionId, 'connected');
+  }
+
   async markError(id: ConnectionId, error: string): Promise<void> {
     const connectionId = `${id.service}:${id.accountId}`;
-    const connection = await this.db.getConnection(connectionId);
-    if (connection) {
-      await this.db.upsertConnection({
-        ...connection,
-        status: 'error',
-        error,
-      });
-    }
+    await this.db.updateStatus(connectionId, 'error', error);
   }
 
   async reconcile(): Promise<void> {

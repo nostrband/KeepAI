@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3';
 
-export const MAX_VERSION = 2;
+export const MAX_VERSION = 3;
 
 export const migrations = new Map<number, (db: Database.Database) => void>();
 
@@ -127,4 +127,8 @@ migrations.set(2, (db) => {
   `);
   db.exec(`CREATE INDEX idx_policies_agent ON policies(agent_id)`);
   db.exec(`CREATE INDEX idx_policies_connection ON policies(service, account_id)`);
+});
+
+migrations.set(3, (db) => {
+  db.exec(`ALTER TABLE connections ADD COLUMN last_health_check_at INTEGER`);
 });

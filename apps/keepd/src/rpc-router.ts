@@ -520,11 +520,12 @@ export class RPCRouter {
 
       return { result };
     } catch (err: any) {
-      // If AuthError, the connection's token is invalid — notify UI
+      // If AuthError, the connection's token is invalid — persist and notify UI
       if (err instanceof AuthError) {
+        await this.connectionManager.markError({ service, accountId: effectiveAccountId }, err.message);
         this.sse.broadcast('connection_updated', {
           service,
-          accountId,
+          accountId: effectiveAccountId,
           status: 'error',
           error: err.message,
         });

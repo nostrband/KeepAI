@@ -57,7 +57,7 @@ export const api = {
     request<void>(`/connections/${service}/${encodeURIComponent(accountId)}/unpause`, { method: 'POST' }),
 
   checkConnection: (service: string, accountId: string) =>
-    request<{ ok: boolean }>(`/connections/${service}/${encodeURIComponent(accountId)}/check`, { method: 'POST' }),
+    request<{ success: boolean; error?: string; errorType?: 'auth' | 'network' }>(`/connections/${service}/${encodeURIComponent(accountId)}/check`, { method: 'POST' }),
 
   // Agents
   listAgents: () =>

@@ -103,4 +103,5 @@ export interface ConnectionDb {
   upsertConnection(connection: Connection): Promise<void>;
   deleteConnection(id: string): Promise<void>;
   updateLastUsed(id: string, timestamp: number): Promise<void>;
+  updateStatus(id: string, status: ConnectionStatus, error?: string): Promise<void>;
 }
