@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plug, Bot, Plus, ShieldCheck } from 'lucide-react';
+import { Plug, Bot, Plus, ShieldCheck, Loader2 } from 'lucide-react';
 import { useConnections } from '../hooks/use-connections';
 import { useAgents } from '../hooks/use-agents';
 import { useQueue } from '../hooks/use-queue';
@@ -79,27 +79,23 @@ export function DashboardPage() {
   const [showAgentDialog, setShowAgentDialog] = useState(false);
 
   const pendingApprovals = queue ?? [];
+  const isLoading = connectionsLoading || agentsLoading;
   const isEmpty =
-    !connectionsLoading &&
-    !agentsLoading &&
+    !isLoading &&
     (!connections || connections.length === 0) &&
     (!agents || agents.length === 0) &&
     pendingApprovals.length === 0;
 
-  if (isEmpty) {
-    return (
-      <>
-        <WelcomeScreen
-          onConnectApp={() => setShowConnectDialog(true)}
-          onAddAgent={() => setShowAgentDialog(true)}
-        />
-        <ConnectAppDialog open={showConnectDialog} onClose={() => setShowConnectDialog(false)} />
-        <AddAgentDialog open={showAgentDialog} onClose={() => setShowAgentDialog(false)} />
-      </>
-    );
-  }
-
-  return (
+  const content = isLoading ? (
+    <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+      <Loader2 className="w-8 h-8 animate-spin text-primary/40" />
+    </div>
+  ) : isEmpty ? (
+    <WelcomeScreen
+      onConnectApp={() => setShowConnectDialog(true)}
+      onAddAgent={() => setShowAgentDialog(true)}
+    />
+  ) : (
     <div className="space-y-8">
       {/* Pending Approvals */}
       {pendingApprovals.length > 0 && (
@@ -236,9 +232,14 @@ export function DashboardPage() {
           </div>
         )}
       </section>
+    </div>
+  );
 
+  return (
+    <>
+      {content}
       <ConnectAppDialog open={showConnectDialog} onClose={() => setShowConnectDialog(false)} />
       <AddAgentDialog open={showAgentDialog} onClose={() => setShowAgentDialog(false)} />
-    </div>
+    </>
   );
 }
