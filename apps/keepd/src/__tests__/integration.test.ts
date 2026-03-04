@@ -1323,6 +1323,118 @@ describe('Cleanup Jobs', () => {
     expect(entry).toBeNull();
   });
 
+  it('should expire stale approvals based on configured timeout', () => {
+    db.agents.create({
+      id: 'timeout-expire-agent',
+      name: 'timeout-expire-test',
+      agentPubkey: '7'.repeat(64),
+      keepdPubkey: '8'.repeat(64),
+      keepdPrivkey: '9'.repeat(64),
+      pairedAt: Date.now(),
+    });
+
+    // Set approval timeout to 10 seconds
+    db.settings.set('approvalTimeout', '10');
+
+    // Create two pending approvals
+    db.approvals.create({
+      id: 'stale-approval-1',
+      agentId: 'timeout-expire-agent',
+      agentName: 'timeout-expire-test',
+      service: 'testservice',
+      method: 'items.create',
+      accountId: 'a@b.com',
+      operationType: 'write',
+      description: 'Stale request 1',
+      requestHash: 'hash1',
+      tempFilePath: '/tmp/stale1.json',
+      createdAt: Date.now(),
+    });
+
+    db.approvals.create({
+      id: 'stale-approval-2',
+      agentId: 'timeout-expire-agent',
+      agentName: 'timeout-expire-test',
+      service: 'testservice',
+      method: 'items.create',
+      accountId: 'a@b.com',
+      operationType: 'write',
+      description: 'Fresh request',
+      requestHash: 'hash2',
+      tempFilePath: '/tmp/stale2.json',
+      createdAt: Date.now(),
+    });
+
+    // Backdate only the first approval beyond the 10s timeout
+    keepdb.db.prepare(
+      `UPDATE approval_queue SET created_at = ? WHERE id = ?`
+    ).run(Date.now() - 11_000, 'stale-approval-1');
+
+    // expireByTimeout should only expire the old one
+    const expired = db.approvals.expireByTimeout(10_000);
+    expect(expired.length).toBe(1);
+    expect(expired[0].id).toBe('stale-approval-1');
+
+    // Verify the stale one is denied
+    const entry1 = db.approvals.getById('stale-approval-1');
+    expect(entry1!.status).toBe('denied');
+    expect(entry1!.resolvedBy).toBe('timeout');
+
+    // Verify the fresh one is still pending
+    const entry2 = db.approvals.getById('stale-approval-2');
+    expect(entry2!.status).toBe('pending');
+  });
+
+  it('should expire stale approvals via ApprovalQueue.expireStale()', () => {
+    db.agents.create({
+      id: 'expire-queue-agent',
+      name: 'expire-queue-test',
+      agentPubkey: 'a1'.repeat(32),
+      keepdPubkey: 'b1'.repeat(32),
+      keepdPrivkey: 'c1'.repeat(32),
+      pairedAt: Date.now(),
+    });
+
+    // Set a short approval timeout
+    db.settings.set('approvalTimeout', '5');
+
+    // Create a pending approval and backdate it
+    db.approvals.create({
+      id: 'queue-stale-1',
+      agentId: 'expire-queue-agent',
+      agentName: 'expire-queue-test',
+      service: 'testservice',
+      method: 'items.create',
+      accountId: 'a@b.com',
+      operationType: 'write',
+      description: 'Stale queued request',
+      requestHash: 'hash3',
+      tempFilePath: '/tmp/queue-stale.json',
+      createdAt: Date.now(),
+    });
+
+    keepdb.db.prepare(
+      `UPDATE approval_queue SET created_at = ? WHERE id = ?`
+    ).run(Date.now() - 6_000, 'queue-stale-1');
+
+    // Create a new ApprovalQueue without explicit timeoutMs (so it reads from DB)
+    const queue = new ApprovalQueue({
+      db,
+      dataDir: tmpDir,
+      sse,
+    });
+
+    const count = queue.expireStale();
+    expect(count).toBe(1);
+
+    const entry = db.approvals.getById('queue-stale-1');
+    expect(entry!.status).toBe('denied');
+    expect(entry!.resolvedBy).toBe('timeout');
+
+    // Pending list should be empty
+    expect(db.approvals.listPending().length).toBe(0);
+  });
+
   it('should clean up old RPC request dedup entries', () => {
     // Insert an old rpc request
     db.rpcRequests.tryInsert('old-event', 'old-req', 'a'.repeat(64), 'items.list');

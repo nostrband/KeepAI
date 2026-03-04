@@ -102,6 +102,31 @@ export class ApprovalStore {
   }
 
   /**
+   * Find and expire pending approvals older than timeoutMs.
+   * Returns the expired entries so the caller can clean up temp files and broadcast SSE events.
+   */
+  expireByTimeout(timeoutMs: number): ApprovalEntry[] {
+    const cutoff = Date.now() - timeoutMs;
+    const rows = this.db
+      .prepare(
+        "SELECT * FROM approval_queue WHERE status = 'pending' AND created_at < ?"
+      )
+      .all(cutoff) as ApprovalRow[];
+
+    if (rows.length === 0) return [];
+
+    this.db
+      .prepare(
+        `UPDATE approval_queue
+         SET status = 'denied', resolved_at = (unixepoch('now') * 1000), resolved_by = 'timeout'
+         WHERE status = 'pending' AND created_at < ?`
+      )
+      .run(cutoff);
+
+    return rows.map(rowToApproval);
+  }
+
+  /**
    * Delete old resolved entries. Returns count deleted.
    */
   cleanupResolved(maxAgeMs: number): number {

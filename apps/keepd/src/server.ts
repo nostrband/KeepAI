@@ -186,9 +186,16 @@ export async function createServer(config: ServerConfig = {}) {
     });
   }
 
-  // 16. Cleanup jobs
+  // 16. Expire stale approvals on startup (handles daemon restart with pending approvals)
+  {
+    const expired = approvalQueue.expireStale();
+    if (expired > 0) log('expired %d stale approval(s) on startup', expired);
+  }
+
+  // 17. Cleanup jobs
   const cleanupInterval = setInterval(() => {
     try {
+      approvalQueue.expireStale();
       db.pairings.expireOld();
       db.approvals.expireOld(CLEANUP.APPROVALS_MAX_AGE);
       db.approvals.cleanupResolved(CLEANUP.APPROVALS_MAX_AGE);
@@ -201,7 +208,7 @@ export async function createServer(config: ServerConfig = {}) {
     }
   }, CLEANUP.INTERVAL);
 
-  // 17. Periodic health check (every 15 min)
+  // 18. Periodic health check (every 15 min)
   const HEALTH_CHECK_INTERVAL = 15 * 60 * 1000;
 
   const runHealthChecks = async () => {

@@ -40,9 +40,23 @@ export class ApprovalQueue {
     this.db = options.db;
     this.tempDir = path.join(options.dataDir, 'temp');
     this.sse = options.sse;
-    this.timeoutMs = options.timeoutMs ?? TIMEOUTS.REQUEST;
+    this.timeoutMs = options.timeoutMs ?? 0; // 0 = use DB setting via getTimeoutMs()
     this.pollIntervalMs = options.pollIntervalMs ?? TIMEOUTS.APPROVAL_POLL;
     fs.mkdirSync(this.tempDir, { recursive: true });
+  }
+
+  /**
+   * Get the effective timeout in ms.
+   * Reads `approvalTimeout` from DB settings (seconds), falls back to constructor override or TIMEOUTS.REQUEST.
+   */
+  getTimeoutMs(): number {
+    if (this.timeoutMs > 0) return this.timeoutMs; // explicit override (tests)
+    const raw = this.db.settings.get('approvalTimeout');
+    if (raw) {
+      const seconds = parseInt(raw, 10);
+      if (seconds > 0) return seconds * 1000;
+    }
+    return TIMEOUTS.REQUEST;
   }
 
   setSse(sse: SSEBroadcaster): void {
@@ -96,7 +110,7 @@ export class ApprovalQueue {
     });
 
     // 5. Poll DB until status changes or timeout
-    const deadline = Date.now() + this.timeoutMs;
+    const deadline = Date.now() + this.getTimeoutMs();
 
     while (Date.now() < deadline) {
       const entry = this.db.approvals.getById(id);
@@ -193,6 +207,27 @@ export class ApprovalQueue {
     });
 
     return true;
+  }
+
+  /**
+   * Expire all pending approvals that have exceeded the configured timeout.
+   * Cleans up temp files and broadcasts SSE events for each.
+   * Call on startup (handles daemon restart) and periodically.
+   */
+  expireStale(): number {
+    const timeoutMs = this.getTimeoutMs();
+    const expired = this.db.approvals.expireByTimeout(timeoutMs);
+
+    for (const entry of expired) {
+      this.cleanupTempFile(entry.tempFilePath);
+      this.sse?.broadcast('approval_resolved', {
+        id: entry.id,
+        status: 'denied',
+        resolvedBy: 'timeout',
+      });
+    }
+
+    return expired.length;
   }
 
   listPending(): ApprovalEntry[] {
