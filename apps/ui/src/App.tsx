@@ -1,4 +1,5 @@
-import { Routes, Route } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import { Header } from './components/header';
 import { useSSE } from './hooks/use-sse';
 import { DashboardPage } from './pages/dashboard';
@@ -13,6 +14,13 @@ import { SettingsPage } from './pages/settings';
 
 export default function App() {
   useSSE();
+
+  const navigate = useNavigate();
+  useEffect(() => {
+    const api = (window as any).electronAPI;
+    if (!api?.onNavigateTo) return;
+    return api.onNavigateTo((path: string) => navigate(path));
+  }, [navigate]);
 
   return (
     <>
