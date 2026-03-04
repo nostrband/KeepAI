@@ -69,7 +69,7 @@ jobs:
 
       - name: Build distributables with electron-builder
         run: |
-          npx electron-builder ${{ matrix.build_target }} --${{ matrix.arch }} --publish=onTagOnly
+          npx electron-builder ${{ matrix.build_target }} --${{ matrix.arch }} --publish=onTag
           npx rimraf --glob "apps/electron/release/*-unpacked" "apps/electron/release/mac-*"
         env:
           CSC_LINK: ${{ runner.os == 'macOS' && secrets.CSC_LINK || '' }}
