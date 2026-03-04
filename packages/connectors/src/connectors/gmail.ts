@@ -45,8 +45,10 @@ function describeGmailRequest(method: string, params: Record<string, unknown>): 
       return params.q ? `Search emails: "${params.q}"` : 'List recent emails';
     case 'messages.get':
       return `Read email ${params.id || '(unknown)'}`;
-    case 'messages.send':
-      return `Send email to ${params.to || 'recipient'}`;
+    case 'messages.send': {
+      const attCount = Array.isArray(params.attachments) ? params.attachments.length : 0;
+      return `Send email to ${params.to || 'recipient'}${attCount ? ` with ${attCount} attachment(s)` : ''}`;
+    }
     case 'messages.trash':
       return `Move email ${params.id || '(unknown)'} to trash`;
     case 'messages.modify':
@@ -61,16 +63,20 @@ function describeGmailRequest(method: string, params: Record<string, unknown>): 
       return `Permanently delete ${Array.isArray(params.ids) ? params.ids.length : '?'} emails`;
     case 'attachments.get':
       return `Download attachment ${params.attachmentId || '(unknown)'} from email ${params.messageId || '(unknown)'}`;
-    case 'drafts.create':
-      return `Create draft email${params.to ? ` to ${params.to}` : ''}`;
+    case 'drafts.create': {
+      const attCount = Array.isArray(params.attachments) ? params.attachments.length : 0;
+      return `Create draft email${params.to ? ` to ${params.to}` : ''}${attCount ? ` with ${attCount} attachment(s)` : ''}`;
+    }
     case 'drafts.list':
       return 'List draft emails';
     case 'drafts.get':
       return `Get draft ${params.id || '(unknown)'}`;
     case 'drafts.send':
       return `Send draft ${params.id || '(unknown)'}`;
-    case 'drafts.update':
-      return `Update draft ${params.id || '(unknown)'}`;
+    case 'drafts.update': {
+      const attCount = Array.isArray(params.attachments) ? params.attachments.length : 0;
+      return `Update draft ${params.id || '(unknown)'}${attCount ? ` with ${attCount} attachment(s)` : ''}`;
+    }
     case 'drafts.delete':
       return `Delete draft ${params.id || '(unknown)'}`;
     case 'labels.list':
@@ -176,6 +182,7 @@ const methods: ConnectorMethod[] = [
       { name: 'bcc', type: 'string', required: false, description: 'BCC recipients (comma-separated)' },
       { name: 'inReplyTo', type: 'string', required: false, description: 'Message ID being replied to' },
       { name: 'threadId', type: 'string', required: false, description: 'Thread ID to send in' },
+      { name: 'attachments', type: 'array', required: false, description: 'File attachments — array of {filename, mimeType, data} where data is base64-encoded' },
     ],
     returns: 'Sent message object with id and threadId',
     example: { params: { to: 'bob@example.com', subject: 'Hello', body: 'Hi Bob!' }, description: 'Send a simple email' },
@@ -305,6 +312,7 @@ const methods: ConnectorMethod[] = [
       { name: 'body', type: 'string', required: true, description: 'Email body (plain text)' },
       { name: 'cc', type: 'string', required: false, description: 'CC recipients (comma-separated)' },
       { name: 'bcc', type: 'string', required: false, description: 'BCC recipients (comma-separated)' },
+      { name: 'attachments', type: 'array', required: false, description: 'File attachments — array of {filename, mimeType, data} where data is base64-encoded' },
     ],
     returns: 'Draft object with id and message',
     example: { params: { to: 'bob@example.com', subject: 'Draft', body: 'Working on this...' }, description: 'Create a draft' },
@@ -379,6 +387,7 @@ const methods: ConnectorMethod[] = [
       { name: 'body', type: 'string', required: true, description: 'Email body (plain text)' },
       { name: 'cc', type: 'string', required: false, description: 'CC recipients (comma-separated)' },
       { name: 'bcc', type: 'string', required: false, description: 'BCC recipients (comma-separated)' },
+      { name: 'attachments', type: 'array', required: false, description: 'File attachments — array of {filename, mimeType, data} where data is base64-encoded' },
     ],
     returns: 'Updated draft object',
     example: { params: { id: 'r-abc123', to: 'bob@example.com', subject: 'Updated', body: 'New content' }, description: 'Update a draft' },
@@ -594,19 +603,63 @@ const methods: ConnectorMethod[] = [
   },
 ];
 
-function buildRawEmail(params: Record<string, unknown>): string {
-  const lines: string[] = [];
-  lines.push(`To: ${params.to}`);
-  if (params.cc) lines.push(`Cc: ${params.cc}`);
-  if (params.bcc) lines.push(`Bcc: ${params.bcc}`);
-  lines.push(`Subject: ${params.subject}`);
-  if (params.inReplyTo) lines.push(`In-Reply-To: ${params.inReplyTo}`);
-  lines.push('Content-Type: text/plain; charset=utf-8');
-  lines.push('');
-  lines.push(String(params.body || ''));
+interface FileAttachment {
+  filename: string;
+  mimeType: string;
+  data: string; // base64-encoded
+}
 
-  const raw = lines.join('\r\n');
-  return Buffer.from(raw).toString('base64url');
+function buildRawEmail(params: Record<string, unknown>): string {
+  const attachments = params.attachments as FileAttachment[] | undefined;
+
+  const headers: string[] = [];
+  headers.push(`To: ${params.to}`);
+  if (params.cc) headers.push(`Cc: ${params.cc}`);
+  if (params.bcc) headers.push(`Bcc: ${params.bcc}`);
+  headers.push(`Subject: ${params.subject}`);
+  if (params.inReplyTo) headers.push(`In-Reply-To: ${params.inReplyTo}`);
+
+  if (!attachments || attachments.length === 0) {
+    // Simple plain-text message
+    const lines = [
+      ...headers,
+      'Content-Type: text/plain; charset=utf-8',
+      '',
+      String(params.body || ''),
+    ];
+    return Buffer.from(lines.join('\r\n')).toString('base64url');
+  }
+
+  // Multipart message with attachments
+  const boundary = `boundary_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  const lines = [
+    ...headers,
+    'MIME-Version: 1.0',
+    `Content-Type: multipart/mixed; boundary="${boundary}"`,
+    '',
+    `--${boundary}`,
+    'Content-Type: text/plain; charset=utf-8',
+    '',
+    String(params.body || ''),
+  ];
+
+  for (const att of attachments) {
+    // Re-encode: input is standard base64, Gmail API needs base64 in MIME part
+    lines.push(`--${boundary}`);
+    lines.push(`Content-Type: ${att.mimeType}; name="${att.filename}"`);
+    lines.push('Content-Transfer-Encoding: base64');
+    lines.push(`Content-Disposition: attachment; filename="${att.filename}"`);
+    lines.push('');
+    // Break base64 data into 76-char lines per MIME spec
+    const b64 = att.data.replace(/[\r\n]/g, '');
+    for (let i = 0; i < b64.length; i += 76) {
+      lines.push(b64.slice(i, i + 76));
+    }
+  }
+
+  lines.push(`--${boundary}--`);
+
+  return Buffer.from(lines.join('\r\n')).toString('base64url');
 }
 
 async function executeGmail(

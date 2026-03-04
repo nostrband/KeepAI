@@ -118,3 +118,6 @@ test-results.xml
 
 # OAuth app credentials (build-time)
 secrets.build.json
+
+# Ignore certs
+*.p12
