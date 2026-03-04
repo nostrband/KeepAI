@@ -20,7 +20,7 @@ asarUnpack:
 extraMetadata:
   main: apps/electron/dist/main.cjs
 
-npmRebuild: false
+npmRebuild: true
 asar: true
 
 win:
