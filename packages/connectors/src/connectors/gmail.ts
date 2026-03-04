@@ -1,5 +1,5 @@
 /**
- * Gmail connector — 15 methods covering messages, drafts, labels, threads, and profile.
+ * Gmail connector — 28 methods covering messages, attachments, drafts, labels, threads, and profile.
  */
 
 import type {
@@ -32,6 +32,10 @@ async function gmailFetch(
     throw new Error(`Gmail API error ${response.status}: ${text}`);
   }
 
+  if (response.status === 204 || response.headers.get('content-length') === '0') {
+    return { success: true };
+  }
+
   return response.json();
 }
 
@@ -47,6 +51,16 @@ function describeGmailRequest(method: string, params: Record<string, unknown>): 
       return `Move email ${params.id || '(unknown)'} to trash`;
     case 'messages.modify':
       return `Modify labels on email ${params.id || '(unknown)'}`;
+    case 'messages.untrash':
+      return `Restore email ${params.id || '(unknown)'} from trash`;
+    case 'messages.delete':
+      return `Permanently delete email ${params.id || '(unknown)'}`;
+    case 'messages.batchModify':
+      return `Modify labels on ${Array.isArray(params.ids) ? params.ids.length : '?'} emails`;
+    case 'messages.batchDelete':
+      return `Permanently delete ${Array.isArray(params.ids) ? params.ids.length : '?'} emails`;
+    case 'attachments.get':
+      return `Download attachment ${params.attachmentId || '(unknown)'} from email ${params.messageId || '(unknown)'}`;
     case 'drafts.create':
       return `Create draft email${params.to ? ` to ${params.to}` : ''}`;
     case 'drafts.list':
@@ -55,16 +69,32 @@ function describeGmailRequest(method: string, params: Record<string, unknown>): 
       return `Get draft ${params.id || '(unknown)'}`;
     case 'drafts.send':
       return `Send draft ${params.id || '(unknown)'}`;
+    case 'drafts.update':
+      return `Update draft ${params.id || '(unknown)'}`;
+    case 'drafts.delete':
+      return `Delete draft ${params.id || '(unknown)'}`;
     case 'labels.list':
       return 'List email labels';
     case 'labels.get':
       return `Get label ${params.id || '(unknown)'}`;
+    case 'labels.create':
+      return `Create label "${params.name || '(unnamed)'}"`;
+    case 'labels.patch':
+      return `Update label ${params.id || '(unknown)'}`;
+    case 'labels.delete':
+      return `Delete label ${params.id || '(unknown)'}`;
     case 'threads.list':
       return params.q ? `Search threads: "${params.q}"` : 'List email threads';
     case 'threads.get':
       return `Get thread ${params.id || '(unknown)'}`;
     case 'threads.modify':
       return `Modify labels on thread ${params.id || '(unknown)'}`;
+    case 'threads.trash':
+      return `Move thread ${params.id || '(unknown)'} to trash`;
+    case 'threads.untrash':
+      return `Restore thread ${params.id || '(unknown)'} from trash`;
+    case 'threads.delete':
+      return `Permanently delete thread ${params.id || '(unknown)'}`;
     case 'profile.get':
       return 'Get email profile info';
     default:
@@ -188,6 +218,84 @@ const methods: ConnectorMethod[] = [
     seeAlso: ['labels.list', 'messages.list'],
   },
   {
+    name: 'messages.untrash',
+    description: 'Restore a message from trash',
+    operationType: 'write',
+    params: [
+      { name: 'id', type: 'string', required: true, description: 'Message ID to restore (from messages.list)' },
+    ],
+    returns: 'Restored message object',
+    example: { params: { id: '18a1b2c3d4e5f6' }, description: 'Restore a trashed message' },
+    responseExample: { id: '18a1b2c3d4e5f6', labelIds: ['INBOX'] },
+    seeAlso: ['messages.trash', 'messages.list'],
+  },
+  {
+    name: 'messages.delete',
+    description: 'Permanently delete a message (cannot be undone)',
+    operationType: 'delete',
+    params: [
+      { name: 'id', type: 'string', required: true, description: 'Message ID to permanently delete' },
+    ],
+    returns: 'Empty success response',
+    example: { params: { id: '18a1b2c3d4e5f6' }, description: 'Permanently delete a message' },
+    notes: [
+      'This is irreversible — the message is permanently deleted, not moved to trash',
+      'Consider using messages.trash instead for recoverable deletion',
+    ],
+    seeAlso: ['messages.trash', 'messages.list'],
+  },
+  {
+    name: 'messages.batchModify',
+    description: 'Modify labels on multiple messages at once',
+    operationType: 'write',
+    params: [
+      { name: 'ids', type: 'array', required: true, description: 'Message IDs to modify (max 1000)' },
+      { name: 'addLabelIds', type: 'array', required: false, description: 'Label IDs to add to all messages' },
+      { name: 'removeLabelIds', type: 'array', required: false, description: 'Label IDs to remove from all messages' },
+    ],
+    returns: 'Empty success response',
+    example: { params: { ids: ['msg1', 'msg2'], addLabelIds: ['STARRED'] }, description: 'Star multiple messages' },
+    notes: ['Maximum 1000 message IDs per request'],
+    seeAlso: ['messages.modify', 'labels.list'],
+  },
+  {
+    name: 'messages.batchDelete',
+    description: 'Permanently delete multiple messages at once (cannot be undone)',
+    operationType: 'delete',
+    params: [
+      { name: 'ids', type: 'array', required: true, description: 'Message IDs to permanently delete (max 1000)' },
+    ],
+    returns: 'Empty success response',
+    example: { params: { ids: ['msg1', 'msg2'] }, description: 'Permanently delete multiple messages' },
+    notes: [
+      'This is irreversible — messages are permanently deleted',
+      'Maximum 1000 message IDs per request',
+    ],
+    seeAlso: ['messages.delete', 'messages.trash'],
+  },
+  {
+    name: 'attachments.get',
+    description: 'Download an email attachment',
+    operationType: 'read',
+    params: [
+      { name: 'messageId', type: 'string', required: true, description: 'Message ID containing the attachment' },
+      { name: 'attachmentId', type: 'string', required: true, description: 'Attachment ID (from message parts body.attachmentId in messages.get response)' },
+    ],
+    returns: 'Attachment data with base64url-encoded content',
+    example: { params: { messageId: '18a1b2c3d4e5f6', attachmentId: 'ANGjd...' }, description: 'Download an attachment' },
+    responseExample: {
+      attachmentId: 'ANGjd...',
+      size: 12345,
+      data: '<base64url-encoded attachment data>',
+    },
+    notes: [
+      'First use messages.get to find attachment IDs in the message parts',
+      'Each message part with a filename has body.attachmentId',
+      'The data field is base64url-encoded',
+    ],
+    seeAlso: ['messages.get'],
+  },
+  {
     name: 'drafts.create',
     description: 'Create a draft email',
     operationType: 'write',
@@ -261,6 +369,42 @@ const methods: ConnectorMethod[] = [
     seeAlso: ['drafts.list', 'drafts.create'],
   },
   {
+    name: 'drafts.update',
+    description: 'Update an existing draft',
+    operationType: 'write',
+    params: [
+      { name: 'id', type: 'string', required: true, description: 'Draft ID to update (from drafts.list)' },
+      { name: 'to', type: 'string', required: true, description: 'Recipient email (comma-separated for multiple)' },
+      { name: 'subject', type: 'string', required: true, description: 'Email subject' },
+      { name: 'body', type: 'string', required: true, description: 'Email body (plain text)' },
+      { name: 'cc', type: 'string', required: false, description: 'CC recipients (comma-separated)' },
+      { name: 'bcc', type: 'string', required: false, description: 'BCC recipients (comma-separated)' },
+    ],
+    returns: 'Updated draft object',
+    example: { params: { id: 'r-abc123', to: 'bob@example.com', subject: 'Updated', body: 'New content' }, description: 'Update a draft' },
+    responseExample: {
+      id: 'r-123456789',
+      message: { id: 'abc123', threadId: 'abc123', labelIds: ['DRAFT'] },
+    },
+    notes: [
+      'Replaces the entire draft content',
+      'Find a draft ID first with drafts.list',
+    ],
+    seeAlso: ['drafts.create', 'drafts.list', 'drafts.get'],
+  },
+  {
+    name: 'drafts.delete',
+    description: 'Permanently delete a draft',
+    operationType: 'delete',
+    params: [
+      { name: 'id', type: 'string', required: true, description: 'Draft ID to delete (from drafts.list)' },
+    ],
+    returns: 'Empty success response',
+    example: { params: { id: 'r-abc123' }, description: 'Delete a draft' },
+    notes: ['This is permanent — the draft cannot be recovered'],
+    seeAlso: ['drafts.list'],
+  },
+  {
     name: 'labels.list',
     description: 'List all labels',
     operationType: 'read',
@@ -290,6 +434,54 @@ const methods: ConnectorMethod[] = [
       messagesUnread: 5,
     },
     notes: ['Find label IDs with labels.list'],
+    seeAlso: ['labels.list'],
+  },
+  {
+    name: 'labels.create',
+    description: 'Create a new label',
+    operationType: 'write',
+    params: [
+      { name: 'name', type: 'string', required: true, description: 'Label name' },
+      { name: 'labelListVisibility', type: 'string', required: false, description: 'Visibility in label list', default: 'labelShow', enum: ['labelShow', 'labelShowIfUnread', 'labelHide'] },
+      { name: 'messageListVisibility', type: 'string', required: false, description: 'Visibility in message list', default: 'show', enum: ['show', 'hide'] },
+      { name: 'backgroundColor', type: 'string', required: false, description: 'Background color hex (e.g., "#16a765")' },
+      { name: 'textColor', type: 'string', required: false, description: 'Text color hex (e.g., "#ffffff")' },
+    ],
+    returns: 'Created label object with id, name, type',
+    example: { params: { name: 'My Label' }, description: 'Create a simple label' },
+    responseExample: { id: 'Label_1', name: 'My Label', type: 'user' },
+    seeAlso: ['labels.list', 'labels.patch', 'messages.modify'],
+  },
+  {
+    name: 'labels.patch',
+    description: 'Update a label (partial update)',
+    operationType: 'write',
+    params: [
+      { name: 'id', type: 'string', required: true, description: 'Label ID to update (from labels.list)' },
+      { name: 'name', type: 'string', required: false, description: 'New label name' },
+      { name: 'labelListVisibility', type: 'string', required: false, description: 'Visibility in label list', enum: ['labelShow', 'labelShowIfUnread', 'labelHide'] },
+      { name: 'messageListVisibility', type: 'string', required: false, description: 'Visibility in message list', enum: ['show', 'hide'] },
+      { name: 'backgroundColor', type: 'string', required: false, description: 'Background color hex' },
+      { name: 'textColor', type: 'string', required: false, description: 'Text color hex' },
+    ],
+    returns: 'Updated label object',
+    example: { params: { id: 'Label_1', name: 'Renamed Label' }, description: 'Rename a label' },
+    responseExample: { id: 'Label_1', name: 'Renamed Label', type: 'user' },
+    notes: ['Only specified fields are updated'],
+    seeAlso: ['labels.list', 'labels.create'],
+  },
+  {
+    name: 'labels.delete',
+    description: 'Permanently delete a label',
+    operationType: 'delete',
+    params: [
+      { name: 'id', type: 'string', required: true, description: 'Label ID to delete (from labels.list)' },
+    ],
+    returns: 'Empty success response',
+    notes: [
+      'This is permanent and also removes the label from all messages',
+      'System labels (INBOX, SENT, etc.) cannot be deleted',
+    ],
     seeAlso: ['labels.list'],
   },
   {
@@ -349,6 +541,44 @@ const methods: ConnectorMethod[] = [
       'Find a thread ID first with threads.list',
     ],
     seeAlso: ['labels.list', 'threads.list'],
+  },
+  {
+    name: 'threads.trash',
+    description: 'Move a thread and all its messages to trash',
+    operationType: 'delete',
+    params: [
+      { name: 'id', type: 'string', required: true, description: 'Thread ID to trash (from threads.list)' },
+    ],
+    returns: 'Trashed thread object',
+    example: { params: { id: 'thread123' }, description: 'Trash a thread' },
+    responseExample: { id: 'thread123' },
+    seeAlso: ['threads.untrash', 'threads.list', 'messages.trash'],
+  },
+  {
+    name: 'threads.untrash',
+    description: 'Restore a thread and all its messages from trash',
+    operationType: 'write',
+    params: [
+      { name: 'id', type: 'string', required: true, description: 'Thread ID to restore (from threads.list)' },
+    ],
+    returns: 'Restored thread object',
+    example: { params: { id: 'thread123' }, description: 'Restore a trashed thread' },
+    responseExample: { id: 'thread123' },
+    seeAlso: ['threads.trash', 'threads.list'],
+  },
+  {
+    name: 'threads.delete',
+    description: 'Permanently delete a thread and all its messages (cannot be undone)',
+    operationType: 'delete',
+    params: [
+      { name: 'id', type: 'string', required: true, description: 'Thread ID to permanently delete' },
+    ],
+    returns: 'Empty success response',
+    notes: [
+      'This is irreversible — the thread and all messages are permanently deleted',
+      'Consider using threads.trash instead for recoverable deletion',
+    ],
+    seeAlso: ['threads.trash', 'threads.list'],
   },
   {
     name: 'profile.get',
@@ -426,6 +656,38 @@ async function executeGmail(
         }),
       });
 
+    case 'messages.untrash':
+      return gmailFetch(`/messages/${params.id}/untrash`, credentials, {
+        method: 'POST',
+      });
+
+    case 'messages.delete':
+      return gmailFetch(`/messages/${params.id}`, credentials, {
+        method: 'DELETE',
+      });
+
+    case 'messages.batchModify':
+      return gmailFetch('/messages/batchModify', credentials, {
+        method: 'POST',
+        body: JSON.stringify({
+          ids: params.ids,
+          addLabelIds: params.addLabelIds || [],
+          removeLabelIds: params.removeLabelIds || [],
+        }),
+      });
+
+    case 'messages.batchDelete':
+      return gmailFetch('/messages/batchDelete', credentials, {
+        method: 'POST',
+        body: JSON.stringify({ ids: params.ids }),
+      });
+
+    case 'attachments.get':
+      return gmailFetch(
+        `/messages/${params.messageId}/attachments/${params.attachmentId}`,
+        credentials
+      );
+
     case 'drafts.create': {
       const raw = buildRawEmail(params);
       return gmailFetch('/drafts', credentials, {
@@ -453,11 +715,62 @@ async function executeGmail(
         body: JSON.stringify({ id: params.id }),
       });
 
+    case 'drafts.update': {
+      const raw = buildRawEmail(params);
+      return gmailFetch(`/drafts/${params.id}`, credentials, {
+        method: 'PUT',
+        body: JSON.stringify({ message: { raw } }),
+      });
+    }
+
+    case 'drafts.delete':
+      return gmailFetch(`/drafts/${params.id}`, credentials, {
+        method: 'DELETE',
+      });
+
     case 'labels.list':
       return gmailFetch('/labels', credentials);
 
     case 'labels.get':
       return gmailFetch(`/labels/${params.id}`, credentials);
+
+    case 'labels.create': {
+      const labelBody: Record<string, unknown> = { name: params.name };
+      if (params.labelListVisibility) labelBody.labelListVisibility = params.labelListVisibility;
+      if (params.messageListVisibility) labelBody.messageListVisibility = params.messageListVisibility;
+      if (params.backgroundColor || params.textColor) {
+        const color: Record<string, unknown> = {};
+        if (params.backgroundColor) color.backgroundColor = params.backgroundColor;
+        if (params.textColor) color.textColor = params.textColor;
+        labelBody.color = color;
+      }
+      return gmailFetch('/labels', credentials, {
+        method: 'POST',
+        body: JSON.stringify(labelBody),
+      });
+    }
+
+    case 'labels.patch': {
+      const patchBody: Record<string, unknown> = {};
+      if (params.name) patchBody.name = params.name;
+      if (params.labelListVisibility) patchBody.labelListVisibility = params.labelListVisibility;
+      if (params.messageListVisibility) patchBody.messageListVisibility = params.messageListVisibility;
+      if (params.backgroundColor || params.textColor) {
+        const color: Record<string, unknown> = {};
+        if (params.backgroundColor) color.backgroundColor = params.backgroundColor;
+        if (params.textColor) color.textColor = params.textColor;
+        patchBody.color = color;
+      }
+      return gmailFetch(`/labels/${params.id}`, credentials, {
+        method: 'PATCH',
+        body: JSON.stringify(patchBody),
+      });
+    }
+
+    case 'labels.delete':
+      return gmailFetch(`/labels/${params.id}`, credentials, {
+        method: 'DELETE',
+      });
 
     case 'threads.list': {
       const query = new URLSearchParams();
@@ -485,6 +798,21 @@ async function executeGmail(
         }),
       });
 
+    case 'threads.trash':
+      return gmailFetch(`/threads/${params.id}/trash`, credentials, {
+        method: 'POST',
+      });
+
+    case 'threads.untrash':
+      return gmailFetch(`/threads/${params.id}/untrash`, credentials, {
+        method: 'POST',
+      });
+
+    case 'threads.delete':
+      return gmailFetch(`/threads/${params.id}`, credentials, {
+        method: 'DELETE',
+      });
+
     case 'profile.get':
       return gmailFetch('/profile', credentials);
 
@@ -497,6 +825,7 @@ function getResourceType(method: string): string | undefined {
   const [resource] = method.split('.');
   switch (resource) {
     case 'messages': return 'message';
+    case 'attachments': return 'attachment';
     case 'drafts': return 'draft';
     case 'labels': return 'label';
     case 'threads': return 'thread';

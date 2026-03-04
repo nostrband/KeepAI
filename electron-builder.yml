@@ -32,6 +32,11 @@ mac:
   target:
     - dmg
   icon: apps/electron/build/icon.png
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: apps/electron/build/entitlements.mac.plist
+  entitlementsInherit: apps/electron/build/entitlements.mac.plist
+  notarize: true
 
 linux:
   target:
