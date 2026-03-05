@@ -30,7 +30,6 @@ interface PendingState {
   // MCP OAuth fields
   codeVerifier?: string;
   mcpClientId?: string;
-  mcpClientSecret?: string;
   mcpTokenUrl?: string;
   mcpServerUrl?: string;
 }
@@ -116,12 +115,10 @@ export class ConnectionManager {
       const metadata = discovery.metadata;
 
       let mcpClientId: string;
-      let mcpClientSecret: string | undefined;
 
       if (service.mcpOAuth.clientId) {
         // Pre-registered client (e.g. GitHub — no DCR)
         mcpClientId = service.mcpOAuth.clientId;
-        mcpClientSecret = service.mcpOAuth.clientSecret;
       } else if (metadata.registration_endpoint) {
         // Dynamic client registration
         const registration = await McpOAuthClient.register(
@@ -151,7 +148,6 @@ export class ConnectionManager {
         timestamp: Date.now(),
         codeVerifier,
         mcpClientId,
-        mcpClientSecret,
         mcpTokenUrl: metadata.token_endpoint,
         mcpServerUrl: service.mcpOAuth.serverUrl,
       });
@@ -227,7 +223,7 @@ export class ConnectionManager {
           code,
           pending.redirectUri,
           pending.codeVerifier,
-          pending.mcpClientSecret
+          service.mcpOAuth?.clientSecret
         );
 
         credentials = {
@@ -242,7 +238,6 @@ export class ConnectionManager {
         }
 
         metadata.mcpClientId = pending.mcpClientId;
-        if (pending.mcpClientSecret) metadata.mcpClientSecret = pending.mcpClientSecret;
         metadata.mcpServerUrl = pending.mcpServerUrl;
         metadata.mcpTokenUrl = pending.mcpTokenUrl;
 
@@ -485,10 +480,12 @@ export class ConnectionManager {
 
     // MCP OAuth refresh path
     const mcpClientId = currentCreds.metadata?.mcpClientId as string | undefined;
-    const mcpClientSecret = currentCreds.metadata?.mcpClientSecret as string | undefined;
     const mcpTokenUrl = currentCreds.metadata?.mcpTokenUrl as string | undefined;
 
     if (mcpClientId && mcpTokenUrl) {
+      // Get client_secret from service config (static, not stored per-connection)
+      const mcpClientSecret = service.mcpOAuth?.clientSecret;
+
       const mcpTokens = await McpOAuthClient.refreshToken(
         mcpTokenUrl,
         mcpClientId,
