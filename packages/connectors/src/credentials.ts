@@ -12,25 +12,21 @@ export function getGoogleCredentials(): OAuthAppCredentials {
   };
 }
 
-export function getNotionCredentials(): OAuthAppCredentials {
-  return {
-    clientId: process.env.NOTION_CLIENT_ID || '',
-    clientSecret: process.env.NOTION_CLIENT_SECRET || '',
-  };
-}
-
 export function getCredentialsForService(service: string): OAuthAppCredentials {
   switch (service) {
     case 'gmail':
       return getGoogleCredentials();
-    case 'notion':
-      return getNotionCredentials();
     default:
-      throw new Error(`Unknown service: ${service}`);
+      throw new Error(`Unknown service or MCP-based service: ${service}`);
   }
 }
 
 export function hasCredentialsForService(service: string): boolean {
-  const creds = getCredentialsForService(service);
-  return Boolean(creds.clientId && creds.clientSecret);
+  try {
+    const creds = getCredentialsForService(service);
+    return Boolean(creds.clientId && creds.clientSecret);
+  } catch {
+    // MCP-based services don't need build-time credentials
+    return false;
+  }
 }

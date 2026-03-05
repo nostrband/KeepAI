@@ -12,7 +12,6 @@ export { CredentialStore } from './store.js';
 // Build-time credentials
 export {
   getGoogleCredentials,
-  getNotionCredentials,
   getCredentialsForService,
   hasCredentialsForService,
 } from './credentials.js';
@@ -40,7 +39,11 @@ export { notionService } from './services/notion.js';
 
 // Connectors (method registries + execution)
 export { gmailConnector } from './connectors/gmail.js';
-export { notionConnector } from './connectors/notion.js';
+
+// MCP Connector
+export { McpConnector } from './mcp-connector.js';
+export type { McpConnectorConfig } from './mcp-connector.js';
+export { notionMcpConfig } from './connectors/notion-mcp.js';
 
 // Executor (registry + dispatcher)
 export { ConnectorExecutor } from './executor.js';

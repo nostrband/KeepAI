@@ -30,7 +30,8 @@ import {
   CredentialStore,
   ConnectorExecutor,
   gmailConnector,
-  notionConnector,
+  McpConnector,
+  notionMcpConfig,
   gmailService,
   notionService,
   createConnectionDbAdapter,
@@ -99,7 +100,15 @@ export async function createServer(config: ServerConfig = {}) {
   // 7. Initialize ConnectorExecutor
   const connectorExecutor = new ConnectorExecutor();
   connectorExecutor.register(gmailConnector);
-  connectorExecutor.register(notionConnector);
+
+  // Notion via MCP connector
+  let notionAccessToken = '';
+  const notionMcp = new McpConnector(notionMcpConfig, () => notionAccessToken);
+  // Initialize in background — tool list fetch can fail silently on startup
+  notionMcp.initialize().catch((err) => {
+    log('notion MCP connector init failed (will retry on first request): %O', err);
+  });
+  connectorExecutor.register(notionMcp);
 
   // 8. Initialize SSE broadcaster
   const sse = new SSEBroadcaster();

@@ -7,9 +7,7 @@
       "outputs": ["dist/**", "public/**", "build/**"],
       "env": [
         "BUILD_GMAIL_SECRET",
-        "BUILD_GOOGLE_CLIENT_ID",
-        "BUILD_NOTION_CLIENT_ID",
-        "BUILD_NOTION_CLIENT_SECRET"
+        "BUILD_GOOGLE_CLIENT_ID"
       ]
     },
     "build:frontend": {

@@ -66,6 +66,11 @@ export interface OAuthCallbackResult {
   error?: string;
 }
 
+export interface McpOAuthConfig {
+  serverUrl: string;
+  clientName: string;
+}
+
 export interface ServiceDefinition {
   id: string;
   name: string;
@@ -81,6 +86,11 @@ export interface ServiceDefinition {
   ) => string | undefined;
   fetchProfile?: (accessToken: string) => Promise<unknown>;
   supportsRefresh?: boolean;
+  mcpOAuth?: McpOAuthConfig;
+  mcpExtractAccountId?: (session: unknown) => Promise<{
+    accountId: string;
+    displayName?: string;
+  }>;
 }
 
 export interface TokenResponse {

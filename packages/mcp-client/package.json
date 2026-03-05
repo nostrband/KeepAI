@@ -1,5 +1,5 @@
 {
-  "name": "@keepai/connectors",
+  "name": "@keepai/mcp-client",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -18,14 +18,9 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "clean": "rimraf dist",
-    "type-check": "tsc --noEmit",
-    "test": "vitest run"
+    "type-check": "tsc --noEmit"
   },
-  "dependencies": {
-    "@keepai/proto": "file:../proto",
-    "@keepai/mcp-client": "file:../mcp-client",
-    "googleapis": "^140.0.1"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/node": "^22.0.0",
     "typescript": "^5.2.0"

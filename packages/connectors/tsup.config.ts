@@ -30,8 +30,6 @@ function getSecret(key: string, envKey?: string): string {
 
 const GOOGLE_CLIENT_ID = getSecret('GOOGLE_CLIENT_ID');
 const GOOGLE_CLIENT_SECRET = getSecret('GOOGLE_CLIENT_SECRET', 'BUILD_GMAIL_SECRET');
-const NOTION_CLIENT_ID = getSecret('NOTION_CLIENT_ID');
-const NOTION_CLIENT_SECRET = getSecret('NOTION_CLIENT_SECRET');
 
 export default defineConfig({
   entry: { index: 'src/index.ts' },
@@ -39,11 +37,9 @@ export default defineConfig({
   dts: true,
   treeshake: true,
   platform: 'node',
-  external: ['@keepai/proto'],
+  external: ['@keepai/proto', '@keepai/mcp-client'],
   define: {
     'process.env.GOOGLE_CLIENT_ID': JSON.stringify(GOOGLE_CLIENT_ID),
     'process.env.GOOGLE_CLIENT_SECRET': JSON.stringify(GOOGLE_CLIENT_SECRET),
-    'process.env.NOTION_CLIENT_ID': JSON.stringify(NOTION_CLIENT_ID),
-    'process.env.NOTION_CLIENT_SECRET': JSON.stringify(NOTION_CLIENT_SECRET),
   },
 });

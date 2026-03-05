@@ -18,7 +18,7 @@ import type { PolicyEngine } from '../managers/policy-engine.js';
 
 export const HEALTH_CHECK_METHODS: Record<string, { method: string; params: Record<string, unknown> }> = {
   gmail: { method: 'profile.get', params: {} },
-  notion: { method: 'search', params: { query: '', page_size: 1 } },
+  notion: { method: 'search', params: { query: '' } },
 };
 
 export type HealthCheckResult =
@@ -93,7 +93,7 @@ export async function registerConnectionRoutes(
       const redirectUri = `${baseUrl}/api/connections/${service}/callback`;
 
       try {
-        const { authUrl } = connectionManager.startOAuthFlow(
+        const { authUrl } = await connectionManager.startOAuthFlow(
           service,
           redirectUri
         );

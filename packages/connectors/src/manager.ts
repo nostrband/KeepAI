@@ -4,6 +4,8 @@
 
 import { randomUUID } from 'crypto';
 import { AuthError, isClassifiedError } from '@keepai/proto';
+import { McpOAuthClient, McpSession } from '@keepai/mcp-client';
+import type { OAuthMetadata } from '@keepai/mcp-client';
 import { OAuthHandler, tokenResponseToCredentials } from './oauth.js';
 import { CredentialStore } from './store.js';
 import { getCredentialsForService } from './credentials.js';
@@ -26,6 +28,11 @@ interface PendingState {
   service: string;
   redirectUri: string;
   timestamp: number;
+  // MCP OAuth fields
+  codeVerifier?: string;
+  mcpClientId?: string;
+  mcpTokenUrl?: string;
+  mcpServerUrl?: string;
 }
 
 export class ConnectionManager {
@@ -71,10 +78,10 @@ export class ConnectionManager {
     }
   }
 
-  startOAuthFlow(
+  async startOAuthFlow(
     serviceId: string,
     redirectUri: string
-  ): { authUrl: string; state: string } {
+  ): Promise<{ authUrl: string; state: string }> {
     const service = this.services.get(serviceId);
     if (!service) {
       throw new Error(`Unknown service: ${serviceId}`);
@@ -101,6 +108,45 @@ export class ConnectionManager {
     }
 
     const state = randomUUID();
+
+    // MCP OAuth path
+    if (service.mcpOAuth) {
+      const metadata = await McpOAuthClient.discover(service.mcpOAuth.serverUrl);
+
+      let mcpClientId: string;
+      if (metadata.registration_endpoint) {
+        const registration = await McpOAuthClient.register(
+          metadata.registration_endpoint,
+          redirectUri,
+          service.mcpOAuth.clientName
+        );
+        mcpClientId = registration.client_id;
+      } else {
+        throw new Error(`MCP server at ${service.mcpOAuth.serverUrl} does not support dynamic registration`);
+      }
+
+      const { url: authUrl, codeVerifier } = McpOAuthClient.buildAuthUrl(
+        metadata.authorization_endpoint,
+        mcpClientId,
+        redirectUri,
+        state,
+        metadata.scopes_supported
+      );
+
+      this.pendingStates.set(state, {
+        service: serviceId,
+        redirectUri,
+        timestamp: Date.now(),
+        codeVerifier,
+        mcpClientId,
+        mcpTokenUrl: metadata.token_endpoint,
+        mcpServerUrl: service.mcpOAuth.serverUrl,
+      });
+
+      return { authUrl, state };
+    }
+
+    // Standard OAuth path
     this.pendingStates.set(state, {
       service: serviceId,
       redirectUri,
@@ -156,38 +202,89 @@ export class ConnectionManager {
     }
 
     try {
-      const { clientId, clientSecret } = getCredentialsForService(serviceId);
+      let credentials: OAuthCredentials;
+      let accountId: string;
+      let metadata: Record<string, unknown> = {};
 
-      const handler = new OAuthHandler(
-        service.oauthConfig,
-        clientId,
-        clientSecret,
-        pending.redirectUri
-      );
+      if (pending.codeVerifier && pending.mcpClientId && pending.mcpTokenUrl) {
+        // MCP OAuth path
+        const mcpTokens = await McpOAuthClient.exchangeCode(
+          pending.mcpTokenUrl,
+          pending.mcpClientId,
+          code,
+          pending.redirectUri,
+          pending.codeVerifier
+        );
 
-      const tokenResponse = await handler.exchangeCode(code);
-      const credentials = tokenResponseToCredentials(tokenResponse);
-
-      let profile: unknown;
-      if (service.fetchProfile) {
-        try {
-          profile = await service.fetchProfile(credentials.accessToken);
-        } catch {
-          // Profile fetch is optional
+        credentials = {
+          accessToken: mcpTokens.access_token,
+          tokenType: mcpTokens.token_type,
+        };
+        if (mcpTokens.refresh_token) {
+          credentials.refreshToken = mcpTokens.refresh_token;
         }
+        if (mcpTokens.expires_in) {
+          credentials.expiresAt = Date.now() + mcpTokens.expires_in * 1000;
+        }
+
+        metadata.mcpClientId = pending.mcpClientId;
+        metadata.mcpServerUrl = pending.mcpServerUrl;
+        metadata.mcpTokenUrl = pending.mcpTokenUrl;
+
+        // Extract account ID via MCP session
+        if (service.mcpExtractAccountId) {
+          const tempSession = new McpSession(
+            pending.mcpServerUrl!,
+            service.mcpOAuth?.serverUrl ? '/mcp' : '/mcp',
+            () => credentials.accessToken
+          );
+          await tempSession.initialize();
+          const accountInfo = await service.mcpExtractAccountId(tempSession);
+          accountId = accountInfo.accountId;
+          if (accountInfo.displayName) {
+            metadata.displayName = accountInfo.displayName;
+          }
+        } else {
+          accountId = 'default';
+        }
+
+        credentials.metadata = metadata;
+      } else {
+        // Standard OAuth path
+        const { clientId, clientSecret } = getCredentialsForService(serviceId);
+
+        const handler = new OAuthHandler(
+          service.oauthConfig,
+          clientId,
+          clientSecret,
+          pending.redirectUri
+        );
+
+        const tokenResponse = await handler.exchangeCode(code);
+        credentials = tokenResponseToCredentials(tokenResponse);
+
+        let profile: unknown;
+        if (service.fetchProfile) {
+          try {
+            profile = await service.fetchProfile(credentials.accessToken);
+          } catch {
+            // Profile fetch is optional
+          }
+        }
+
+        accountId = await service.extractAccountId(tokenResponse, profile);
+
+        metadata = { ...credentials.metadata };
+        if (service.extractDisplayName) {
+          const displayName = service.extractDisplayName(tokenResponse, profile);
+          if (displayName) {
+            metadata.displayName = displayName;
+          }
+        }
+        credentials.metadata = metadata;
       }
 
-      const accountId = await service.extractAccountId(tokenResponse, profile);
       const connectionId: ConnectionId = { service: serviceId, accountId };
-
-      const metadata: Record<string, unknown> = { ...credentials.metadata };
-      if (service.extractDisplayName) {
-        const displayName = service.extractDisplayName(tokenResponse, profile);
-        if (displayName) {
-          metadata.displayName = displayName;
-        }
-      }
-      credentials.metadata = metadata;
 
       await this.store.save(connectionId, credentials);
 
@@ -369,6 +466,32 @@ export class ConnectionManager {
       throw new Error(`Unknown service: ${id.service}`);
     }
 
+    // MCP OAuth refresh path
+    const mcpClientId = currentCreds.metadata?.mcpClientId as string | undefined;
+    const mcpTokenUrl = currentCreds.metadata?.mcpTokenUrl as string | undefined;
+
+    if (mcpClientId && mcpTokenUrl) {
+      const mcpTokens = await McpOAuthClient.refreshToken(
+        mcpTokenUrl,
+        mcpClientId,
+        currentCreds.refreshToken!
+      );
+
+      const newCreds: OAuthCredentials = {
+        accessToken: mcpTokens.access_token,
+        tokenType: mcpTokens.token_type,
+        refreshToken: mcpTokens.refresh_token ?? currentCreds.refreshToken,
+        metadata: currentCreds.metadata,
+      };
+      if (mcpTokens.expires_in) {
+        newCreds.expiresAt = Date.now() + mcpTokens.expires_in * 1000;
+      }
+
+      await this.store.save(id, newCreds);
+      return newCreds;
+    }
+
+    // Standard OAuth refresh path
     const { clientId, clientSecret } = getCredentialsForService(id.service);
     const handler = new OAuthHandler(
       service.oauthConfig,

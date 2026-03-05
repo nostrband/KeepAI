@@ -17,6 +17,7 @@
     "baseUrl": ".",
     "paths": {
       "@keepai/proto/*": ["packages/proto/src/*"],
+      "@keepai/mcp-client/*": ["packages/mcp-client/src/*"],
       "@keepai/db/*": ["packages/db/src/*"],
       "@keepai/connectors/*": ["packages/connectors/src/*"],
       "@keepai/nostr-rpc/*": ["packages/nostr-rpc/src/*"],
