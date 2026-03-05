@@ -105,21 +105,21 @@ export async function createServer(config: ServerConfig = {}) {
   const notionMcp = new McpConnector(notionMcpConfig);
   connectorExecutor.register(notionMcp);
 
-  // Try to seed the MCP connector with a stored token so tool list is available at startup
+  // Seed the MCP connector with a stored token in the background (non-blocking).
+  // If it fails, ensureReady() will retry on first request.
   {
     const notionConns = await connectionManager.listConnectionsByService('notion');
     const activeConn = notionConns.find((c) => c.status === 'connected');
     if (activeConn) {
-      try {
-        const creds = await connectionManager.getCredentials({
-          service: 'notion',
-          accountId: activeConn.accountId,
+      connectionManager
+        .getCredentials({ service: 'notion', accountId: activeConn.accountId })
+        .then((creds) => {
+          notionMcp.setAccessToken(creds.accessToken);
+          return notionMcp.initialize();
+        })
+        .catch((err) => {
+          log('notion MCP connector startup init failed (will retry on first request): %O', err);
         });
-        notionMcp.setAccessToken(creds.accessToken);
-        await notionMcp.initialize();
-      } catch (err) {
-        log('notion MCP connector startup init failed (will retry on first request): %O', err);
-      }
     }
   }
 
