@@ -4,7 +4,7 @@
 
 export interface JsonRpcRequest {
   jsonrpc: '2.0';
-  id: number;
+  id?: number;
   method: string;
   params?: Record<string, unknown>;
 }
@@ -80,6 +80,16 @@ export interface McpToolResultContent {
 export interface McpToolResult {
   content: McpToolResultContent[];
   isError?: boolean;
+}
+
+// --- RFC 9728: OAuth Protected Resource Metadata ---
+
+export interface ProtectedResourceMetadata {
+  resource: string;
+  authorization_servers?: string[];
+  scopes_supported?: string[];
+  bearer_methods_supported?: string[];
+  resource_name?: string;
 }
 
 // --- OAuth ---

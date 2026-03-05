@@ -12,10 +12,19 @@ export function getGoogleCredentials(): OAuthAppCredentials {
   };
 }
 
+export function getGitHubCredentials(): OAuthAppCredentials {
+  return {
+    clientId: process.env.GITHUB_CLIENT_ID || '',
+    clientSecret: process.env.GITHUB_CLIENT_SECRET || '',
+  };
+}
+
 export function getCredentialsForService(service: string): OAuthAppCredentials {
   switch (service) {
     case 'gmail':
       return getGoogleCredentials();
+    case 'github':
+      return getGitHubCredentials();
     default:
       throw new Error(`Unknown service or MCP-based service: ${service}`);
   }

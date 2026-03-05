@@ -69,6 +69,16 @@ export interface OAuthCallbackResult {
 export interface McpOAuthConfig {
   serverUrl: string;
   clientName: string;
+  /** Pre-registered client_id (for servers without DCR, e.g. GitHub). */
+  clientId?: string;
+  /** Pre-registered client_secret (for servers that require it). */
+  clientSecret?: string;
+  /** MCP endpoint path (default: '/mcp'). Used for RFC 9728 resource probing. */
+  mcpEndpoint?: string;
+  /** Override scopes (instead of using scopes from discovery). */
+  scopes?: string[];
+  /** Extra params to add to the authorization URL. */
+  extraAuthParams?: Record<string, string>;
 }
 
 export interface ServiceDefinition {

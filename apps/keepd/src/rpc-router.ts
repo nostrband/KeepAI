@@ -376,6 +376,20 @@ export class RPCRouter {
       };
     }
 
+    // Lazy-init MCP connectors that haven't loaded tools yet
+    if (connector.methods.length === 0 && connector.ensureReady) {
+      try {
+        const connections = await this.connectionManager.listConnectionsByService(service);
+        const active = connections.find((c) => c.status === 'connected');
+        if (active) {
+          const creds = await this.connectionManager.getCredentials({ service, accountId: active.accountId });
+          await connector.ensureReady(creds);
+        }
+      } catch (err) {
+        log('help: lazy-init for %s failed: %O', service, err);
+      }
+    }
+
     const svcHelp = connector.help(method);
     await this.enrichHelpWithAccounts([svcHelp]);
 

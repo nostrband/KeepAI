@@ -32,8 +32,10 @@ import {
   gmailConnector,
   McpConnector,
   notionMcpConfig,
+  githubMcpConfig,
   gmailService,
   notionService,
+  githubService,
   createConnectionDbAdapter,
 } from '@keepai/connectors';
 import { RPCHandler } from '@keepai/nostr-rpc';
@@ -93,6 +95,7 @@ export async function createServer(config: ServerConfig = {}) {
   const connectionManager = new ConnectionManager(credentialStore, connectionDbAdapter);
   connectionManager.registerService(gmailService);
   connectionManager.registerService(notionService);
+  connectionManager.registerService(githubService);
 
   // 6. Reconcile file ↔ DB state
   await connectionManager.reconcile();
@@ -101,24 +104,30 @@ export async function createServer(config: ServerConfig = {}) {
   const connectorExecutor = new ConnectorExecutor();
   connectorExecutor.register(gmailConnector);
 
-  // Notion via MCP connector
+  // MCP connectors
   const notionMcp = new McpConnector(notionMcpConfig);
   connectorExecutor.register(notionMcp);
 
-  // Seed the MCP connector with a stored token in the background (non-blocking).
+  const githubMcp = new McpConnector(githubMcpConfig);
+  connectorExecutor.register(githubMcp);
+
+  // Seed MCP connectors with stored tokens in the background (non-blocking).
   // If it fails, ensureReady() will retry on first request.
-  {
-    const notionConns = await connectionManager.listConnectionsByService('notion');
-    const activeConn = notionConns.find((c) => c.status === 'connected');
+  for (const { service, connector } of [
+    { service: 'notion', connector: notionMcp },
+    { service: 'github', connector: githubMcp },
+  ]) {
+    const conns = await connectionManager.listConnectionsByService(service);
+    const activeConn = conns.find((c) => c.status === 'connected');
     if (activeConn) {
       connectionManager
-        .getCredentials({ service: 'notion', accountId: activeConn.accountId })
+        .getCredentials({ service, accountId: activeConn.accountId })
         .then((creds) => {
-          notionMcp.setAccessToken(creds.accessToken);
-          return notionMcp.initialize();
+          connector.setAccessToken(creds.accessToken);
+          return connector.initialize();
         })
         .catch((err) => {
-          log('notion MCP connector startup init failed (will retry on first request): %O', err);
+          log('%s MCP connector startup init failed (will retry on first request): %O', service, err);
         });
     }
   }

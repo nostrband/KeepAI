@@ -44,6 +44,11 @@ export async function mcpFetch(
   const sessionId = res.headers.get('mcp-session-id');
   const contentType = res.headers.get('content-type') || '';
 
+  // Notifications return 202/204 with no body
+  if (res.status === 202 || res.status === 204 || !contentType) {
+    return { response: { jsonrpc: '2.0', id: 0 }, sessionId };
+  }
+
   let response: JsonRpcResponse;
 
   if (contentType.includes('text/event-stream')) {

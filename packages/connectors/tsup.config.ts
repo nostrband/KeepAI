@@ -30,6 +30,8 @@ function getSecret(key: string, envKey?: string): string {
 
 const GOOGLE_CLIENT_ID = getSecret('GOOGLE_CLIENT_ID');
 const GOOGLE_CLIENT_SECRET = getSecret('GOOGLE_CLIENT_SECRET', 'BUILD_GMAIL_SECRET');
+const GITHUB_CLIENT_ID = getSecret('GITHUB_CLIENT_ID');
+const GITHUB_CLIENT_SECRET = getSecret('GITHUB_CLIENT_SECRET', 'BUILD_GITHUB_SECRET');
 
 export default defineConfig({
   entry: { index: 'src/index.ts' },
@@ -41,5 +43,7 @@ export default defineConfig({
   define: {
     'process.env.GOOGLE_CLIENT_ID': JSON.stringify(GOOGLE_CLIENT_ID),
     'process.env.GOOGLE_CLIENT_SECRET': JSON.stringify(GOOGLE_CLIENT_SECRET),
+    'process.env.GITHUB_CLIENT_ID': JSON.stringify(GITHUB_CLIENT_ID),
+    'process.env.GITHUB_CLIENT_SECRET': JSON.stringify(GITHUB_CLIENT_SECRET),
   },
 });

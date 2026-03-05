@@ -62,6 +62,22 @@ export class McpConnector implements Connector {
     this.currentAccessToken = token;
   }
 
+  /**
+   * Clear cached state (token, methods, session).
+   * Called when the last account for this service is disconnected.
+   */
+  reset(): void {
+    this.currentAccessToken = '';
+    this.methods = [];
+    this.nameMap = {};
+    this.reverseNameMap = {};
+    this.session = new McpSession(
+      this.config.serverUrl,
+      this.config.mcpEndpoint ?? '/mcp',
+      () => this.currentAccessToken
+    );
+  }
+
   getSession(): McpSession {
     return this.session;
   }

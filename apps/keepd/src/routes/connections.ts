@@ -19,6 +19,7 @@ import type { PolicyEngine } from '../managers/policy-engine.js';
 export const HEALTH_CHECK_METHODS: Record<string, { method: string; params: Record<string, unknown> }> = {
   gmail: { method: 'profile.get', params: {} },
   notion: { method: 'users.list', params: { user_id: 'self' } },
+  github: { method: 'get_me', params: {} },
 };
 
 export type HealthCheckResult =
@@ -158,6 +159,18 @@ export async function registerConnectionRoutes(
         policyEngine?.deleteByConnection(service, accountId);
 
         await connectionManager.disconnect({ service, accountId });
+
+        // If no accounts remain, reset the MCP connector state
+        if (connectorExecutor) {
+          const remaining = await connectionManager.listConnectionsByService(service);
+          if (remaining.length === 0) {
+            const connector = connectorExecutor.getConnector(service);
+            if (connector && 'reset' in connector && typeof connector.reset === 'function') {
+              connector.reset();
+            }
+          }
+        }
+
         return { success: true };
       } catch (err: any) {
         reply.status(500);

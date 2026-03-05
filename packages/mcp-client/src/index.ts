@@ -13,10 +13,12 @@ export type {
   OAuthMetadata,
   OAuthRegistration,
   McpTokens,
+  ProtectedResourceMetadata,
 } from './types.js';
 
 export { mcpFetch, McpTransportError } from './transport.js';
 export type { McpFetchResult } from './transport.js';
 
 export { McpOAuthClient } from './oauth.js';
+export type { McpDiscoveryResult } from './oauth.js';
 export { McpSession } from './session.js';

@@ -70,10 +70,9 @@ export class McpSession {
     const serverInfo = initResult.response.result as McpServerInfo;
     this.serverVersion = serverInfo?.serverInfo?.version ?? null;
 
-    // Step 2: notifications/initialized
+    // Step 2: notifications/initialized (no id — JSON-RPC notification)
     const notifyRequest: JsonRpcRequest = {
       jsonrpc: '2.0',
-      id: nextId(),
       method: 'notifications/initialized',
     };
 

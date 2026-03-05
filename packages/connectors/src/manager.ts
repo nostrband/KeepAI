@@ -5,7 +5,6 @@
 import { randomUUID } from 'crypto';
 import { AuthError, isClassifiedError } from '@keepai/proto';
 import { McpOAuthClient, McpSession } from '@keepai/mcp-client';
-import type { OAuthMetadata } from '@keepai/mcp-client';
 import { OAuthHandler, tokenResponseToCredentials } from './oauth.js';
 import { CredentialStore } from './store.js';
 import { getCredentialsForService } from './credentials.js';
@@ -31,6 +30,7 @@ interface PendingState {
   // MCP OAuth fields
   codeVerifier?: string;
   mcpClientId?: string;
+  mcpClientSecret?: string;
   mcpTokenUrl?: string;
   mcpServerUrl?: string;
 }
@@ -111,10 +111,19 @@ export class ConnectionManager {
 
     // MCP OAuth path
     if (service.mcpOAuth) {
-      const metadata = await McpOAuthClient.discover(service.mcpOAuth.serverUrl);
+      const mcpEndpoint = service.mcpOAuth.mcpEndpoint ?? '/mcp';
+      const discovery = await McpOAuthClient.discover(service.mcpOAuth.serverUrl, mcpEndpoint);
+      const metadata = discovery.metadata;
 
       let mcpClientId: string;
-      if (metadata.registration_endpoint) {
+      let mcpClientSecret: string | undefined;
+
+      if (service.mcpOAuth.clientId) {
+        // Pre-registered client (e.g. GitHub — no DCR)
+        mcpClientId = service.mcpOAuth.clientId;
+        mcpClientSecret = service.mcpOAuth.clientSecret;
+      } else if (metadata.registration_endpoint) {
+        // Dynamic client registration
         const registration = await McpOAuthClient.register(
           metadata.registration_endpoint,
           redirectUri,
@@ -122,15 +131,18 @@ export class ConnectionManager {
         );
         mcpClientId = registration.client_id;
       } else {
-        throw new Error(`MCP server at ${service.mcpOAuth.serverUrl} does not support dynamic registration`);
+        throw new Error(`MCP server at ${service.mcpOAuth.serverUrl} does not support dynamic registration and no client_id configured`);
       }
+
+      const scopes = service.mcpOAuth.scopes ?? metadata.scopes_supported;
 
       const { url: authUrl, codeVerifier } = McpOAuthClient.buildAuthUrl(
         metadata.authorization_endpoint,
         mcpClientId,
         redirectUri,
         state,
-        metadata.scopes_supported
+        scopes,
+        service.mcpOAuth.extraAuthParams
       );
 
       this.pendingStates.set(state, {
@@ -139,6 +151,7 @@ export class ConnectionManager {
         timestamp: Date.now(),
         codeVerifier,
         mcpClientId,
+        mcpClientSecret,
         mcpTokenUrl: metadata.token_endpoint,
         mcpServerUrl: service.mcpOAuth.serverUrl,
       });
@@ -213,7 +226,8 @@ export class ConnectionManager {
           pending.mcpClientId,
           code,
           pending.redirectUri,
-          pending.codeVerifier
+          pending.codeVerifier,
+          pending.mcpClientSecret
         );
 
         credentials = {
@@ -228,12 +242,13 @@ export class ConnectionManager {
         }
 
         metadata.mcpClientId = pending.mcpClientId;
+        if (pending.mcpClientSecret) metadata.mcpClientSecret = pending.mcpClientSecret;
         metadata.mcpServerUrl = pending.mcpServerUrl;
         metadata.mcpTokenUrl = pending.mcpTokenUrl;
 
         // Extract account ID via MCP session
         if (service.mcpExtractAccountId) {
-          const mcpEndpoint = '/mcp';
+          const mcpEndpoint = service.mcpOAuth?.mcpEndpoint ?? '/mcp';
           const tempSession = new McpSession(
             pending.mcpServerUrl!,
             mcpEndpoint,
@@ -310,7 +325,8 @@ export class ConnectionManager {
       if (isClassifiedError(err)) {
         userMessage = err.message;
       } else {
-        userMessage = 'An authentication error occurred. Please try connecting again.';
+        const detail = err instanceof Error ? err.message : String(err);
+        userMessage = `Authentication error: ${detail}`;
       }
 
       return { success: false, error: userMessage };
@@ -469,13 +485,15 @@ export class ConnectionManager {
 
     // MCP OAuth refresh path
     const mcpClientId = currentCreds.metadata?.mcpClientId as string | undefined;
+    const mcpClientSecret = currentCreds.metadata?.mcpClientSecret as string | undefined;
     const mcpTokenUrl = currentCreds.metadata?.mcpTokenUrl as string | undefined;
 
     if (mcpClientId && mcpTokenUrl) {
       const mcpTokens = await McpOAuthClient.refreshToken(
         mcpTokenUrl,
         mcpClientId,
-        currentCreds.refreshToken!
+        currentCreds.refreshToken!,
+        mcpClientSecret
       );
 
       const newCreds: OAuthCredentials = {
