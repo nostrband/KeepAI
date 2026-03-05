@@ -34,6 +34,7 @@ export class McpConnector implements Connector {
   readonly name: string;
   methods: ConnectorMethod[] = [];
 
+  private currentAccessToken = '';
   private session: McpSession;
   private config: McpConnectorConfig;
   // mcpToolName → keepai method name
@@ -41,15 +42,24 @@ export class McpConnector implements Connector {
   // keepai method name → mcpToolName
   private reverseNameMap: Record<string, string> = {};
 
-  constructor(config: McpConnectorConfig, getAccessToken: () => string) {
+  constructor(config: McpConnectorConfig) {
     this.service = config.service;
     this.name = config.name;
     this.config = config;
     this.session = new McpSession(
       config.serverUrl,
       config.mcpEndpoint ?? '/mcp',
-      getAccessToken
+      () => this.currentAccessToken
     );
+  }
+
+  /**
+   * Set the access token used for MCP requests.
+   * Called by server.ts on startup with the stored token,
+   * and updated on each execute() call.
+   */
+  setAccessToken(token: string): void {
+    this.currentAccessToken = token;
   }
 
   getSession(): McpSession {
@@ -57,6 +67,11 @@ export class McpConnector implements Connector {
   }
 
   async initialize(): Promise<void> {
+    if (!this.currentAccessToken) {
+      // No token available — can't call MCP server
+      this.methods = [];
+      return;
+    }
     try {
       await this.session.initialize();
       this.methods = this.buildMethods(this.session.cachedTools);
@@ -145,16 +160,21 @@ export class McpConnector implements Connector {
     };
   }
 
-  async execute(
-    method: string,
-    params: Record<string, unknown>,
-    _credentials: OAuthCredentials
-  ): Promise<unknown> {
-    // Re-initialize if methods were empty (startup failure)
+  async ensureReady(credentials: OAuthCredentials): Promise<void> {
+    this.currentAccessToken = credentials.accessToken;
     if (this.methods.length === 0) {
       await this.session.initialize();
       this.methods = this.buildMethods(this.session.cachedTools);
     }
+  }
+
+  async execute(
+    method: string,
+    params: Record<string, unknown>,
+    credentials: OAuthCredentials
+  ): Promise<unknown> {
+    // Update token (ensureReady may have been called already, but direct callers may not)
+    this.currentAccessToken = credentials.accessToken;
 
     const mcpToolName = this.reverseNameMap[method] ?? method;
     const result = await this.session.callTool(mcpToolName, params);
@@ -202,13 +222,15 @@ function parseExamples(description: string): {
   cleanDescription: string;
 } {
   const examples: ParsedExample[] = [];
-  const exampleRegex = /<example\s+description="([^"]*)">\s*([\s\S]*?)\s*<\/example>/g;
+  // Match both <example description="...">json</example> and plain <example>json</example>
+  const exampleRegex = /<example(?:\s+description="([^"]*)")?\s*>([\s\S]*?)<\/example>/g;
 
   let match;
   while ((match = exampleRegex.exec(description)) !== null) {
     try {
-      const params = JSON.parse(match[2]);
-      examples.push({ description: match[1], params });
+      const params = JSON.parse(match[2].trim());
+      const desc = match[1] || summarizeExample(params);
+      examples.push({ description: desc, params });
     } catch {
       // Skip malformed examples
     }
@@ -216,6 +238,18 @@ function parseExamples(description: string): {
 
   const cleanDescription = description.replace(exampleRegex, '').trim();
   return { examples, cleanDescription };
+}
+
+function summarizeExample(params: Record<string, unknown>): string {
+  const keys = Object.keys(params);
+  if (keys.length === 0) return 'Example';
+  const preview = keys.slice(0, 2).map(k => {
+    const v = params[k];
+    if (typeof v === 'string' && v.length > 30) return `${k}="${v.slice(0, 30)}..."`;
+    if (typeof v === 'string') return `${k}="${v}"`;
+    return `${k}=${JSON.stringify(v)}`;
+  }).join(', ');
+  return keys.length > 2 ? `${preview}, ...` : preview;
 }
 
 function flattenJsonSchema(schema: McpTool['inputSchema']): ParamSchema[] {

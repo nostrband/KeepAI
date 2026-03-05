@@ -110,6 +110,9 @@ export interface Connector {
   name: string;
   methods: ConnectorMethod[];
 
+  /** Ensure connector is ready (e.g. MCP tool list loaded). Called with credentials before execute/validation. */
+  ensureReady?(credentials: OAuthCredentials): Promise<void>;
+
   extractPermMetadata(
     method: string,
     params: Record<string, unknown>,

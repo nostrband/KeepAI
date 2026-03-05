@@ -39,7 +39,7 @@ export const notionMcpConfig: McpConnectorConfig = {
       case 'fetch':
         return `Fetch ${params.id || '(unknown)'}`;
       case 'pages.create':
-        return `Create ${(params.pages as unknown[])?.length ?? 1} page(s)`;
+        return `Create ${Array.isArray(params.pages) ? params.pages.length : 1} page(s)`;
       case 'pages.update':
         return `Update page ${params.page_id || '(unknown)'}`;
       default:

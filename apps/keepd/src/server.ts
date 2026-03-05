@@ -102,13 +102,26 @@ export async function createServer(config: ServerConfig = {}) {
   connectorExecutor.register(gmailConnector);
 
   // Notion via MCP connector
-  let notionAccessToken = '';
-  const notionMcp = new McpConnector(notionMcpConfig, () => notionAccessToken);
-  // Initialize in background — tool list fetch can fail silently on startup
-  notionMcp.initialize().catch((err) => {
-    log('notion MCP connector init failed (will retry on first request): %O', err);
-  });
+  const notionMcp = new McpConnector(notionMcpConfig);
   connectorExecutor.register(notionMcp);
+
+  // Try to seed the MCP connector with a stored token so tool list is available at startup
+  {
+    const notionConns = await connectionManager.listConnectionsByService('notion');
+    const activeConn = notionConns.find((c) => c.status === 'connected');
+    if (activeConn) {
+      try {
+        const creds = await connectionManager.getCredentials({
+          service: 'notion',
+          accountId: activeConn.accountId,
+        });
+        notionMcp.setAccessToken(creds.accessToken);
+        await notionMcp.initialize();
+      } catch (err) {
+        log('notion MCP connector startup init failed (will retry on first request): %O', err);
+      }
+    }
+  }
 
   // 8. Initialize SSE broadcaster
   const sse = new SSEBroadcaster();

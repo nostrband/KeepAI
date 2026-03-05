@@ -297,7 +297,7 @@ describe('renderMethodDetail', () => {
       }],
     };
     const text = renderMethodDetail(svc, 'do.thing');
-    expect(text).toContain('--msg="hello world"');
+    expect(text).toContain("--msg='hello world'");
   });
 });
 
@@ -318,7 +318,7 @@ describe('renderMethodDetail with real connectors', () => {
 
   it('works with notion MCP connector help output', async () => {
     const { McpConnector, notionMcpConfig } = await import('@keepai/connectors');
-    const notionMcp = new McpConnector(notionMcpConfig, () => 'fake-token');
+    const notionMcp = new McpConnector(notionMcpConfig);
     // Without MCP server, methods are empty — test help structure
     const help = notionMcp.help();
     help.accounts = [{ id: 'ws-123', label: 'My Workspace' }];

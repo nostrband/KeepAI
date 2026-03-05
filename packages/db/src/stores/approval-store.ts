@@ -71,7 +71,7 @@ export class ApprovalStore {
 
   listPending(): ApprovalEntry[] {
     const rows = this.db
-      .prepare("SELECT * FROM approval_queue WHERE status = 'pending' ORDER BY created_at ASC")
+      .prepare("SELECT * FROM approval_queue WHERE status = 'pending' ORDER BY created_at DESC")
       .all() as ApprovalRow[];
     return rows.map(rowToApproval);
   }

@@ -2,7 +2,7 @@ import { Plus } from 'lucide-react';
 import { useConnectService } from '../hooks/use-connections';
 import { ServiceIcon, serviceName } from './service-icon';
 
-const AVAILABLE_SERVICES = ['gmail'/*, 'notion'*/];
+const AVAILABLE_SERVICES = ['gmail', 'notion'];
 
 interface ConnectAppDialogProps {
   open: boolean;

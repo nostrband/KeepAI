@@ -287,7 +287,7 @@ describe('Notion MCP connector', () => {
   let notionMcp: McpConnector;
 
   beforeEach(() => {
-    notionMcp = new McpConnector(notionMcpConfig, () => 'fake-token');
+    notionMcp = new McpConnector(notionMcpConfig);
     // Not calling initialize() — methods will be empty without a live MCP server
   });
 
@@ -315,7 +315,7 @@ describe('ConnectorExecutor', () => {
   beforeEach(() => {
     executor = new ConnectorExecutor();
     executor.register(gmailConnector);
-    notionMcp = new McpConnector(notionMcpConfig, () => 'fake-token');
+    notionMcp = new McpConnector(notionMcpConfig);
     executor.register(notionMcp);
   });
 

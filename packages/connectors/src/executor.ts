@@ -57,6 +57,11 @@ export class ConnectorExecutor {
       throw new Error(`Unknown service: ${service}`);
     }
 
+    // Let MCP connectors lazy-load their tool list with the provided credentials
+    if (connector.ensureReady) {
+      await connector.ensureReady(credentials);
+    }
+
     const methodDef = connector.methods.find((m) => m.name === method);
     if (!methodDef) {
       throw new Error(`Unknown method: ${service}.${method}`);

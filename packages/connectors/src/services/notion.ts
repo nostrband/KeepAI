@@ -34,23 +34,25 @@ export const notionService: ServiceDefinition = {
         .filter((c) => c.type === 'text' && c.text)
         .map((c) => c.text!)
         .join('\n');
-      try {
-        const parsed = JSON.parse(text);
-        if (parsed?.workspace_id) {
-          return {
-            accountId: parsed.workspace_id,
-            displayName: parsed.workspace_name || parsed.name || parsed.workspace_id,
-          };
-        }
-        if (parsed?.id) {
-          return {
-            accountId: parsed.id,
-            displayName: parsed.name || parsed.id,
-          };
-        }
-      } catch {
-        // Not JSON
+      const parsed = JSON.parse(text);
+
+      // Response is { results: [{ type, id, name, email }], has_more }
+      const user = parsed?.results?.[0];
+      if (user) {
+        // Use email as account ID (stable, human-readable), fall back to user ID
+        const accountId = user.email || user.id;
+        const displayName = user.name || user.email || user.id;
+        return { accountId: String(accountId), displayName: String(displayName) };
       }
+
+      // Fallback: top-level fields
+      if (parsed?.id) {
+        return {
+          accountId: String(parsed.id),
+          displayName: String(parsed.name || parsed.id),
+        };
+      }
+
       return { accountId: 'default', displayName: 'Notion Workspace' };
     } catch {
       return { accountId: 'default', displayName: 'Notion Workspace' };

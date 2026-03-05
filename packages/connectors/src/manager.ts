@@ -233,9 +233,10 @@ export class ConnectionManager {
 
         // Extract account ID via MCP session
         if (service.mcpExtractAccountId) {
+          const mcpEndpoint = '/mcp';
           const tempSession = new McpSession(
             pending.mcpServerUrl!,
-            service.mcpOAuth?.serverUrl ? '/mcp' : '/mcp',
+            mcpEndpoint,
             () => credentials.accessToken
           );
           await tempSession.initialize();

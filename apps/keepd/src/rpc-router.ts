@@ -386,7 +386,17 @@ export class RPCRouter {
 
     // Validate method exists
     const methodDef = connector.methods.find((m) => m.name === method);
+
     if (!methodDef) {
+      // Check if it's a method group prefix (e.g. "pages" matches "pages.create", "pages.update")
+      const groupMethods = connector.methods.filter((m) => m.name.startsWith(method + '.'));
+      if (groupMethods.length > 0) {
+        const fullHelp = connector.help();
+        fullHelp.methods = groupMethods;
+        await this.enrichHelpWithAccounts([fullHelp]);
+        return { result: { text: renderServiceMethods(fullHelp) } };
+      }
+
       const text = renderUnknownMethod(service, method, connector.methods);
       return {
         error: { code: 'not_found', message: `Unknown method: ${service}.${method}`, text },
@@ -422,6 +432,17 @@ export class RPCRouter {
     request: RPCRequest
   ): Promise<{ result?: unknown; error?: RPCError }> {
     const startTime = Date.now();
+
+    // Fetch credentials early so MCP connectors can lazy-init their tool list
+    const credentials = await this.connectionManager.getCredentials({
+      service,
+      accountId,
+    });
+
+    const connector = this.connectorExecutor.getConnector(service);
+    if (connector?.ensureReady) {
+      await connector.ensureReady(credentials);
+    }
 
     // Extract permission metadata
     const metadata = this.connectorExecutor.extractPermMetadata(
@@ -505,11 +526,6 @@ export class RPCRouter {
 
     // Execute connector
     try {
-      const credentials = await this.connectionManager.getCredentials({
-        service,
-        accountId,
-      });
-
       const result = await this.connectorExecutor.execute(
         service,
         method,

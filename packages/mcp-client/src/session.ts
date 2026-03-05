@@ -39,6 +39,9 @@ export class McpSession {
   async initialize(): Promise<void> {
     const token = this.getAccessToken();
 
+    // Clear stale session — MCP servers reject initialize with an existing sessionId
+    this.sessionId = null;
+
     // Step 1: initialize
     const initRequest: JsonRpcRequest = {
       jsonrpc: '2.0',
@@ -56,7 +59,6 @@ export class McpSession {
 
     const initResult = await mcpFetch(this.endpoint, initRequest, {
       accessToken: token,
-      sessionId: this.sessionId ?? undefined,
     });
 
     this.sessionId = initResult.sessionId ?? this.sessionId;

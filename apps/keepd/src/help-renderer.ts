@@ -45,10 +45,34 @@ export function renderServiceMethods(service: ServiceHelp): string {
   lines.push(`${service.name} — ${accounts}`);
   lines.push('');
 
-  // Group methods by prefix (before first dot)
+  // Group methods by prefix (before first dot); ungrouped methods have no dot
   const groups = groupMethods(service.methods);
 
+  // Separate ungrouped (no dot) from real groups (have dot → multiple sub-methods)
+  const ungrouped: ConnectorMethod[] = [];
+  const realGroups: [string, ConnectorMethod[]][] = [];
   for (const [group, methods] of groups) {
+    const allWithoutDot = methods.every(m => !m.name.includes('.'));
+    if (allWithoutDot) {
+      ungrouped.push(...methods);
+    } else {
+      realGroups.push([group, methods]);
+    }
+  }
+
+  // Render ungrouped methods first (flat, no group header)
+  if (ungrouped.length > 0) {
+    const maxName = Math.max(...ungrouped.map(m => m.name.length));
+    for (const m of ungrouped) {
+      const padded = m.name.padEnd(maxName + 4);
+      const preview = paramPreview(m.params);
+      lines.push(`  ${padded}${m.description}${preview ? `  ${preview}` : ''}`);
+    }
+    lines.push('');
+  }
+
+  // Render grouped methods
+  for (const [group, methods] of realGroups) {
     lines.push(`  ${group}`);
 
     // Calculate column widths for alignment within this group
@@ -170,7 +194,10 @@ export function renderMethodDetail(service: ServiceHelp, methodName: string): st
 
 function formatAccounts(svc: ServiceHelp): string {
   if (!svc.accounts || svc.accounts.length === 0) return '(none connected)';
-  return svc.accounts.map(a => a.label || a.id).join(', ');
+  return svc.accounts.map(a => {
+    if (a.label && a.label !== a.id) return `${a.id} (${a.label})`;
+    return a.id;
+  }).join(', ');
 }
 
 function shortName(methodName: string): string {
@@ -209,10 +236,12 @@ function buildFlagExample(service: string, method: string, params: Record<string
   const flags = Object.entries(params)
     .map(([key, value]) => {
       if (typeof value === 'string') {
-        const quoted = value.includes(' ') ? `"${value}"` : value;
-        return `--${key}=${quoted}`;
+        // Simple alphanumeric values don't need quoting; everything else gets single-quoted
+        if (/^[a-zA-Z0-9_.@:/-]+$/.test(value)) return `--${key}=${value}`;
+        return `--${key}='${value.replace(/'/g, "'\\''")}'`;
       }
-      return `--${key}=${JSON.stringify(value)}`;
+      // Objects, arrays, numbers, booleans — single-quote the JSON to prevent bash expansion
+      return `--${key}='${JSON.stringify(value)}'`;
     })
     .join(' ');
   return `npx keepai run ${service} ${method} ${flags}`;

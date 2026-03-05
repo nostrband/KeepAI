@@ -18,7 +18,7 @@ import type { PolicyEngine } from '../managers/policy-engine.js';
 
 export const HEALTH_CHECK_METHODS: Record<string, { method: string; params: Record<string, unknown> }> = {
   gmail: { method: 'profile.get', params: {} },
-  notion: { method: 'search', params: { query: '' } },
+  notion: { method: 'users.list', params: { user_id: 'self' } },
 };
 
 export type HealthCheckResult =
