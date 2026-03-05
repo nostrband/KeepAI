@@ -239,6 +239,24 @@ function handleSSEEvent(event: string, dataStr: string) {
     } catch {
       // Ignore parse errors
     }
+  } else if (event === 'connection_updated') {
+    try {
+      const data = JSON.parse(dataStr);
+      if (data.action === 'connected' && Notification.isSupported()) {
+        const notification = new Notification({
+          title: 'KeepAI',
+          body: `${data.serviceName || data.service} connected`,
+          icon: path.join(__dirname, '..', 'build', 'icon.png'),
+        });
+        notification.on('click', () => {
+          mainWindow?.show();
+          mainWindow?.focus();
+        });
+        notification.show();
+      }
+    } catch {
+      // Ignore parse errors
+    }
   } else if (event === 'approval_resolved') {
     pendingCount = Math.max(0, pendingCount - 1);
     updateTrayMenu();

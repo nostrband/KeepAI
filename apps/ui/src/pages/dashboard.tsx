@@ -11,6 +11,7 @@ import { EmptyState } from '../components/empty-state';
 import { ConnectAppDialog } from '../components/connect-app-dialog';
 import { AddAgentDialog } from '../components/add-agent-dialog';
 import { useApproveRequest, useDenyRequest } from '../hooks/use-queue';
+import { useOAuthFlow } from '../hooks/use-oauth-flow';
 
 function WelcomeScreen({
   onConnectApp,
@@ -75,7 +76,13 @@ export function DashboardPage() {
   const { data: queue } = useQueue();
   const approveMutation = useApproveRequest();
   const denyMutation = useDenyRequest();
-  const [showConnectDialog, setShowConnectDialog] = useState(false);
+  const {
+    showDialog: showConnectDialog,
+    connectedService,
+    openDialog: openConnectDialog,
+    closeDialog: closeConnectDialog,
+    setPendingService,
+  } = useOAuthFlow();
   const [showAgentDialog, setShowAgentDialog] = useState(false);
 
   const pendingApprovals = queue ?? [];
@@ -92,7 +99,7 @@ export function DashboardPage() {
     </div>
   ) : isEmpty ? (
     <WelcomeScreen
-      onConnectApp={() => setShowConnectDialog(true)}
+      onConnectApp={() => openConnectDialog()}
       onAddAgent={() => setShowAgentDialog(true)}
     />
   ) : (
@@ -135,7 +142,7 @@ export function DashboardPage() {
             Apps
           </h2>
           <button
-            onClick={() => setShowConnectDialog(true)}
+            onClick={() => openConnectDialog()}
             className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -150,7 +157,7 @@ export function DashboardPage() {
             description="Connect your apps to get started."
             action={
               <button
-                onClick={() => setShowConnectDialog(true)}
+                onClick={() => openConnectDialog()}
                 className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover"
               >
                 <Plus className="w-4 h-4" />
@@ -238,7 +245,12 @@ export function DashboardPage() {
   return (
     <>
       {content}
-      <ConnectAppDialog open={showConnectDialog} onClose={() => setShowConnectDialog(false)} />
+      <ConnectAppDialog
+        open={showConnectDialog}
+        onClose={closeConnectDialog}
+        connectedService={connectedService}
+        onPendingService={setPendingService}
+      />
       <AddAgentDialog open={showAgentDialog} onClose={() => setShowAgentDialog(false)} />
     </>
   );

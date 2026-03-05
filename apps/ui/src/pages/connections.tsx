@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plug, Plus, Trash2, RefreshCw } from 'lucide-react';
 import { useConnections, useDisconnectService, useCheckConnection } from '../hooks/use-connections';
@@ -7,19 +6,20 @@ import { StatusBadge } from '../components/status-badge';
 import { EmptyState } from '../components/empty-state';
 import { PageTitle } from '../components/page-title';
 import { ConnectAppDialog } from '../components/connect-app-dialog';
+import { useOAuthFlow } from '../hooks/use-oauth-flow';
 
 export function ConnectionsPage() {
   const { data: connections, isLoading } = useConnections();
   const disconnectMutation = useDisconnectService();
   const checkMutation = useCheckConnection();
-  const [showDialog, setShowDialog] = useState(false);
+  const { showDialog, connectedService, openDialog, closeDialog, setPendingService } = useOAuthFlow();
 
   return (
     <div>
       <div className="flex items-center justify-between">
         <PageTitle>Apps</PageTitle>
         <button
-          onClick={() => setShowDialog(true)}
+          onClick={openDialog}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover"
         >
           <Plus className="w-4 h-4" />
@@ -27,7 +27,12 @@ export function ConnectionsPage() {
         </button>
       </div>
 
-      <ConnectAppDialog open={showDialog} onClose={() => setShowDialog(false)} />
+      <ConnectAppDialog
+        open={showDialog}
+        onClose={closeDialog}
+        connectedService={connectedService}
+        onPendingService={setPendingService}
+      />
 
       {/* Connection List */}
       {isLoading ? (
@@ -39,7 +44,7 @@ export function ConnectionsPage() {
           description="Connect your apps to allow AI agents to access them."
           action={
             <button
-              onClick={() => setShowDialog(true)}
+              onClick={openDialog}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover"
             >
               <Plus className="w-4 h-4" />

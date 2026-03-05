@@ -141,7 +141,7 @@ export async function registerConnectionRoutes(
         policyEngine.createDefaultsForConnection(service, result.connection.accountId, agentIds);
       }
 
-      sse?.broadcast('connection_updated', { service, action: 'connected' });
+      sse?.broadcast('connection_updated', { service, serviceName, action: 'connected' });
       return callbackPage(`Connected to ${escapeHtml(serviceName)}`, 'You can close this window.', { autoClose: true });
     } else {
       return callbackPage(`Failed to connect to ${escapeHtml(serviceName)}`, `${escapeHtml(result.error || 'Unknown error')}<br/>You can close this window.`);
