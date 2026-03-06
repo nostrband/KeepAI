@@ -16,6 +16,8 @@ export function ServiceIcon({ service, className }: ServiceIconProps) {
       return <FileText className={cn(iconClass, 'text-gray-800')} />;
     case 'github':
       return <Github className={cn(iconClass, 'text-gray-800')} />;
+    case 'airtable':
+      return <img src="/airtable.png" alt="Airtable" className={iconClass} />;
     default:
       return <Globe className={cn(iconClass, 'text-gray-500')} />;
   }
@@ -26,6 +28,7 @@ export function serviceName(service: string): string {
     case 'gmail': return 'Gmail';
     case 'notion': return 'Notion';
     case 'github': return 'GitHub';
+    case 'airtable': return 'Airtable';
     default: return service;
   }
 }

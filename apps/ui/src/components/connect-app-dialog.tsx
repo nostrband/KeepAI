@@ -3,7 +3,7 @@ import { X, Loader2, CheckCircle2 } from 'lucide-react';
 import { useConnectService } from '../hooks/use-connections';
 import { ServiceIcon, serviceName } from './service-icon';
 
-const AVAILABLE_SERVICES = ['gmail', 'notion', 'github'];
+const AVAILABLE_SERVICES = ['gmail', 'notion', 'github', 'airtable'];
 
 type Step = 'select' | 'redirecting' | 'waiting' | 'connected';
 
@@ -97,7 +97,7 @@ export function ConnectAppDialog({
             <p className="text-sm text-muted-foreground mb-4">
               Choose an app to connect:
             </p>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               {AVAILABLE_SERVICES.map((svc) => (
                 <button
                   key={svc}

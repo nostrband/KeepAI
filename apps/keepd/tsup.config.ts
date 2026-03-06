@@ -26,6 +26,7 @@ const GOOGLE_CLIENT_ID = getSecret('GOOGLE_CLIENT_ID');
 const GOOGLE_CLIENT_SECRET = getSecret('GOOGLE_CLIENT_SECRET', 'BUILD_GMAIL_SECRET');
 const NOTION_CLIENT_ID = getSecret('NOTION_CLIENT_ID');
 const NOTION_CLIENT_SECRET = getSecret('NOTION_CLIENT_SECRET');
+const AIRTABLE_CLIENT_ID = getSecret('AIRTABLE_CLIENT_ID');
 
 export default defineConfig({
   entry: ['src/server.ts', 'src/start.ts'],
@@ -39,5 +40,6 @@ export default defineConfig({
     'process.env.GOOGLE_CLIENT_SECRET': JSON.stringify(GOOGLE_CLIENT_SECRET),
     'process.env.NOTION_CLIENT_ID': JSON.stringify(NOTION_CLIENT_ID),
     'process.env.NOTION_CLIENT_SECRET': JSON.stringify(NOTION_CLIENT_SECRET),
+    'process.env.AIRTABLE_CLIENT_ID': JSON.stringify(AIRTABLE_CLIENT_ID),
   },
 });

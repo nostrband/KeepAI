@@ -156,14 +156,8 @@ export class ConnectionManager {
     }
 
     // Standard OAuth path
-    this.pendingStates.set(state, {
-      service: serviceId,
-      redirectUri,
-      timestamp: Date.now(),
-    });
-
     const { clientId, clientSecret } = getCredentialsForService(serviceId);
-    if (!clientId || !clientSecret) {
+    if (!clientId) {
       throw new Error(
         `OAuth credentials not configured for ${serviceId}. ` +
           'Check secrets.build.json or environment variables.'
@@ -177,7 +171,15 @@ export class ConnectionManager {
       redirectUri
     );
 
-    const authUrl = handler.getAuthUrl(state);
+    const { url: authUrl, codeVerifier } = handler.getAuthUrl(state);
+
+    this.pendingStates.set(state, {
+      service: serviceId,
+      redirectUri,
+      timestamp: Date.now(),
+      codeVerifier,
+    });
+
     return { authUrl, state };
   }
 
@@ -271,7 +273,7 @@ export class ConnectionManager {
           pending.redirectUri
         );
 
-        const tokenResponse = await handler.exchangeCode(code);
+        const tokenResponse = await handler.exchangeCode(code, pending.codeVerifier);
         credentials = tokenResponseToCredentials(tokenResponse);
 
         let profile: unknown;

@@ -3,6 +3,7 @@
  * Supports both standard OAuth2 (Google) and Basic auth token exchange (Notion).
  */
 
+import { randomBytes, createHash } from 'crypto';
 import {
   AuthError,
   InternalError,
@@ -11,6 +12,18 @@ import {
   type ClassifiedError,
 } from '@keepai/proto';
 import type { OAuthConfig, OAuthCredentials, TokenResponse } from './types.js';
+
+function base64url(buffer: Buffer): string {
+  return buffer.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function generateCodeVerifier(): string {
+  return base64url(randomBytes(32));
+}
+
+function generateCodeChallenge(verifier: string): string {
+  return base64url(createHash('sha256').update(verifier).digest());
+}
 
 export type RevokeResult = {
   success: boolean;
@@ -57,7 +70,7 @@ export class OAuthHandler {
     private redirectUri: string
   ) {}
 
-  getAuthUrl(state?: string): string {
+  getAuthUrl(state?: string): { url: string; codeVerifier?: string } {
     const params = new URLSearchParams({
       client_id: this.clientId,
       redirect_uri: this.redirectUri,
@@ -78,28 +91,41 @@ export class OAuthHandler {
       }
     }
 
-    return `${this.config.authUrl}?${params.toString()}`;
+    let codeVerifier: string | undefined;
+    if (this.config.pkce) {
+      codeVerifier = generateCodeVerifier();
+      params.set('code_challenge', generateCodeChallenge(codeVerifier));
+      params.set('code_challenge_method', 'S256');
+    }
+
+    return { url: `${this.config.authUrl}?${params.toString()}`, codeVerifier };
   }
 
-  async exchangeCode(code: string): Promise<TokenResponse> {
+  async exchangeCode(code: string, codeVerifier?: string): Promise<TokenResponse> {
     const body = new URLSearchParams({
       code,
       redirect_uri: this.redirectUri,
       grant_type: 'authorization_code',
     });
 
+    if (codeVerifier) {
+      body.set('code_verifier', codeVerifier);
+    }
+
     const headers: Record<string, string> = {
       'Content-Type': 'application/x-www-form-urlencoded',
     };
 
-    if (this.config.useBasicAuth) {
+    if (this.config.useBasicAuth && this.clientSecret) {
       const basicAuth = Buffer.from(
         `${this.clientId}:${this.clientSecret}`
       ).toString('base64');
       headers['Authorization'] = `Basic ${basicAuth}`;
     } else {
       body.set('client_id', this.clientId);
-      body.set('client_secret', this.clientSecret);
+      if (this.clientSecret) {
+        body.set('client_secret', this.clientSecret);
+      }
     }
 
     const response = await fetch(this.config.tokenUrl, {
@@ -131,14 +157,16 @@ export class OAuthHandler {
       'Content-Type': 'application/x-www-form-urlencoded',
     };
 
-    if (this.config.useBasicAuth) {
+    if (this.config.useBasicAuth && this.clientSecret) {
       const basicAuth = Buffer.from(
         `${this.clientId}:${this.clientSecret}`
       ).toString('base64');
       headers['Authorization'] = `Basic ${basicAuth}`;
     } else {
       body.set('client_id', this.clientId);
-      body.set('client_secret', this.clientSecret);
+      if (this.clientSecret) {
+        body.set('client_secret', this.clientSecret);
+      }
     }
 
     const response = await fetch(this.config.tokenUrl, {
@@ -172,14 +200,16 @@ export class OAuthHandler {
         'Content-Type': 'application/x-www-form-urlencoded',
       };
 
-      if (this.config.useBasicAuth) {
+      if (this.config.useBasicAuth && this.clientSecret) {
         const basicAuth = Buffer.from(
           `${this.clientId}:${this.clientSecret}`
         ).toString('base64');
         headers['Authorization'] = `Basic ${basicAuth}`;
       } else {
         body.set('client_id', this.clientId);
-        body.set('client_secret', this.clientSecret);
+        if (this.clientSecret) {
+          body.set('client_secret', this.clientSecret);
+        }
       }
 
       const response = await fetch(this.config.revokeUrl, {

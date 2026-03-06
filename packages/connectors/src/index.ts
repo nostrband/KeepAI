@@ -13,6 +13,7 @@ export { CredentialStore } from './store.js';
 export {
   getGoogleCredentials,
   getGitHubCredentials,
+  getAirtableCredentials,
   getCredentialsForService,
   hasCredentialsForService,
 } from './credentials.js';
@@ -38,9 +39,15 @@ export {
 
 export { notionService } from './services/notion.js';
 export { githubService } from './services/github.js';
+export {
+  airtableService,
+  fetchAirtableProfile,
+  type AirtableProfile,
+} from './services/airtable.js';
 
 // Connectors (method registries + execution)
 export { gmailConnector } from './connectors/gmail.js';
+export { airtableConnector } from './connectors/airtable.js';
 
 // MCP Connector
 export { McpConnector } from './mcp-connector.js';

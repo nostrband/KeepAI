@@ -32,6 +32,7 @@ const GOOGLE_CLIENT_ID = getSecret('GOOGLE_CLIENT_ID');
 const GOOGLE_CLIENT_SECRET = getSecret('GOOGLE_CLIENT_SECRET', 'BUILD_GMAIL_SECRET');
 const GITHUB_CLIENT_ID = getSecret('GITHUB_CLIENT_ID');
 const GITHUB_CLIENT_SECRET = getSecret('GITHUB_CLIENT_SECRET', 'BUILD_GITHUB_SECRET');
+const AIRTABLE_CLIENT_ID = getSecret('AIRTABLE_CLIENT_ID');
 
 export default defineConfig({
   entry: { index: 'src/index.ts' },
@@ -45,5 +46,6 @@ export default defineConfig({
     'process.env.GOOGLE_CLIENT_SECRET': JSON.stringify(GOOGLE_CLIENT_SECRET),
     'process.env.GITHUB_CLIENT_ID': JSON.stringify(GITHUB_CLIENT_ID),
     'process.env.GITHUB_CLIENT_SECRET': JSON.stringify(GITHUB_CLIENT_SECRET),
+    'process.env.AIRTABLE_CLIENT_ID': JSON.stringify(AIRTABLE_CLIENT_ID),
   },
 });

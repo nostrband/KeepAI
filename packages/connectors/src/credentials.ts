@@ -19,12 +19,21 @@ export function getGitHubCredentials(): OAuthAppCredentials {
   };
 }
 
+export function getAirtableCredentials(): OAuthAppCredentials {
+  return {
+    clientId: process.env.AIRTABLE_CLIENT_ID || '',
+    clientSecret: '', // Public client — no secret for desktop apps
+  };
+}
+
 export function getCredentialsForService(service: string): OAuthAppCredentials {
   switch (service) {
     case 'gmail':
       return getGoogleCredentials();
     case 'github':
       return getGitHubCredentials();
+    case 'airtable':
+      return getAirtableCredentials();
     default:
       throw new Error(`Unknown service or MCP-based service: ${service}`);
   }
@@ -33,7 +42,7 @@ export function getCredentialsForService(service: string): OAuthAppCredentials {
 export function hasCredentialsForService(service: string): boolean {
   try {
     const creds = getCredentialsForService(service);
-    return Boolean(creds.clientId && creds.clientSecret);
+    return Boolean(creds.clientId);
   } catch {
     // MCP-based services don't need build-time credentials
     return false;

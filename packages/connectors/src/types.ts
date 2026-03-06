@@ -30,6 +30,8 @@ export interface OAuthConfig {
   extraAuthParams?: Record<string, string>;
   useBasicAuth?: boolean;
   revokeUrl?: string;
+  /** When true, use PKCE (S256) for authorization and token exchange. */
+  pkce?: boolean;
 }
 
 export interface OAuthAppCredentials {

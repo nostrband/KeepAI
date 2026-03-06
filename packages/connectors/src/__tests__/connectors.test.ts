@@ -47,7 +47,7 @@ describe('OAuthHandler', () => {
       'http://localhost:3000/callback'
     );
 
-    const url = handler.getAuthUrl('test-state');
+    const { url } = handler.getAuthUrl('test-state');
     expect(url).toContain('accounts.google.com');
     expect(url).toContain('client_id=test-client-id');
     expect(url).toContain('redirect_uri=');
@@ -75,7 +75,7 @@ describe('OAuthHandler', () => {
       'http://localhost:3000/callback'
     );
 
-    const url = handler.getAuthUrl();
+    const { url } = handler.getAuthUrl();
     expect(url).not.toContain('state=');
   });
 });

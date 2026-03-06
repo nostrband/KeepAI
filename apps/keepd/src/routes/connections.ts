@@ -20,6 +20,7 @@ export const HEALTH_CHECK_METHODS: Record<string, { method: string; params: Reco
   gmail: { method: 'profile.get', params: {} },
   notion: { method: 'users.list', params: { user_id: 'self' } },
   github: { method: 'get_me', params: {} },
+  airtable: { method: 'whoami', params: {} },
 };
 
 export type HealthCheckResult =
