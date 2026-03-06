@@ -49,6 +49,10 @@ export function useSSE() {
       queryClient.invalidateQueries({ queryKey: qk.connections() });
     });
 
+    source.addEventListener('connection_health', () => {
+      queryClient.invalidateQueries({ queryKey: qk.connections() });
+    });
+
     source.onerror = () => {
       // EventSource auto-reconnects on error
     };

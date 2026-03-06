@@ -68,7 +68,7 @@ export function ConnectionsPage() {
                   {conn.lastUsedAt && ` — last used ${new Date(conn.lastUsedAt).toLocaleString()}`}
                 </div>
               </div>
-              <StatusBadge status={conn.status === 'connected' ? 'active' : conn.status === 'paused' ? 'paused' : 'error'} />
+              <StatusBadge status={conn.status === 'connected' && conn.offline ? 'offline' : conn.status === 'connected' ? 'active' : conn.status === 'paused' ? 'paused' : 'error'} />
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); checkMutation.mutate({ service: conn.service, accountId: conn.accountId }); }}
                 disabled={checkMutation.isPending}

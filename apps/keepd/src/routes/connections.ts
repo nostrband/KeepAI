@@ -15,6 +15,7 @@ import { isErrorType } from '@keepai/proto';
 import type { SSEBroadcaster } from '../sse.js';
 import type { AgentManager } from '../managers/agent-manager.js';
 import type { PolicyEngine } from '../managers/policy-engine.js';
+import type { ConnectionHealthTracker } from '../health-tracker.js';
 
 export const HEALTH_CHECK_METHODS: Record<string, { method: string; params: Record<string, unknown> }> = {
   gmail: { method: 'profile.get', params: {} },
@@ -56,8 +57,9 @@ export async function checkConnectionHealth(
     if (isErrorType(err, 'network')) {
       return { success: false, error: err.message, errorType: 'network' };
     }
-    // Unknown errors treated as auth (credential issue is most likely for a health check)
-    return { success: false, error: err.message, errorType: 'auth' };
+    // Unknown errors treated as transient — only explicitly classified auth errors
+    // should mark a connection as permanently broken.
+    return { success: false, error: err.message, errorType: 'network' };
   }
 }
 
@@ -68,12 +70,20 @@ export async function registerConnectionRoutes(
   connectorExecutor?: ConnectorExecutor,
   sse?: SSEBroadcaster,
   agentManager?: AgentManager,
-  policyEngine?: PolicyEngine
+  policyEngine?: PolicyEngine,
+  healthTracker?: ConnectionHealthTracker
 ): Promise<void> {
-  // List all connections
+  // List all connections (merge in-memory offline state)
   app.get('/api/connections', async () => {
     const connections = await connectionManager.listConnections();
-    return { connections };
+    const enriched = connections.map((conn) => {
+      const offlineState = healthTracker?.getState(conn.service, conn.accountId);
+      if (offlineState?.offline) {
+        return { ...conn, offline: true, offlineError: offlineState.error, offlineSince: offlineState.since };
+      }
+      return conn;
+    });
+    return { connections: enriched };
   });
 
   // List available services
@@ -235,12 +245,15 @@ export async function registerConnectionRoutes(
 
       if (result.success) {
         await connectionManager.markConnected(id);
+        healthTracker?.markOnline(service, accountId);
         sse?.broadcast('connection_updated', { service, accountId, status: 'connected' });
+        sse?.broadcast('connection_health', { service, accountId, offline: false });
       } else if (result.errorType === 'auth') {
         await connectionManager.markError(id, result.error);
+        healthTracker?.markOnline(service, accountId);
         sse?.broadcast('connection_updated', { service, accountId, status: 'error', error: result.error });
       }
-      // Network errors: don't change status (transient)
+      // Network errors: don't change DB status (transient)
 
       return result;
     }

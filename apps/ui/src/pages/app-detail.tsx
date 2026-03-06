@@ -83,7 +83,7 @@ export function AppDetailPage() {
           <ServiceIcon service={service!} className="w-12 h-12" />
           <div>
             <div className="font-medium">{decodedAccountId}</div>
-            <StatusBadge status={connection.status === 'connected' ? 'active' : connection.status === 'paused' ? 'paused' : 'error'} />
+            <StatusBadge status={connection.status === 'connected' && connection.offline ? 'offline' : connection.status === 'connected' ? 'active' : connection.status === 'paused' ? 'paused' : 'error'} />
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -124,6 +124,12 @@ export function AppDetailPage() {
           </button>
         </div>
       </div>
+
+      {connection.offline && connection.offlineError && (
+        <div className="mb-4 px-3 py-2 rounded-lg bg-gray-100 text-gray-500 text-sm">
+          Temporarily unreachable: {connection.offlineError}
+        </div>
+      )}
 
       {/* Connection Info */}
       <div className="border border-border rounded-xl p-4 bg-card shadow-sm mb-6">

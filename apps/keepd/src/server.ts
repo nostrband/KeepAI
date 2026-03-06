@@ -51,6 +51,7 @@ import { ApprovalQueue } from './managers/approval-queue.js';
 import { AuditLogger } from './managers/audit-logger.js';
 import { RPCRouter } from './rpc-router.js';
 import { registerConnectionRoutes, checkConnectionHealth, HEALTH_CHECK_METHODS } from './routes/connections.js';
+import { ConnectionHealthTracker } from './health-tracker.js';
 import { registerAgentRoutes } from './routes/agents.js';
 import { registerPolicyRoutes } from './routes/policies.js';
 import { registerQueueRoutes } from './routes/queue.js';
@@ -139,6 +140,9 @@ export async function createServer(config: ServerConfig = {}) {
   // 8. Initialize SSE broadcaster
   const sse = new SSEBroadcaster();
 
+  // 8a. Initialize in-memory health tracker (transient offline state)
+  const healthTracker = new ConnectionHealthTracker();
+
   // 9. Initialize AgentManager
   const agentManager = new AgentManager({ db, relays });
 
@@ -195,7 +199,7 @@ export async function createServer(config: ServerConfig = {}) {
   });
 
   // Register routes
-  await registerConnectionRoutes(app, connectionManager, () => `http://${host}:${port}`, connectorExecutor, sse, agentManager, policyEngine);
+  await registerConnectionRoutes(app, connectionManager, () => `http://${host}:${port}`, connectorExecutor, sse, agentManager, policyEngine, healthTracker);
   await registerAgentRoutes(app, agentManager, policyEngine, updateSubscription, sse);
   await registerPolicyRoutes(app, agentManager, policyEngine);
   await registerQueueRoutes(app, approvalQueue);
@@ -260,8 +264,20 @@ export async function createServer(config: ServerConfig = {}) {
 
         if (result.success) {
           await connectionManager.markConnected(id);
+          // Clear offline state if it was previously offline
+          if (healthTracker.isOffline(conn.service, conn.accountId)) {
+            healthTracker.markOnline(conn.service, conn.accountId);
+            sse.broadcast('connection_health', {
+              service: conn.service,
+              accountId: conn.accountId,
+              offline: false,
+            });
+            log('health check: connection %s:%s back online', conn.service, conn.accountId);
+          }
         } else if (result.errorType === 'auth') {
+          // Permanent error — persist to DB
           await connectionManager.markError(id, result.error);
+          healthTracker.markOnline(conn.service, conn.accountId); // clear offline if any
           sse.broadcast('connection_updated', {
             service: conn.service,
             accountId: conn.accountId,
@@ -269,8 +285,20 @@ export async function createServer(config: ServerConfig = {}) {
             error: result.error,
           });
           log('health check: connection %s:%s marked error: %s', conn.service, conn.accountId, result.error);
+        } else {
+          // Network/transient error — track in memory only
+          const wasOffline = healthTracker.isOffline(conn.service, conn.accountId);
+          healthTracker.markOffline(conn.service, conn.accountId, result.error);
+          if (!wasOffline) {
+            sse.broadcast('connection_health', {
+              service: conn.service,
+              accountId: conn.accountId,
+              offline: true,
+              error: result.error,
+            });
+          }
+          log('health check: connection %s:%s offline: %s', conn.service, conn.accountId, result.error);
         }
-        // Network errors: skip (transient)
       }
     } catch (err) {
       log('health check error: %O', err);

@@ -235,4 +235,5 @@ export type SSEEventType =
   | 'agent_connected'
   | 'agent_disconnected'
   | 'request_completed'
-  | 'connection_updated';
+  | 'connection_updated'
+  | 'connection_health';
