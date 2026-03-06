@@ -25,7 +25,7 @@ asar: true
 
 win:
   target:
-    - portable
+    - nsis
   icon: apps/electron/build/icon.png
 
 publish:

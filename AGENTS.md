@@ -16,3 +16,7 @@
 - Each store takes `Database.Database` in constructor
 - `KeepDBApi` composes all 7 stores
 - Migrations use `user_version` pragma
+
+# Releasing
+- The root `package.json` version and `apps/electron/package.json` version MUST always be kept in sync. electron-builder uses the root version as the app version baked into the binary. A mismatch causes the auto-updater to see a phantom update.
+- When bumping versions for a release, update both files together.
