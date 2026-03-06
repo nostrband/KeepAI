@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
-import { X, Loader2, CheckCircle2 } from 'lucide-react';
+import { X, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { useConnectService } from '../hooks/use-connections';
 import { ServiceIcon, serviceName } from './service-icon';
 
 const AVAILABLE_SERVICES = ['gmail', 'notion', 'github', 'airtable'];
 
-type Step = 'select' | 'redirecting' | 'waiting' | 'connected';
+const BETA_SERVICES: Record<string, string> = {
+  gmail: 'Gmail integration is in beta and has not yet been verified by Google LLC. You may see warning screens during authorization. Proceed with caution.',
+};
+
+type Step = 'select' | 'warning' | 'redirecting' | 'waiting' | 'connected';
 
 interface ConnectAppDialogProps {
   open: boolean;
@@ -48,7 +52,7 @@ export function ConnectAppDialog({
 
   if (!open) return null;
 
-  const handleConnect = async (service: string) => {
+  const startConnect = async (service: string) => {
     setActiveService(service);
     setStep('redirecting');
     onPendingService?.(service);
@@ -68,6 +72,15 @@ export function ConnectAppDialog({
       setStep('select');
       setActiveService(null);
       onPendingService?.(null);
+    }
+  };
+
+  const handleConnect = (service: string) => {
+    if (BETA_SERVICES[service]) {
+      setActiveService(service);
+      setStep('warning');
+    } else {
+      startConnect(service);
     }
   };
 
@@ -107,10 +120,41 @@ export function ConnectAppDialog({
                 >
                   <ServiceIcon service={svc} />
                   <span className="text-sm font-medium">{serviceName(svc)}</span>
+                  {BETA_SERVICES[svc] && (
+                    <span className="px-1.5 py-0.5 text-[10px] font-semibold uppercase rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400">
+                      Beta
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
           </>
+        )}
+
+        {step === 'warning' && activeService && (
+          <div className="flex flex-col items-center py-6">
+            <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center mb-4">
+              <AlertTriangle className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+            </div>
+            <h2 className="text-lg font-semibold mb-2">{name} — Beta</h2>
+            <p className="text-sm text-muted-foreground text-center mb-6">
+              {BETA_SERVICES[activeService]}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setStep('select'); setActiveService(null); }}
+                className="px-3 py-1.5 text-sm font-medium rounded-lg border border-border hover:bg-accent"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => startConnect(activeService)}
+                className="px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
         )}
 
         {step === 'redirecting' && activeService && (

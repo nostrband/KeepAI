@@ -52,7 +52,7 @@ export async function mcpFetch(
   let response: JsonRpcResponse;
 
   if (contentType.includes('text/event-stream')) {
-    response = await parseSSEResponse(res);
+    response = await parseSSEResponse(res, request.id);
   } else {
     response = (await res.json()) as JsonRpcResponse;
   }
@@ -60,10 +60,81 @@ export async function mcpFetch(
   return { response, sessionId };
 }
 
-async function parseSSEResponse(res: Response): Promise<JsonRpcResponse> {
-  const text = await res.text();
-  const lines = text.split('\n');
+async function parseSSEResponse(res: Response, requestId?: number): Promise<JsonRpcResponse> {
+  const body = res.body;
 
+  // Fallback for environments without ReadableStream
+  if (!body) {
+    const text = await res.text();
+    return parseSSEText(text);
+  }
+
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      // Try to extract a complete JSON-RPC response from accumulated SSE data
+      const result = tryExtractResponse(buffer, requestId);
+      if (result) {
+        // Got our response — cancel the stream instead of waiting for server to close it
+        reader.cancel().catch(() => {});
+        return result;
+      }
+    }
+  } catch (err) {
+    // If we already have data in buffer, try to parse it before throwing
+    const result = tryExtractResponse(buffer, requestId);
+    if (result) return result;
+    throw err;
+  }
+
+  // Stream ended — parse whatever we have
+  return parseSSEText(buffer);
+}
+
+function tryExtractResponse(text: string, requestId?: number): JsonRpcResponse | null {
+  // Scan for "data: " lines containing JSON-RPC responses
+  let searchFrom = 0;
+  let lastMatch: JsonRpcResponse | null = null;
+
+  while (searchFrom < text.length) {
+    const idx = text.indexOf('data: ', searchFrom);
+    if (idx === -1) break;
+
+    const lineStart = idx + 6;
+    const lineEnd = text.indexOf('\n', lineStart);
+    // If no newline yet, the line may be incomplete
+    if (lineEnd === -1) break;
+
+    const line = text.slice(lineStart, lineEnd).trim();
+    if (line) {
+      try {
+        const parsed = JSON.parse(line) as JsonRpcResponse;
+        // If we have a requestId, match it; otherwise accept any response
+        if (requestId == null || parsed.id === requestId) {
+          return parsed;
+        }
+        lastMatch = parsed;
+      } catch {
+        // Not valid JSON yet, continue
+      }
+    }
+
+    searchFrom = lineEnd + 1;
+  }
+
+  return lastMatch;
+}
+
+function parseSSEText(text: string): JsonRpcResponse {
+  const lines = text.split('\n');
   let lastData: string | null = null;
 
   for (const line of lines) {
