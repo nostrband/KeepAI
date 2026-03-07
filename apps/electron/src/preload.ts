@@ -34,4 +34,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   openExternal: (url: string) =>
     ipcRenderer.invoke('open-external', url),
+
+  getAutoLaunch: () => ipcRenderer.invoke('get-auto-launch') as Promise<boolean>,
+  setAutoLaunch: (enabled: boolean) => ipcRenderer.invoke('set-auto-launch', enabled),
 });

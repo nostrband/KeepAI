@@ -51,6 +51,30 @@ const log = createDebug('keepai:electron');
 const PORT = 9090;
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 
+const autoLaunchPrefPath = path.join(keepaiDir, 'auto-launch.json');
+
+function getAutoLaunchPref(): boolean {
+  try {
+    return JSON.parse(fs.readFileSync(autoLaunchPrefPath, 'utf-8')).enabled === true;
+  } catch {
+    return false;
+  }
+}
+
+function setAutoLaunchPref(enabled: boolean) {
+  fs.writeFileSync(autoLaunchPrefPath, JSON.stringify({ enabled }));
+  app.setLoginItemSettings({ openAtLogin: enabled, openAsHidden: true });
+}
+
+function applyAutoLaunch() {
+  if (!fs.existsSync(autoLaunchPrefPath)) {
+    // First run — enable by default
+    setAutoLaunchPref(true);
+  } else {
+    app.setLoginItemSettings({ openAtLogin: getAutoLaunchPref(), openAsHidden: true });
+  }
+}
+
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let server: KeepServer | null = null;
@@ -77,7 +101,13 @@ function createWindow() {
   mainWindow.loadURL(BASE_URL);
 
   mainWindow.once('ready-to-show', () => {
-    mainWindow?.show();
+    // Stay hidden if launched as login item (auto-start)
+    const isHiddenLaunch =
+      app.getLoginItemSettings().wasOpenedAsHidden ||
+      process.argv.includes('--hidden');
+    if (!isHiddenLaunch) {
+      mainWindow?.show();
+    }
   });
 
   // Minimize to tray instead of closing
@@ -283,6 +313,14 @@ function setupIPC() {
   ipcMain.handle('open-external', (_event, url: string) => {
     shell.openExternal(url);
   });
+
+  ipcMain.handle('get-auto-launch', () => {
+    return getAutoLaunchPref();
+  });
+
+  ipcMain.handle('set-auto-launch', (_event, enabled: boolean) => {
+    setAutoLaunchPref(enabled);
+  });
 }
 
 // --- App Lifecycle ---
@@ -331,7 +369,10 @@ app.whenReady().then(async () => {
       app.dock?.hide();
     }
 
-    // 8. Auto-update (packaged builds only)
+    // 8. Enable auto-launch on first run + apply setting
+    applyAutoLaunch();
+
+    // 9. Auto-update (packaged builds only)
     if (app.isPackaged) {
       autoUpdater.logger = {
         info: (...args: any[]) => log('updater: %s', args.join(' ')),

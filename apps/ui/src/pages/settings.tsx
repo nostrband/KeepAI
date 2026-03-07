@@ -3,6 +3,8 @@ import { Save } from 'lucide-react';
 import { useConfig, useSaveConfig, useStatus } from '../hooks/use-config';
 import { PageTitle } from '../components/page-title';
 
+const electronAPI = (window as any).electronAPI;
+
 export function SettingsPage() {
   const { data: config, isLoading: configLoading } = useConfig();
   const { data: status } = useStatus();
@@ -10,6 +12,7 @@ export function SettingsPage() {
 
   const [relays, setRelays] = useState('');
   const [approvalTimeout, setApprovalTimeout] = useState('');
+  const [autoLaunch, setAutoLaunch] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (config) {
@@ -17,6 +20,10 @@ export function SettingsPage() {
       setApprovalTimeout(config.approvalTimeout || '300');
     }
   }, [config]);
+
+  useEffect(() => {
+    electronAPI?.getAutoLaunch?.().then((v: boolean) => setAutoLaunch(v));
+  }, []);
 
   const handleSave = () => {
     saveMutation.mutate({
@@ -54,6 +61,36 @@ export function SettingsPage() {
           <div className="text-sm text-muted-foreground">Loading...</div>
         ) : (
           <div className="space-y-4">
+            {autoLaunch !== null && (
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="block text-sm font-medium">Start at login</label>
+                  <p className="text-xs text-muted-foreground">
+                    Automatically start KeepAI minimized when you log in.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={autoLaunch}
+                  onClick={() => {
+                    const next = !autoLaunch;
+                    setAutoLaunch(next);
+                    electronAPI?.setAutoLaunch?.(next);
+                  }}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                    autoLaunch ? 'bg-primary' : 'bg-input'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-sm ring-0 transition-transform ${
+                      autoLaunch ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium mb-1">Nostr Relay URLs</label>
               <textarea
