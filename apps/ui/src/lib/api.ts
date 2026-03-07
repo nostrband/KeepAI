@@ -8,8 +8,22 @@
 
 const BASE = '/api';
 
+let _tokenPromise: Promise<string> | null = null;
+
+export function getAccessToken(): Promise<string> {
+  if (!_tokenPromise) {
+    const electronAPI = (window as any).electronAPI;
+    _tokenPromise = electronAPI?.getAccessToken?.() ?? Promise.resolve('');
+  }
+  return _tokenPromise;
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = await getAccessToken();
   const headers: Record<string, string> = { ...options?.headers as Record<string, string> };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
   if (options?.body) {
     headers['Content-Type'] = 'application/json';
   }

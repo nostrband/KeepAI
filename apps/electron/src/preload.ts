@@ -37,4 +37,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   getAutoLaunch: () => ipcRenderer.invoke('get-auto-launch') as Promise<boolean>,
   setAutoLaunch: (enabled: boolean) => ipcRenderer.invoke('set-auto-launch', enabled),
+  getAccessToken: () => ipcRenderer.invoke('get-access-token') as Promise<string>,
 });

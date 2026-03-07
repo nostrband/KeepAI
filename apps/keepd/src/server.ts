@@ -16,6 +16,7 @@
  */
 
 import createDebug from 'debug';
+import * as crypto from 'crypto';
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -66,6 +67,8 @@ export interface ServerConfig {
   relays?: string[];
   serveStaticFiles?: boolean;
   staticFilesRoot?: string;
+  /** Pre-shared access token for local API auth. Auto-generated if omitted. */
+  accessToken?: string;
 }
 
 export async function createServer(config: ServerConfig = {}) {
@@ -73,6 +76,7 @@ export async function createServer(config: ServerConfig = {}) {
   const host = config.host ?? '127.0.0.1';
   const dataDir = config.dataDir ?? resolveDataDir();
   const relays = config.relays ?? [...DEFAULT_RELAYS];
+  const accessToken = config.accessToken ?? crypto.randomBytes(32).toString('hex');
   const serveStaticFiles = config.serveStaticFiles ?? true;
   const staticFilesRoot = config.staticFilesRoot ?? path.join(__dirname, '..', 'public');
 
@@ -198,6 +202,21 @@ export async function createServer(config: ServerConfig = {}) {
     origin: true,
   });
 
+  // Access-token guard: all /api/ routes require Bearer token,
+  // except OAuth callbacks which are called by external providers.
+  app.addHook('onRequest', async (request, reply) => {
+    const url = request.url;
+    if (!url.startsWith('/api/')) return;
+    // Allow OAuth callback (browser redirect from provider)
+    if (/^\/api\/connections\/[^/]+\/callback(\?|$)/.test(url)) return;
+
+    const auth = request.headers.authorization;
+    const queryToken = (request.query as any)?.access_token;
+    if (auth !== `Bearer ${accessToken}` && queryToken !== accessToken) {
+      reply.status(401).send({ error: 'Unauthorized' });
+    }
+  });
+
   // Register routes
   await registerConnectionRoutes(app, connectionManager, () => `http://${host}:${port}`, connectorExecutor, sse, agentManager, policyEngine, healthTracker);
   await registerAgentRoutes(app, agentManager, policyEngine, updateSubscription, sse);
@@ -311,6 +330,7 @@ export async function createServer(config: ServerConfig = {}) {
 
   return {
     app,
+    accessToken,
     db: keepdb,
     connectionManager,
     agentManager,

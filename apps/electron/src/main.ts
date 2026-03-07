@@ -81,6 +81,7 @@ let server: KeepServer | null = null;
 let sseCleanup: (() => void) | null = null;
 let pendingCount = 0;
 let isQuitting = false;
+let accessToken = '';
 
 // --- Window ---
 
@@ -199,7 +200,7 @@ function setupSSEListener() {
 
   function connect() {
     if (closed) return;
-    req = http.get(`${BASE_URL}/api/events`, (res: any) => {
+    req = http.get(`${BASE_URL}/api/events`, { headers: { Authorization: `Bearer ${accessToken}` } }, (res: any) => {
       let buffer = '';
       let currentEvent = '';
 
@@ -298,6 +299,7 @@ function handleSSEEvent(event: string, dataStr: string) {
 function setupIPC() {
   ipcMain.handle('get-version', () => app.getVersion());
   ipcMain.handle('get-platform', () => process.platform);
+  ipcMain.handle('get-access-token', () => accessToken);
 
   ipcMain.handle('show-notification', (_event, options: { title: string; body: string }) => {
     if (Notification.isSupported()) {
@@ -335,6 +337,7 @@ app.whenReady().then(async () => {
       port: PORT,
       serveStaticFiles: true,
     });
+    accessToken = server.accessToken;
     await server.listen();
     log('keepd listening on %s', BASE_URL);
 
