@@ -16,8 +16,9 @@ export function SettingsPage() {
 
   useEffect(() => {
     if (config) {
-      setRelays(config.relays || '');
-      setApprovalTimeout(config.approvalTimeout || '300');
+      const s = config.settings || config;
+      setRelays(s.relays || '');
+      setApprovalTimeout(s.approvalTimeout || '300');
     }
   }, [config]);
 
@@ -102,6 +103,7 @@ export function SettingsPage() {
               />
               <p className="text-xs text-muted-foreground mt-1">
                 Comma-separated list of nostr relay URLs for agent communication.
+                Changing relays requires re-connecting all agents.
               </p>
             </div>
 

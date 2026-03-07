@@ -8,6 +8,7 @@
 
 import type { FastifyInstance } from 'fastify';
 import type { KeepDBApi } from '@keepai/db';
+import { DEFAULT_RELAYS } from '@keepai/proto';
 import type { SSEBroadcaster } from '../sse.js';
 
 export async function registerConfigRoutes(
@@ -19,6 +20,9 @@ export async function registerConfigRoutes(
   // Get config
   app.get('/api/config', async () => {
     const settings = db.settings.getAll();
+    if (!settings.relays) {
+      settings.relays = DEFAULT_RELAYS.join(',');
+    }
     return { settings };
   });
 
