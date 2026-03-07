@@ -17,6 +17,7 @@ import {
   PROTOCOL_VERSION,
   SOFTWARE_VERSION,
   DEFAULT_POLICY,
+  DEFAULT_PORT,
   CLEANUP,
 } from '@keepai/proto';
 import type {
@@ -793,7 +794,7 @@ describe('HTTP API — Fastify inject', () => {
     await registerQueueRoutes(app, approvalQueue);
     await registerPolicyRoutes(app, agentManager, policyEngine);
     await registerLogRoutes(app, auditLogger);
-    await registerConfigRoutes(app, db, sse, () => 9090);
+    await registerConfigRoutes(app, db, sse, () => DEFAULT_PORT);
 
     await app.ready();
   });
@@ -1168,7 +1169,7 @@ describe('HTTP API — Fastify inject', () => {
       expect(res.statusCode).toBe(200);
       const body = res.json();
       expect(body.status).toBe('ok');
-      expect(body.port).toBe(9090);
+      expect(body.port).toBe(DEFAULT_PORT);
       expect(body.agents).toMatchObject({ total: 0, paired: 0 });
       expect(body.connections).toMatchObject({ total: 0 });
       expect(body.pendingApprovals).toBe(0);

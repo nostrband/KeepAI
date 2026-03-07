@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
+import { DEFAULT_PORT } from '@keepai/proto';
 
 export default defineConfig(({ mode }) => {
   const flavor = mode; // "frontend" or "electron"
@@ -22,7 +23,7 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: {
         '/api': {
-          target: 'http://localhost:9090',
+          target: `http://localhost:${DEFAULT_PORT}`,
           changeOrigin: true,
         },
       },

@@ -6,10 +6,11 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
+import { DEFAULT_PORT } from '@keepai/proto';
 
 // Expose environment info
 contextBridge.exposeInMainWorld('env', {
-  API_ENDPOINT: 'http://127.0.0.1:9090',
+  API_ENDPOINT: `http://127.0.0.1:${DEFAULT_PORT}`,
   NODE_ENV: process.env.NODE_ENV || 'production',
 });
 

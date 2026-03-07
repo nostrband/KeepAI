@@ -1,7 +1,7 @@
 /**
  * API client for keepd HTTP API.
  *
- * In development, Vite proxies /api to http://localhost:9090.
+ * In development, Vite proxies /api to localhost:DEFAULT_PORT.
  * In production (both frontend and electron), the UI is served by keepd
  * on the same origin, so relative URLs work.
  */

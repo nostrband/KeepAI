@@ -53,7 +53,7 @@ export const DEFAULT_POLICY: Policy = {
 
 // --- Server Config ---
 
-export const DEFAULT_PORT = 9090;
+export const DEFAULT_PORT = 28417;
 export const DEFAULT_DATA_DIR = '~/.keepai';
 
 // --- CLI Exit Codes ---

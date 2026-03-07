@@ -29,7 +29,7 @@ native OS integrations (notifications, global shortcuts).
 app.whenReady().then(async () => {
   // 1. Start keepd server
   const server = await createServer({
-    port: 9090,           // Fixed port (registered as OAuth redirect URI)
+    port: 28417,           // Fixed port (registered as OAuth redirect URI)
     host: "127.0.0.1",
     serveStaticFiles: true,
     staticFilesRoot: path.join(__dirname, "../public"),
@@ -262,12 +262,12 @@ OAuth flows need special handling in electron:
    window.electronAPI.openExternal(authUrl);
    // Falls back to: window.open(authUrl) in non-electron
    ```
-4. OAuth callback goes to `http://localhost:9090/api/connections/gmail/callback`
+4. OAuth callback goes to `http://localhost:28417/api/connections/gmail/callback`
 5. keepd handles callback, stores credentials
 6. ui polls or gets SSE update that connection is established
 
-keepd always uses port 9090 by default. OAuth redirect URIs are registered with
-Google/Notion for `http://localhost:9090/api/connections/*/callback`. For Docker
+keepd always uses port 28417 by default. OAuth redirect URIs are registered with
+Google/Notion for `http://localhost:28417/api/connections/*/callback`. For Docker
 deployments, the port is configurable via `KEEPAI_PORT` env var — users who change
 the port must register their own OAuth app with the matching redirect URI.
 

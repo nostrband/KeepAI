@@ -2,8 +2,8 @@
  * @keepai/electron — Electron main process.
  *
  * Startup sequence:
- * 1. Start keepd server on port 9090
- * 2. Create browser window (loads http://127.0.0.1:9090)
+ * 1. Start keepd server on DEFAULT_PORT
+ * 2. Create browser window (loads http://127.0.0.1:DEFAULT_PORT)
  * 3. Create tray icon with context menu
  * 4. Listen to SSE for desktop notifications
  * 5. Hide macOS dock icon
@@ -33,6 +33,7 @@ import {
 import * as path from 'path';
 import { createServer } from '@keepai/daemon';
 import type { KeepServer } from '@keepai/daemon';
+import { DEFAULT_PORT } from '@keepai/proto';
 
 // Redirect debug output to log file (in addition to stderr)
 const keepaiDir = path.join(os.homedir(), '.keepai');
@@ -48,8 +49,7 @@ createDebug.log = (...args: any[]) => {
 
 const log = createDebug('keepai:electron');
 
-const PORT = 9090;
-const BASE_URL = `http://127.0.0.1:${PORT}`;
+const BASE_URL = `http://127.0.0.1:${DEFAULT_PORT}`;
 
 const autoLaunchPrefPath = path.join(keepaiDir, 'auto-launch.json');
 
@@ -334,7 +334,7 @@ app.whenReady().then(async () => {
     // 1. Start keepd server
     log('starting keepd server...');
     server = await createServer({
-      port: PORT,
+      port: DEFAULT_PORT,
       serveStaticFiles: true,
     });
     accessToken = server.accessToken;

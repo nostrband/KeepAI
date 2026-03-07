@@ -65,7 +65,7 @@ interface McpOAuthConfig {
   serverUrl: string;
   /** Client name for dynamic registration */
   clientName: string;
-  /** Localhost redirect URI, e.g. "http://localhost:9090/oauth/mcp-callback/notion" */
+  /** Localhost redirect URI, e.g. "http://localhost:28417/oauth/mcp-callback/notion" */
   redirectUri: string;
 }
 
@@ -324,9 +324,9 @@ That's it. ~50 lines of Notion-specific code replaces ~380 lines.
 #### New flow (MCP OAuth)
 1. User clicks "Connect Notion" in UI
 2. keepd calls `McpOAuthClient.discover()` → fetches `/.well-known/oauth-authorization-server`
-3. keepd calls `McpOAuthClient.register()` → dynamic registration with `http://localhost:9090/oauth/mcp-callback/notion` redirect URI
+3. keepd calls `McpOAuthClient.register()` → dynamic registration with `http://localhost:28417/oauth/mcp-callback/notion` redirect URI
 4. keepd builds auth URL with PKCE S256 (no client secret needed)
-5. User completes Notion OAuth in browser → redirected to `http://localhost:9090/...`
+5. User completes Notion OAuth in browser → redirected to `http://localhost:28417/...`
 6. keepd exchanges code for tokens (with PKCE verifier)
 7. Tokens stored in credential store as before
 

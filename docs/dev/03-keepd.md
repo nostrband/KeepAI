@@ -387,7 +387,7 @@ interface AuditEntry {
 
 ```typescript
 async function createServer(config: {
-  port?: number;             // Default: 9090
+  port?: number;             // Default: 28417
   host?: string;             // Default: "127.0.0.1"
   dataDir?: string;          // Default: "~/.keepai/server"
   serveStaticFiles?: boolean; // Default: true
@@ -416,7 +416,7 @@ keepd config stored in `~/.keepai/server/settings.json`:
 
 ```json
 {
-  "port": 9090,
+  "port": 28417,
   "relays": ["wss://relay1.getkeep.ai", "wss://relay2.getkeep.ai"],
   "approvalTimeoutMs": 300000,
   "pairingExpiryMs": 600000
@@ -425,7 +425,7 @@ keepd config stored in `~/.keepai/server/settings.json`:
 
 For Docker deployment:
 ```
-KEEPAI_PORT=9090
+KEEPAI_PORT=28417
 KEEPAI_DATA_DIR=/data
 KEEPAI_RELAYS=wss://relay1.getkeep.ai,wss://relay2.getkeep.ai
 KEEPAI_GOOGLE_CLIENT_ID=...
