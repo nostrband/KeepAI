@@ -95,17 +95,16 @@ let accessToken = '';
 
 // --- Window ---
 
-function getUnpackedPath(relativePath: string): string {
-  let p = path.join(__dirname, '..', 'build', relativePath);
+function getIconPath(name: string): string {
   if (app.isPackaged) {
-    p = p.replace('app.asar', 'app.asar.unpacked');
+    return path.join(process.resourcesPath, 'icons', name);
   }
-  return p;
+  return path.join(__dirname, '..', 'build', name);
 }
 
 function createWindow() {
-  const iconExt = process.platform === 'win32' ? 'icon.ico' : 'icon.png';
-  const iconPath = getUnpackedPath(iconExt);
+  const iconPath = getIconPath('icon.png');
+  log('window icon path: %s (exists: %s)', iconPath, fs.existsSync(iconPath));
   mainWindow = new BrowserWindow({
     width: 1000,
     height: 700,
@@ -155,15 +154,9 @@ function createWindow() {
 // --- Tray ---
 
 function createTray() {
-  let trayIconName: string;
-  if (process.platform === 'darwin') {
-    trayIconName = 'tray-iconTemplate@2x.png';
-  } else if (process.platform === 'win32') {
-    trayIconName = 'tray-icon.ico';
-  } else {
-    trayIconName = 'tray-icon.png';
-  }
-  const trayIconPath = getUnpackedPath(trayIconName);
+  const trayIconName = process.platform === 'darwin' ? 'tray-iconTemplate@2x.png' : 'tray-icon.png';
+  const trayIconPath = getIconPath(trayIconName);
+  log('tray icon path: %s (exists: %s)', trayIconPath, fs.existsSync(trayIconPath));
   const icon = fs.existsSync(trayIconPath)
     ? nativeImage.createFromPath(trayIconPath)
     : nativeImage.createEmpty();
@@ -282,7 +275,7 @@ function handleSSEEvent(event: string, dataStr: string) {
         const notification = new Notification({
           title: `${data.agentName || 'Agent'} to ${(data.service || 'Unknown').charAt(0).toUpperCase() + (data.service || 'unknown').slice(1)}${data.accountId ? ` (${data.accountId})` : ''}`,
           body: data.description || `Requests ${data.method} approval`,
-          icon: getUnpackedPath('icon.png'),
+          icon: getIconPath('icon.png'),
         });
 
         notification.on('click', () => {
@@ -303,7 +296,7 @@ function handleSSEEvent(event: string, dataStr: string) {
         const notification = new Notification({
           title: 'KeepAI',
           body: `${data.serviceName || data.service} connected`,
-          icon: getUnpackedPath('icon.png'),
+          icon: getIconPath('icon.png'),
         });
         notification.on('click', () => {
           mainWindow?.show();

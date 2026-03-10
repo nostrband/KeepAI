@@ -16,10 +16,15 @@ asarUnpack:
   - "node_modules/better-sqlite3/**"
   - "node_modules/bindings/**"
   - "node_modules/file-uri-to-path/**"
-  - "apps/electron/build/icon.png"
-  - "apps/electron/build/icon.ico"
-  - "apps/electron/build/tray-icon*.png"
-  - "apps/electron/build/tray-icon.ico"
+
+extraResources:
+  - from: "apps/electron/build"
+    to: "icons"
+    filter:
+      - "icon.png"
+      - "icon.ico"
+      - "tray-icon*.png"
+      - "tray-icon.ico"
 
 extraMetadata:
   main: apps/electron/dist/main.cjs
@@ -31,7 +36,7 @@ asar: true
 win:
   target:
     - nsis
-  icon: apps/electron/build/icon.ico
+  icon: apps/electron/build/icon.png
 
 publish:
   provider: github
