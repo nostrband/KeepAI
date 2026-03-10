@@ -16,10 +16,14 @@ asarUnpack:
   - "node_modules/better-sqlite3/**"
   - "node_modules/bindings/**"
   - "node_modules/file-uri-to-path/**"
+  - "apps/electron/build/icon.png"
+  - "apps/electron/build/icon.ico"
   - "apps/electron/build/tray-icon*.png"
+  - "apps/electron/build/tray-icon.ico"
 
 extraMetadata:
   main: apps/electron/dist/main.cjs
+  productName: KeepAI
 
 npmRebuild: true
 asar: true
@@ -27,7 +31,7 @@ asar: true
 win:
   target:
     - nsis
-  icon: apps/electron/build/icon.png
+  icon: apps/electron/build/icon.ico
 
 publish:
   provider: github

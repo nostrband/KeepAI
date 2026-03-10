@@ -139,7 +139,7 @@ export function SettingsPage() {
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">About</h2>
         <dl className="grid grid-cols-2 gap-y-2 text-sm">
           <dt className="text-muted-foreground">Version</dt>
-          <dd>0.1.0</dd>
+          <dd>{__APP_VERSION__}</dd>
           <dt className="text-muted-foreground">Support</dt>
           <dd><a href="mailto:support@getkeep.ai" className="text-primary hover:underline">support@getkeep.ai</a></dd>
           <dt className="text-muted-foreground">Project</dt>

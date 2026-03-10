@@ -95,13 +95,22 @@ let accessToken = '';
 
 // --- Window ---
 
+function getUnpackedPath(relativePath: string): string {
+  let p = path.join(__dirname, '..', 'build', relativePath);
+  if (app.isPackaged) {
+    p = p.replace('app.asar', 'app.asar.unpacked');
+  }
+  return p;
+}
+
 function createWindow() {
-  const iconPath = path.join(__dirname, '..', 'build', 'icon.png');
+  const iconExt = process.platform === 'win32' ? 'icon.ico' : 'icon.png';
+  const iconPath = getUnpackedPath(iconExt);
   mainWindow = new BrowserWindow({
     width: 1000,
     height: 700,
     show: false,
-    icon: fs.existsSync(iconPath) ? iconPath : undefined,
+    icon: fs.existsSync(iconPath) ? nativeImage.createFromPath(iconPath) : undefined,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
@@ -146,10 +155,15 @@ function createWindow() {
 // --- Tray ---
 
 function createTray() {
-  const trayIconName = process.platform === 'darwin' ? 'tray-iconTemplate@2x.png' : 'tray-icon.png';
-  let trayIconPath = path.join(__dirname, '..', 'build', trayIconName);
-  // In packaged app, tray icons are unpacked from ASAR to app.asar.unpacked/
-  trayIconPath = trayIconPath.replace('app.asar', 'app.asar.unpacked');
+  let trayIconName: string;
+  if (process.platform === 'darwin') {
+    trayIconName = 'tray-iconTemplate@2x.png';
+  } else if (process.platform === 'win32') {
+    trayIconName = 'tray-icon.ico';
+  } else {
+    trayIconName = 'tray-icon.png';
+  }
+  const trayIconPath = getUnpackedPath(trayIconName);
   const icon = fs.existsSync(trayIconPath)
     ? nativeImage.createFromPath(trayIconPath)
     : nativeImage.createEmpty();
@@ -268,7 +282,7 @@ function handleSSEEvent(event: string, dataStr: string) {
         const notification = new Notification({
           title: `${data.agentName || 'Agent'} to ${(data.service || 'Unknown').charAt(0).toUpperCase() + (data.service || 'unknown').slice(1)}${data.accountId ? ` (${data.accountId})` : ''}`,
           body: data.description || `Requests ${data.method} approval`,
-          icon: path.join(__dirname, '..', 'build', 'icon.png'),
+          icon: getUnpackedPath('icon.png'),
         });
 
         notification.on('click', () => {
@@ -289,7 +303,7 @@ function handleSSEEvent(event: string, dataStr: string) {
         const notification = new Notification({
           title: 'KeepAI',
           body: `${data.serviceName || data.service} connected`,
-          icon: path.join(__dirname, '..', 'build', 'icon.png'),
+          icon: getUnpackedPath('icon.png'),
         });
         notification.on('click', () => {
           mainWindow?.show();
@@ -395,7 +409,10 @@ app.whenReady().then(async () => {
         error: (...args: any[]) => log('updater error: %s', args.join(' ')),
         debug: (...args: any[]) => log('updater debug: %s', args.join(' ')),
       };
-      autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+      autoUpdater.checkForUpdatesAndNotify({
+        title: 'KeepAI Update',
+        body: 'A new version of KeepAI has been downloaded and will be installed on restart.',
+      }).catch((err) => {
         log('update check failed (expected if no releases exist yet): %O', err);
       });
     }
