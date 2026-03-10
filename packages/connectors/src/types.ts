@@ -83,6 +83,19 @@ export interface McpOAuthConfig {
   extraAuthParams?: Record<string, string>;
 }
 
+/**
+ * Token-based auth config for services that return the access token directly
+ * via a browser redirect (e.g. Trello's `response_type=token` flow).
+ * The token is delivered in the URL fragment (#token=xxx), so the callback
+ * page must extract it client-side.
+ */
+export interface TokenAuthConfig {
+  /** URL the user visits to authorize (e.g. `https://trello.com/1/authorize`). */
+  authorizeUrl: string;
+  /** Extra query params for the authorize URL (e.g. name, scope, expiration). */
+  authorizeParams?: Record<string, string>;
+}
+
 export interface ServiceDefinition {
   id: string;
   name: string;
@@ -103,6 +116,8 @@ export interface ServiceDefinition {
     accountId: string;
     displayName?: string;
   }>;
+  /** Token-based auth (e.g. Trello). Token is returned in the URL fragment. */
+  tokenAuth?: TokenAuthConfig;
 }
 
 export interface TokenResponse {

@@ -26,6 +26,13 @@ export function getAirtableCredentials(): OAuthAppCredentials {
   };
 }
 
+export function getTrelloCredentials(): OAuthAppCredentials {
+  return {
+    clientId: process.env.TRELLO_API_KEY || '',
+    clientSecret: '', // Not needed — Trello uses token-based auth, no secret required
+  };
+}
+
 export function getCredentialsForService(service: string): OAuthAppCredentials {
   switch (service) {
     case 'gmail':
@@ -34,6 +41,8 @@ export function getCredentialsForService(service: string): OAuthAppCredentials {
       return getGitHubCredentials();
     case 'airtable':
       return getAirtableCredentials();
+    case 'trello':
+      return getTrelloCredentials();
     default:
       throw new Error(`Unknown service or MCP-based service: ${service}`);
   }

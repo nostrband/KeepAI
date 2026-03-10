@@ -32,6 +32,8 @@ interface PendingState {
   mcpClientId?: string;
   mcpTokenUrl?: string;
   mcpServerUrl?: string;
+  /** Token auth flow: the "code" is the access token itself (no exchange needed). */
+  tokenAuthDirect?: boolean;
 }
 
 export class ConnectionManager {
@@ -155,7 +157,37 @@ export class ConnectionManager {
       return { authUrl, state };
     }
 
-    // Standard OAuth path
+    // Token auth path (e.g. Trello) — token returned directly in URL fragment
+    if (service.tokenAuth) {
+      const { clientId: apiKey } = getCredentialsForService(serviceId);
+      if (!apiKey) {
+        throw new Error(
+          `OAuth credentials not configured for ${serviceId}. ` +
+            'Check secrets.build.json or environment variables.'
+        );
+      }
+
+      const params = new URLSearchParams({
+        response_type: 'token',
+        key: apiKey,
+        callback_method: 'fragment',
+        return_url: `${redirectUri}?state=${state}`,
+        ...service.tokenAuth.authorizeParams,
+      });
+
+      const authUrl = `${service.tokenAuth.authorizeUrl}?${params.toString()}`;
+
+      this.pendingStates.set(state, {
+        service: serviceId,
+        redirectUri,
+        timestamp: Date.now(),
+        tokenAuthDirect: true,
+      });
+
+      return { authUrl, state };
+    }
+
+    // Standard OAuth 2.0 path
     const { clientId, clientSecret } = getCredentialsForService(serviceId);
     if (!clientId) {
       throw new Error(
@@ -217,7 +249,32 @@ export class ConnectionManager {
       let accountId: string;
       let metadata: Record<string, unknown> = {};
 
-      if (pending.codeVerifier && pending.mcpClientId && pending.mcpTokenUrl) {
+      if (pending.tokenAuthDirect) {
+        // Token auth path (e.g. Trello) — `code` is the access token itself
+        credentials = {
+          accessToken: code,
+        };
+
+        let profile: unknown;
+        if (service.fetchProfile) {
+          try {
+            profile = await service.fetchProfile(credentials.accessToken);
+          } catch {
+            // Profile fetch is optional
+          }
+        }
+
+        const tokenShim = { access_token: code } as import('./types.js').TokenResponse;
+        accountId = await service.extractAccountId(tokenShim, profile);
+
+        if (service.extractDisplayName) {
+          const displayName = service.extractDisplayName(tokenShim, profile);
+          if (displayName) {
+            metadata.displayName = displayName;
+          }
+        }
+        credentials.metadata = metadata;
+      } else if (pending.codeVerifier && pending.mcpClientId && pending.mcpTokenUrl) {
         // MCP OAuth path
         const mcpTokens = await McpOAuthClient.exchangeCode(
           pending.mcpTokenUrl,

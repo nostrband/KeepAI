@@ -1,4 +1,4 @@
-import { FileText, Github, Globe } from 'lucide-react';
+import { FileText, Github, Globe, Trello } from 'lucide-react';
 import { cn } from '../lib/cn';
 
 interface ServiceIconProps {
@@ -18,6 +18,8 @@ export function ServiceIcon({ service, className }: ServiceIconProps) {
       return <Github className={cn(iconClass, 'text-gray-800')} />;
     case 'airtable':
       return <img src="/airtable.png" alt="Airtable" className={iconClass} />;
+    case 'trello':
+      return <Trello className={cn(iconClass, 'text-blue-600')} />;
     default:
       return <Globe className={cn(iconClass, 'text-gray-500')} />;
   }
@@ -29,6 +31,7 @@ export function serviceName(service: string): string {
     case 'notion': return 'Notion';
     case 'github': return 'GitHub';
     case 'airtable': return 'Airtable';
+    case 'trello': return 'Trello';
     default: return service;
   }
 }

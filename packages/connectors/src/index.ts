@@ -1,4 +1,4 @@
-// @keepai/connectors — OAuth + service connectors (Gmail, Notion)
+// @keepai/connectors — OAuth + service connectors (Gmail, Notion, Trello, etc.)
 
 // Types
 export * from './types.js';
@@ -14,6 +14,7 @@ export {
   getGoogleCredentials,
   getGitHubCredentials,
   getAirtableCredentials,
+  getTrelloCredentials,
   getCredentialsForService,
   hasCredentialsForService,
 } from './credentials.js';
@@ -44,10 +45,16 @@ export {
   fetchAirtableProfile,
   type AirtableProfile,
 } from './services/airtable.js';
+export {
+  trelloService,
+  fetchTrelloProfile,
+  type TrelloProfile,
+} from './services/trello.js';
 
 // Connectors (method registries + execution)
 export { gmailConnector } from './connectors/gmail.js';
 export { airtableConnector } from './connectors/airtable.js';
+export { trelloConnector } from './connectors/trello.js';
 
 // MCP Connector
 export { McpConnector } from './mcp-connector.js';

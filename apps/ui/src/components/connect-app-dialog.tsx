@@ -3,7 +3,7 @@ import { X, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { useConnectService } from '../hooks/use-connections';
 import { ServiceIcon, serviceName } from './service-icon';
 
-const AVAILABLE_SERVICES = ['gmail', 'notion', 'github', 'airtable'];
+const AVAILABLE_SERVICES = ['gmail', 'notion', 'github', 'airtable', 'trello'];
 
 const BETA_SERVICES: Record<string, string> = {
   gmail: 'Gmail integration is in beta and has not yet been verified by Google LLC. You may see warning screens during authorization. Proceed with caution.',

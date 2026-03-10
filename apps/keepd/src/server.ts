@@ -32,6 +32,7 @@ import {
   ConnectorExecutor,
   gmailConnector,
   airtableConnector,
+  trelloConnector,
   McpConnector,
   notionMcpConfig,
   githubMcpConfig,
@@ -39,6 +40,7 @@ import {
   notionService,
   githubService,
   airtableService,
+  trelloService,
   createConnectionDbAdapter,
 } from '@keepai/connectors';
 import { RPCHandler } from '@keepai/nostr-rpc';
@@ -104,6 +106,7 @@ export async function createServer(config: ServerConfig = {}) {
   connectionManager.registerService(notionService);
   connectionManager.registerService(githubService);
   connectionManager.registerService(airtableService);
+  connectionManager.registerService(trelloService);
 
   // 6. Reconcile file ↔ DB state
   await connectionManager.reconcile();
@@ -112,6 +115,7 @@ export async function createServer(config: ServerConfig = {}) {
   const connectorExecutor = new ConnectorExecutor();
   connectorExecutor.register(gmailConnector);
   connectorExecutor.register(airtableConnector);
+  connectorExecutor.register(trelloConnector);
 
   // MCP connectors
   const notionMcp = new McpConnector(notionMcpConfig);

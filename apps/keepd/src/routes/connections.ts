@@ -22,6 +22,7 @@ export const HEALTH_CHECK_METHODS: Record<string, { method: string; params: Reco
   notion: { method: 'users.list', params: { user_id: 'self' } },
   github: { method: 'get_me', params: {} },
   airtable: { method: 'whoami', params: {} },
+  trello: { method: 'members.me', params: {} },
 };
 
 export type HealthCheckResult =
@@ -117,13 +118,13 @@ export async function registerConnectionRoutes(
     }
   );
 
-  // OAuth callback
+  // OAuth callback (supports OAuth 2.0 code+state and token-in-fragment flows)
   app.get<{
     Params: { service: string };
-    Querystring: { code?: string; state?: string; error?: string };
+    Querystring: { code?: string; state?: string; error?: string; token?: string };
   }>('/api/connections/:service/callback', async (request, reply) => {
     const { service } = request.params;
-    const { code, state, error } = request.query;
+    const { code, state, error, token } = request.query;
     const serviceName = connectionManager.getService(service)?.name ?? service;
 
     if (error) {
@@ -131,7 +132,18 @@ export async function registerConnectionRoutes(
       return callbackPage(`Failed to connect to ${escapeHtml(serviceName)}`, `${escapeHtml(error)}<br/>You can close this window.`);
     }
 
-    if (!code || !state) {
+    // Token-in-fragment flow (e.g. Trello): state is present but code/token are not yet
+    // in query params — the token is in the URL fragment (#token=xxx).
+    // Serve a page that extracts it and redirects with token as a query param.
+    if (state && !code && !token) {
+      reply.type('text/html');
+      return tokenExtractorPage(service, state);
+    }
+
+    // Accept either `code` (OAuth 2.0) or `token` (fragment-extracted) as the auth code
+    const authCode = code ?? token;
+
+    if (!authCode || !state) {
       reply.status(400);
       reply.type('text/html');
       return callbackPage(`Failed to connect to ${escapeHtml(serviceName)}`, 'Missing code or state parameter.');
@@ -139,7 +151,7 @@ export async function registerConnectionRoutes(
 
     const result = await connectionManager.completeOAuthFlow(
       service,
-      code,
+      authCode,
       state
     );
 
@@ -266,6 +278,44 @@ function escapeHtml(str: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+/**
+ * Serves a small HTML page that extracts the access token from the URL fragment
+ * (#token=xxx) and redirects back to the callback with it as a query param.
+ * Used for services like Trello that return tokens in the fragment.
+ */
+function tokenExtractorPage(service: string, state: string): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>KeepAI – Connecting...</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;
+    background:#f9fafb;color:#1a1a1a}
+  .card{text-align:center;padding:3rem 2rem}
+  p{color:#6b7280;font-size:.875rem}
+</style>
+</head>
+<body>
+<div class="card"><p>Completing connection...</p></div>
+<script>
+(function() {
+  var hash = window.location.hash.substring(1);
+  var params = new URLSearchParams(hash);
+  var token = params.get('token');
+  if (token) {
+    window.location.href = '/api/connections/${escapeHtml(service)}/callback?state=${escapeHtml(state)}&token=' + encodeURIComponent(token);
+  } else {
+    document.querySelector('p').textContent = 'Authorization failed — no token received.';
+  }
+})();
+</script>
+</body>
+</html>`;
 }
 
 function callbackPage(title: string, message: string, { autoClose = false }: { autoClose?: boolean } = {}): string {
