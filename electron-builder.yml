@@ -16,6 +16,7 @@ asarUnpack:
   - "node_modules/better-sqlite3/**"
   - "node_modules/bindings/**"
   - "node_modules/file-uri-to-path/**"
+  - "apps/electron/build/tray-icon*.png"
 
 extraMetadata:
   main: apps/electron/dist/main.cjs

@@ -39,7 +39,7 @@
   "packageManager": "npm@11.4.2",
   "homepage": "https://www.getkeep.ai",
   "author": {
-    "name": "Artur Briugeman",
-    "email": "artur@nostr.band"
+    "name": "NostrCorp, Inc.",
+    "email": "support@getkeep.ai"
   }
 }

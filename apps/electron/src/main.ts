@@ -63,15 +63,25 @@ function getAutoLaunchPref(): boolean {
 
 function setAutoLaunchPref(enabled: boolean) {
   fs.writeFileSync(autoLaunchPrefPath, JSON.stringify({ enabled }));
-  app.setLoginItemSettings({ openAtLogin: enabled, openAsHidden: true });
+  app.setLoginItemSettings({
+    openAtLogin: enabled,
+    openAsHidden: true,
+    args: enabled ? ['--hidden'] : [],
+  });
 }
 
 function applyAutoLaunch() {
+  if (!app.isPackaged) return; // skip in dev mode
   if (!fs.existsSync(autoLaunchPrefPath)) {
     // First run — enable by default
     setAutoLaunchPref(true);
   } else {
-    app.setLoginItemSettings({ openAtLogin: getAutoLaunchPref(), openAsHidden: true });
+    const enabled = getAutoLaunchPref();
+    app.setLoginItemSettings({
+      openAtLogin: enabled,
+      openAsHidden: true,
+      args: enabled ? ['--hidden'] : [],
+    });
   }
 }
 
@@ -137,7 +147,9 @@ function createWindow() {
 
 function createTray() {
   const trayIconName = process.platform === 'darwin' ? 'tray-iconTemplate@2x.png' : 'tray-icon.png';
-  const trayIconPath = path.join(__dirname, '..', 'build', trayIconName);
+  let trayIconPath = path.join(__dirname, '..', 'build', trayIconName);
+  // In packaged app, tray icons are unpacked from ASAR to app.asar.unpacked/
+  trayIconPath = trayIconPath.replace('app.asar', 'app.asar.unpacked');
   const icon = fs.existsSync(trayIconPath)
     ? nativeImage.createFromPath(trayIconPath)
     : nativeImage.createEmpty();
