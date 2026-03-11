@@ -37,6 +37,7 @@ win:
   target:
     - nsis
   icon: apps/electron/build/icon.png
+  forceCodeSigning: true
   azureSignOptions:
     publisherName: "NostrCorp, Inc."
     endpoint: "https://eus.codesigning.azure.net/"
