@@ -28,6 +28,16 @@ const NOTION_CLIENT_ID = getSecret('NOTION_CLIENT_ID');
 const NOTION_CLIENT_SECRET = getSecret('NOTION_CLIENT_SECRET');
 const AIRTABLE_CLIENT_ID = getSecret('AIRTABLE_CLIENT_ID');
 
+if (process.env.CI) {
+  const required: Record<string, string> = {
+    GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, AIRTABLE_CLIENT_ID,
+  };
+  const missing = Object.entries(required).filter(([, v]) => !v).map(([k]) => k);
+  if (missing.length) {
+    throw new Error(`Missing build secrets: ${missing.join(', ')}`);
+  }
+}
+
 export default defineConfig({
   entry: ['src/server.ts', 'src/start.ts'],
   format: ['esm', 'cjs'],

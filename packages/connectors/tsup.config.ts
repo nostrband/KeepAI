@@ -35,6 +35,18 @@ const GITHUB_CLIENT_SECRET = getSecret('GITHUB_CLIENT_SECRET', 'BUILD_GITHUB_SEC
 const AIRTABLE_CLIENT_ID = getSecret('AIRTABLE_CLIENT_ID');
 const TRELLO_API_KEY = getSecret('TRELLO_API_KEY');
 
+if (process.env.CI) {
+  const required: Record<string, string> = {
+    GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
+    GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET,
+    AIRTABLE_CLIENT_ID, TRELLO_API_KEY,
+  };
+  const missing = Object.entries(required).filter(([, v]) => !v).map(([k]) => k);
+  if (missing.length) {
+    throw new Error(`Missing build secrets: ${missing.join(', ')}`);
+  }
+}
+
 export default defineConfig({
   entry: { index: 'src/index.ts' },
   format: ['esm', 'cjs'],

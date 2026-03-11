@@ -27,6 +27,18 @@ export default defineConfig(({ mode }) => {
   const isElectron = mode === 'electron';
   const secrets = loadBuildSecrets();
 
+  if (process.env.CI) {
+    const required: Record<string, string> = {
+      POSTHOG_TOKEN: getSecret(secrets, 'POSTHOG_TOKEN'),
+      POSTHOG_HOST: getSecret(secrets, 'POSTHOG_HOST'),
+      POSTHOG_API_HOST: getSecret(secrets, 'POSTHOG_API_HOST'),
+    };
+    const missing = Object.entries(required).filter(([, v]) => !v).map(([k]) => k);
+    if (missing.length) {
+      throw new Error(`Missing build secrets: ${missing.join(', ')}`);
+    }
+  }
+
   return {
     plugins: [react()],
     resolve: {
