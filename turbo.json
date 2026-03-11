@@ -6,8 +6,12 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**", "public/**", "build/**"],
       "env": [
-        "BUILD_GMAIL_SECRET",
         "BUILD_GOOGLE_CLIENT_ID",
+        "BUILD_GMAIL_SECRET",
+        "BUILD_GITHUB_CLIENT_ID",
+        "BUILD_GITHUB_SECRET",
+        "BUILD_AIRTABLE_CLIENT_ID",
+        "BUILD_TRELLO_API_KEY",
         "BUILD_POSTHOG_TOKEN",
         "BUILD_POSTHOG_HOST",
         "BUILD_POSTHOG_API_HOST"

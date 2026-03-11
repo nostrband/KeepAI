@@ -18,10 +18,15 @@ jobs:
     environment: production
     env:
       NODE_OPTIONS: --max_old_space_size=4096
-      BUILD_GMAIL_SECRET: ${{ secrets.BUILD_GMAIL_SECRET }}
-      BUILD_POSTHOG_TOKEN: ${{ secrets.BUILD_POSTHOG_TOKEN }}
-      BUILD_POSTHOG_HOST: ${{ secrets.BUILD_POSTHOG_HOST }}
-      BUILD_POSTHOG_API_HOST: ${{ secrets.BUILD_POSTHOG_API_HOST }}
+      BUILD_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+      BUILD_GMAIL_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+      BUILD_GITHUB_CLIENT_ID: ${{ secrets.GITHUB_CLIENT_ID }}
+      BUILD_GITHUB_SECRET: ${{ secrets.GITHUB_CLIENT_SECRET }}
+      BUILD_AIRTABLE_CLIENT_ID: ${{ secrets.AIRTABLE_CLIENT_ID }}
+      BUILD_TRELLO_API_KEY: ${{ secrets.TRELLO_API_KEY }}
+      BUILD_POSTHOG_TOKEN: ${{ secrets.POSTHOG_TOKEN }}
+      BUILD_POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+      BUILD_POSTHOG_API_HOST: ${{ secrets.POSTHOG_API_HOST }}
     strategy:
       matrix:
         include:
