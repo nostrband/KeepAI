@@ -37,6 +37,11 @@ win:
   target:
     - nsis
   icon: apps/electron/build/icon.png
+  azureSignOptions:
+    publisherName: "NostrCorp, Inc."
+    endpoint: "https://eus.codesigning.azure.net/"
+    codeSigningAccountName: "NostrCorp"
+    certificateProfileName: "KeepAI"
 
 publish:
   provider: github
