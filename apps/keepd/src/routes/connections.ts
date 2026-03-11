@@ -128,6 +128,7 @@ export async function registerConnectionRoutes(
     const serviceName = connectionManager.getService(service)?.name ?? service;
 
     if (error) {
+      sse?.broadcast('connection_updated', { service, serviceName, action: 'failed', error });
       reply.type('text/html');
       return callbackPage(`Failed to connect to ${escapeHtml(serviceName)}`, `${escapeHtml(error)}<br/>You can close this window.`);
     }
@@ -144,6 +145,7 @@ export async function registerConnectionRoutes(
     const authCode = code ?? token;
 
     if (!authCode || !state) {
+      sse?.broadcast('connection_updated', { service, serviceName, action: 'failed', error: 'Missing code or state parameter' });
       reply.status(400);
       reply.type('text/html');
       return callbackPage(`Failed to connect to ${escapeHtml(serviceName)}`, 'Missing code or state parameter.');
@@ -167,6 +169,7 @@ export async function registerConnectionRoutes(
       sse?.broadcast('connection_updated', { service, serviceName, action: 'connected' });
       return callbackPage(`Connected to ${escapeHtml(serviceName)}`, 'You can close this window.', { autoClose: true });
     } else {
+      sse?.broadcast('connection_updated', { service, serviceName, action: 'failed', error: result.error || 'Unknown error' });
       return callbackPage(`Failed to connect to ${escapeHtml(serviceName)}`, `${escapeHtml(result.error || 'Unknown error')}<br/>You can close this window.`);
     }
   });

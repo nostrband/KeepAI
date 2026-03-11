@@ -79,6 +79,7 @@ export function DashboardPage() {
   const {
     showDialog: showConnectDialog,
     connectedService,
+    connectionFailure,
     openDialog: openConnectDialog,
     closeDialog: closeConnectDialog,
   } = useOAuthFlow();
@@ -248,6 +249,7 @@ export function DashboardPage() {
         open={showConnectDialog}
         onClose={closeConnectDialog}
         connectedService={connectedService}
+        connectionFailure={connectionFailure}
       />
       <AddAgentDialog open={showAgentDialog} onClose={() => setShowAgentDialog(false)} />
     </>

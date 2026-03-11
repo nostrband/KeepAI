@@ -304,6 +304,17 @@ function handleSSEEvent(event: string, dataStr: string) {
           mainWindow?.focus();
         });
         notification.show();
+      } else if (data.action === 'failed' && Notification.isSupported()) {
+        const notification = new Notification({
+          title: 'KeepAI',
+          body: `Failed to connect ${data.serviceName || data.service}`,
+          icon: getIconPath('icon.png'),
+        });
+        notification.on('click', () => {
+          mainWindow?.show();
+          mainWindow?.focus();
+        });
+        notification.show();
       }
     } catch {
       // Ignore parse errors

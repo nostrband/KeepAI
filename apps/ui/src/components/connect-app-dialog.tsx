@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { X, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { X, Loader2, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
 import { useConnectService } from '../hooks/use-connections';
 import { ServiceIcon, serviceName } from './service-icon';
+import type { ConnectionFailure } from '../hooks/use-oauth-flow';
 
 const AVAILABLE_SERVICES = ['gmail', 'notion', 'github', 'airtable', 'trello'];
 
@@ -9,32 +10,46 @@ const BETA_SERVICES: Record<string, string> = {
   gmail: 'Gmail integration is in beta and has not yet been verified by Google LLC. You may see warning screens during authorization. Proceed with caution.',
 };
 
-type Step = 'select' | 'warning' | 'redirecting' | 'waiting' | 'connected';
+type Step = 'select' | 'warning' | 'redirecting' | 'waiting' | 'connected' | 'failed';
 
 interface ConnectAppDialogProps {
   open: boolean;
   onClose: () => void;
   /** When set, overrides dialog to show 'connected' state for this service */
   connectedService?: string | null;
+  /** When set, overrides dialog to show 'failed' state */
+  connectionFailure?: ConnectionFailure | null;
 }
 
 export function ConnectAppDialog({
   open,
   onClose,
   connectedService,
+  connectionFailure,
 }: ConnectAppDialogProps) {
   const connectMutation = useConnectService();
   const [step, setStep] = useState<Step>('select');
   const [activeService, setActiveService] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // When connectedService is set externally, override whatever state
   // the dialog is in to show the 'connected' screen for that service.
   useEffect(() => {
     if (connectedService) {
       setActiveService(connectedService);
+      setErrorMessage(null);
       setStep('connected');
     }
   }, [connectedService]);
+
+  // When connectionFailure is set externally, show the 'failed' screen.
+  useEffect(() => {
+    if (connectionFailure) {
+      setActiveService(connectionFailure.service);
+      setErrorMessage(connectionFailure.error);
+      setStep('failed');
+    }
+  }, [connectionFailure]);
 
   // Always reset to clean state when dialog closes so reopening
   // never shows a stale spinner.
@@ -42,6 +57,7 @@ export function ConnectAppDialog({
     if (!open) {
       setStep('select');
       setActiveService(null);
+      setErrorMessage(null);
     }
   }, [open]);
 
@@ -49,6 +65,7 @@ export function ConnectAppDialog({
 
   const startConnect = async (service: string) => {
     setActiveService(service);
+    setErrorMessage(null);
     setStep('redirecting');
 
     try {
@@ -182,6 +199,32 @@ export function ConnectAppDialog({
                 className="px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover"
               >
                 Done
+              </button>
+            </div>
+          </>
+        )}
+
+        {step === 'failed' && activeService && (
+          <>
+            <div className="flex flex-col items-center py-6">
+              <XCircle className="w-12 h-12 text-destructive mb-3" />
+              <h2 className="text-lg font-semibold mb-1">Failed to connect {name}</h2>
+              <p className="text-sm text-muted-foreground text-center">
+                {errorMessage}
+              </p>
+            </div>
+            <div className="flex justify-end gap-3 mt-2">
+              <button
+                onClick={onClose}
+                className="px-3 py-1.5 text-sm font-medium rounded-lg border border-border hover:bg-accent"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => startConnect(activeService)}
+                className="px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover"
+              >
+                Try again
               </button>
             </div>
           </>

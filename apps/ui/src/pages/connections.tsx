@@ -12,7 +12,7 @@ export function ConnectionsPage() {
   const { data: connections, isLoading } = useConnections();
   const disconnectMutation = useDisconnectService();
   const checkMutation = useCheckConnection();
-  const { showDialog, connectedService, openDialog, closeDialog } = useOAuthFlow();
+  const { showDialog, connectedService, connectionFailure, openDialog, closeDialog } = useOAuthFlow();
 
   return (
     <div>
@@ -31,6 +31,7 @@ export function ConnectionsPage() {
         open={showDialog}
         onClose={closeDialog}
         connectedService={connectedService}
+        connectionFailure={connectionFailure}
       />
 
       {/* Connection List */}

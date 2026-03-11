@@ -86,6 +86,11 @@ export function useSSE() {
           window.dispatchEvent(
             new CustomEvent('keepai:app-connected', { detail: { service: data.service } })
           );
+        } else if (data.action === 'failed') {
+          posthog?.capture('app_connect_failed', { service: data.service, error: data.error });
+          window.dispatchEvent(
+            new CustomEvent('keepai:app-connect-failed', { detail: { service: data.service, error: data.error } })
+          );
         } else if (data.status === 'paused') {
           posthog?.capture('app_paused', { service: data.service });
         }
