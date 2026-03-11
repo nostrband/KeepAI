@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Save } from 'lucide-react';
+import { usePostHog } from '@posthog/react';
 import { useConfig, useSaveConfig, useStatus } from '../hooks/use-config';
 import { PageTitle } from '../components/page-title';
 
@@ -9,16 +10,19 @@ export function SettingsPage() {
   const { data: config, isLoading: configLoading } = useConfig();
   const { data: status } = useStatus();
   const saveMutation = useSaveConfig();
+  const posthog = usePostHog();
 
   const [relays, setRelays] = useState('');
   const [approvalTimeout, setApprovalTimeout] = useState('');
   const [autoLaunch, setAutoLaunch] = useState<boolean | null>(null);
+  const [telemetryDisabled, setTelemetryDisabled] = useState(false);
 
   useEffect(() => {
     if (config) {
       const s = config.settings || config;
       setRelays(s.relays || '');
       setApprovalTimeout(s.approvalTimeout || '300');
+      setTelemetryDisabled(s.telemetryDisabled === 'true');
     }
   }, [config]);
 
@@ -91,6 +95,43 @@ export function SettingsPage() {
                 </button>
               </div>
             )}
+
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="block text-sm font-medium">Disable telemetry</label>
+                <p className="text-xs text-muted-foreground">
+                  Stop sending anonymous usage analytics. No personal data is ever collected.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={telemetryDisabled}
+                onClick={() => {
+                  const next = !telemetryDisabled;
+                  setTelemetryDisabled(next);
+                  // Persist to daemon settings
+                  saveMutation.mutate({ telemetryDisabled: next ? 'true' : 'false' });
+                  // Immediately toggle PostHog capture
+                  if (next) {
+                    posthog?.capture('telemetry_disabled');
+                    posthog?.opt_out_capturing();
+                  } else {
+                    posthog?.opt_in_capturing();
+                    posthog?.capture('telemetry_enabled');
+                  }
+                }}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
+                  telemetryDisabled ? 'bg-primary' : 'bg-input'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-sm ring-0 transition-transform ${
+                    telemetryDisabled ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
 
             <div>
               <label className="block text-sm font-medium mb-1">Nostr Relay URLs</label>

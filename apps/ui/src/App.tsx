@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import { Header } from './components/header';
 import { useSSE } from './hooks/use-sse';
+import { useTelemetry } from './hooks/use-telemetry';
 import { DashboardPage } from './pages/dashboard';
 import { ConnectionsPage } from './pages/connections';
 import { AgentsPage } from './pages/agents';
@@ -14,6 +15,7 @@ import { SettingsPage } from './pages/settings';
 
 export default function App() {
   useSSE();
+  useTelemetry();
 
   const navigate = useNavigate();
   useEffect(() => {

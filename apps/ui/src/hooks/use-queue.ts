@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { usePostHog } from '@posthog/react';
 import { useEffect, useRef } from 'react';
 import { api } from '../lib/api';
 import { qk } from '../lib/query-keys';
@@ -26,20 +27,24 @@ export function useQueue() {
 
 export function useApproveRequest() {
   const queryClient = useQueryClient();
+  const posthog = usePostHog();
   return useMutation({
     mutationFn: (id: string) => api.approveRequest(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: qk.queue() });
+      posthog?.capture('rpc_approved');
     },
   });
 }
 
 export function useDenyRequest() {
   const queryClient = useQueryClient();
+  const posthog = usePostHog();
   return useMutation({
     mutationFn: (id: string) => api.denyRequest(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: qk.queue() });
+      posthog?.capture('rpc_denied');
     },
   });
 }

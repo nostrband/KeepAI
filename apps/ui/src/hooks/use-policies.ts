@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { usePostHog } from '@posthog/react';
 import { toast } from 'sonner';
 import { api } from '../lib/api';
 import { qk } from '../lib/query-keys';
@@ -29,6 +30,7 @@ export function useConnectionPolicies(service: string, accountId: string) {
 
 export function useSavePolicy() {
   const queryClient = useQueryClient();
+  const posthog = usePostHog();
   return useMutation({
     mutationFn: ({ agentId, service, accountId, policy }: { agentId: string; service: string; accountId: string; policy: any }) =>
       api.savePolicy(agentId, service, accountId, policy),
@@ -37,6 +39,7 @@ export function useSavePolicy() {
       queryClient.invalidateQueries({ queryKey: qk.policy(variables.agentId, variables.service, variables.accountId) });
       queryClient.invalidateQueries({ queryKey: qk.connectionPolicies(variables.service, variables.accountId) });
       toast.success('Permissions saved');
+      posthog?.capture('policy_saved', { service: variables.service });
     },
   });
 }

@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { usePostHog } from '@posthog/react';
 import { toast } from 'sonner';
 import { api } from '../lib/api';
 import { qk } from '../lib/query-keys';
@@ -18,19 +19,25 @@ export function useServices() {
 }
 
 export function useConnectService() {
+  const posthog = usePostHog();
   return useMutation({
     mutationFn: (service: string) => api.connectService(service),
+    onSuccess: (_data, service) => {
+      posthog?.capture('app_connect_started', { service });
+    },
   });
 }
 
 export function useDisconnectService() {
   const queryClient = useQueryClient();
+  const posthog = usePostHog();
   return useMutation({
     mutationFn: ({ service, accountId }: { service: string; accountId: string }) =>
       api.disconnectService(service, accountId),
-    onSuccess: () => {
+    onSuccess: (_data, { service }) => {
       queryClient.invalidateQueries({ queryKey: qk.connections() });
       toast.success('Service disconnected');
+      posthog?.capture('app_disconnected', { service });
     },
   });
 }
@@ -45,24 +52,28 @@ export function useConnection(service: string, accountId: string) {
 
 export function usePauseConnection() {
   const queryClient = useQueryClient();
+  const posthog = usePostHog();
   return useMutation({
     mutationFn: ({ service, accountId }: { service: string; accountId: string }) =>
       api.pauseConnection(service, accountId),
-    onSuccess: () => {
+    onSuccess: (_data, { service }) => {
       queryClient.invalidateQueries({ queryKey: qk.connections() });
       toast.success('App paused');
+      posthog?.capture('app_paused', { service });
     },
   });
 }
 
 export function useUnpauseConnection() {
   const queryClient = useQueryClient();
+  const posthog = usePostHog();
   return useMutation({
     mutationFn: ({ service, accountId }: { service: string; accountId: string }) =>
       api.unpauseConnection(service, accountId),
-    onSuccess: () => {
+    onSuccess: (_data, { service }) => {
       queryClient.invalidateQueries({ queryKey: qk.connections() });
       toast.success('App resumed');
+      posthog?.capture('app_resumed', { service });
     },
   });
 }

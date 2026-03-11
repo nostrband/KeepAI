@@ -19,6 +19,9 @@ jobs:
     env:
       NODE_OPTIONS: --max_old_space_size=4096
       BUILD_GMAIL_SECRET: ${{ secrets.BUILD_GMAIL_SECRET }}
+      BUILD_POSTHOG_TOKEN: ${{ secrets.BUILD_POSTHOG_TOKEN }}
+      BUILD_POSTHOG_HOST: ${{ secrets.BUILD_POSTHOG_HOST }}
+      BUILD_POSTHOG_API_HOST: ${{ secrets.BUILD_POSTHOG_API_HOST }}
     strategy:
       matrix:
         include:

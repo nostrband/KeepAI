@@ -95,6 +95,12 @@ export async function createServer(config: ServerConfig = {}) {
   keepdb.migrate();
   const db = new KeepDBApi(keepdb.db);
 
+  // 3a. Generate telemetry ID if not set
+  if (!db.settings.get('telemetryId')) {
+    db.settings.set('telemetryId', crypto.randomUUID());
+    log('generated new telemetry ID');
+  }
+
   // 4. Initialize credential store and connection DB adapter
   const credentialStore = new CredentialStore(dataDir);
   const dbBridge = createDbBridge(db.connections);
