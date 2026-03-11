@@ -1,6 +1,6 @@
 {
   "name": "@keepai/electron",
-  "version": "0.3.9",
+  "version": "0.3.10",
   "description": "KeepAI Desktop Application",
   "private": true,
   "type": "module",
