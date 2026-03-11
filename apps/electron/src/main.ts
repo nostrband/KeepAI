@@ -29,6 +29,7 @@ import {
   ipcMain,
   shell,
   nativeImage,
+  dialog,
 } from 'electron';
 import * as path from 'path';
 import { createServer } from '@keepai/daemon';
@@ -344,6 +345,28 @@ function setupIPC() {
   });
 }
 
+// --- Single-instance lock ---
+
+const gotLock = app.requestSingleInstanceLock();
+
+if (!gotLock) {
+  // Another instance is already running
+  const msg = 'KeepAI is already running. Check your system tray.';
+  console.error(msg);
+  log(msg);
+  // Show native OS dialog — works without our server running
+  dialog.showErrorBox('KeepAI', msg);
+  app.quit();
+}
+
+// When a second instance is launched, surface the existing window
+app.on('second-instance', () => {
+  if (mainWindow) {
+    mainWindow.show();
+    mainWindow.focus();
+  }
+});
+
 // --- App Lifecycle ---
 
 (app as any).isQuitting = false;
@@ -409,8 +432,17 @@ app.whenReady().then(async () => {
         log('update check failed (expected if no releases exist yet): %O', err);
       });
     }
-  } catch (err) {
+  } catch (err: any) {
     log('startup failed: %O', err);
+    if (err?.code === 'EADDRINUSE') {
+      const msg = `KeepAI could not start because port ${DEFAULT_PORT} is already in use.\n\nThis may be caused by another instance of KeepAI running in the system tray, or another application using this port. Please check your system tray and close any existing instances, then try again.`;
+      console.error(msg);
+      dialog.showErrorBox('KeepAI', msg);
+    } else {
+      const msg = `KeepAI failed to start: ${err?.message || err}`;
+      console.error(msg);
+      dialog.showErrorBox('KeepAI', msg);
+    }
     app.quit();
   }
 });

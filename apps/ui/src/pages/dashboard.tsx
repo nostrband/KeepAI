@@ -81,7 +81,6 @@ export function DashboardPage() {
     connectedService,
     openDialog: openConnectDialog,
     closeDialog: closeConnectDialog,
-    setPendingService,
   } = useOAuthFlow();
   const [showAgentDialog, setShowAgentDialog] = useState(false);
 
@@ -249,7 +248,6 @@ export function DashboardPage() {
         open={showConnectDialog}
         onClose={closeConnectDialog}
         connectedService={connectedService}
-        onPendingService={setPendingService}
       />
       <AddAgentDialog open={showAgentDialog} onClose={() => setShowAgentDialog(false)} />
     </>

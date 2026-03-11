@@ -14,23 +14,21 @@ type Step = 'select' | 'warning' | 'redirecting' | 'waiting' | 'connected';
 interface ConnectAppDialogProps {
   open: boolean;
   onClose: () => void;
-  /** When set, forces dialog open in 'connected' state for this service */
+  /** When set, overrides dialog to show 'connected' state for this service */
   connectedService?: string | null;
-  /** Reports the service user initiated OAuth for (for re-show tracking) */
-  onPendingService?: (service: string | null) => void;
 }
 
 export function ConnectAppDialog({
   open,
   onClose,
   connectedService,
-  onPendingService,
 }: ConnectAppDialogProps) {
   const connectMutation = useConnectService();
   const [step, setStep] = useState<Step>('select');
   const [activeService, setActiveService] = useState<string | null>(null);
 
-  // When connectedService is set externally (re-show), jump to connected state
+  // When connectedService is set externally, override whatever state
+  // the dialog is in to show the 'connected' screen for that service.
   useEffect(() => {
     if (connectedService) {
       setActiveService(connectedService);
@@ -38,24 +36,20 @@ export function ConnectAppDialog({
     }
   }, [connectedService]);
 
-  // Reset state when dialog closes
+  // Always reset to clean state when dialog closes so reopening
+  // never shows a stale spinner.
   useEffect(() => {
     if (!open) {
-      // Only reset if we're in connected state (flow complete)
-      // Keep state for redirecting/waiting so re-show works
-      if (step === 'connected' || step === 'select') {
-        setStep('select');
-        setActiveService(null);
-      }
+      setStep('select');
+      setActiveService(null);
     }
-  }, [open, step]);
+  }, [open]);
 
   if (!open) return null;
 
   const startConnect = async (service: string) => {
     setActiveService(service);
     setStep('redirecting');
-    onPendingService?.(service);
 
     try {
       const result = await connectMutation.mutateAsync(service);
@@ -71,7 +65,6 @@ export function ConnectAppDialog({
       // error toast shown by global mutation handler
       setStep('select');
       setActiveService(null);
-      onPendingService?.(null);
     }
   };
 
@@ -84,13 +77,6 @@ export function ConnectAppDialog({
     }
   };
 
-  const handleClose = () => {
-    if (step === 'connected') {
-      onPendingService?.(null);
-    }
-    onClose();
-  };
-
   const name = activeService ? serviceName(activeService) : '';
 
   return (
@@ -98,7 +84,7 @@ export function ConnectAppDialog({
       <div className="bg-card border border-border rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4 relative">
         {/* X button */}
         <button
-          onClick={handleClose}
+          onClick={onClose}
           className="absolute top-4 right-4 p-1 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground"
         >
           <X className="w-4 h-4" />
@@ -192,7 +178,7 @@ export function ConnectAppDialog({
             </div>
             <div className="flex justify-end mt-2">
               <button
-                onClick={handleClose}
+                onClick={onClose}
                 className="px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover"
               >
                 Done

@@ -83,6 +83,9 @@ export function useSSE() {
         const data = JSON.parse(e.data);
         if (data.action === 'connected') {
           posthog?.capture('app_connected', { service: data.service });
+          window.dispatchEvent(
+            new CustomEvent('keepai:app-connected', { detail: { service: data.service } })
+          );
         } else if (data.status === 'paused') {
           posthog?.capture('app_paused', { service: data.service });
         }

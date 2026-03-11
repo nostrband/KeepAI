@@ -4,41 +4,60 @@ import { serviceName } from '../components/service-icon';
 
 /**
  * Shared hook for OAuth connection flow state.
- * Tracks pending OAuth service, watches connections list for completion,
- * fires system notification, and manages dialog re-show.
+ *
+ * Two detection mechanisms (both trigger the "connected" dialog):
+ * 1. Diff-based: detects genuinely new entries in the connections list.
+ * 2. Event-based: listens for the `keepai:app-connected` DOM event
+ *    dispatched by useSSE on `connection_updated { action: 'connected' }`.
+ *    This handles re-auth of an already-connected account where the list
+ *    doesn't change but the backend still confirms success.
  */
 export function useOAuthFlow() {
   const [showDialog, setShowDialog] = useState(false);
-  const [pendingService, setPendingService] = useState<string | null>(null);
   const [connectedService, setConnectedService] = useState<string | null>(null);
   const { data: connections } = useConnections();
   const prevConnectionsRef = useRef<any[] | undefined>(undefined);
 
-  // Watch connections list for new entries matching pendingService
+  const showConnected = useCallback((service: string) => {
+    setConnectedService(service);
+    setShowDialog(true);
+
+    const name = serviceName(service);
+    (window as any).electronAPI?.showNotification({
+      title: 'KeepAI',
+      body: `${name} connected`,
+    });
+  }, []);
+
+  // 1. Diff-based: detect genuinely new connections in the list
   useEffect(() => {
     const prev = prevConnectionsRef.current;
     prevConnectionsRef.current = connections;
 
-    if (!pendingService || !connections || !prev) return;
+    if (!connections || !prev) return;
 
     const newConn = connections.find(
       (c: any) =>
-        c.service === pendingService &&
         !prev.some((p: any) => p.service === c.service && p.accountId === c.accountId)
     );
 
     if (newConn) {
-      setConnectedService(pendingService);
-      setShowDialog(true);
-
-      // Fire system notification
-      const name = serviceName(pendingService);
-      (window as any).electronAPI?.showNotification({
-        title: 'KeepAI',
-        body: `${name} connected`,
-      });
+      showConnected(newConn.service);
     }
-  }, [connections, pendingService]);
+  }, [connections, showConnected]);
+
+  // 2. Event-based: SSE `connection_updated` with action=connected
+  //    Covers re-auth of already-connected accounts.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const service = (e as CustomEvent).detail?.service;
+      if (service) {
+        showConnected(service);
+      }
+    };
+    window.addEventListener('keepai:app-connected', handler);
+    return () => window.removeEventListener('keepai:app-connected', handler);
+  }, [showConnected]);
 
   const openDialog = useCallback(() => {
     setConnectedService(null);
@@ -47,19 +66,13 @@ export function useOAuthFlow() {
 
   const closeDialog = useCallback(() => {
     setShowDialog(false);
-    // Clear pending if we're closing from connected state
-    if (connectedService) {
-      setPendingService(null);
-      setConnectedService(null);
-    }
-  }, [connectedService]);
+    setConnectedService(null);
+  }, []);
 
   return {
     showDialog,
-    pendingService,
     connectedService,
     openDialog,
     closeDialog,
-    setPendingService,
   };
 }
