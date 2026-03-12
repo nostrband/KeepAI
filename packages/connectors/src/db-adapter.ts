@@ -2,7 +2,7 @@
  * Adapter between @keepai/db ConnectionStore (snake_case) and ConnectionDb interface (camelCase).
  */
 
-import type { Connection, ConnectionDb } from './types.js';
+import type { Connection, ConnectionDb, OAuthCredentials } from './types.js';
 
 export interface DbConnection {
   id: string;
@@ -18,6 +18,7 @@ export interface DbConnection {
 
 export interface DbConnectionStore {
   getConnection(id: string): Promise<DbConnection | null>;
+  getConnectionByServiceAccount(service: string, accountId: string): Promise<DbConnection | null>;
   listConnections(): Promise<DbConnection[]>;
   listByService(service: string): Promise<DbConnection[]>;
   upsertConnection(
@@ -30,6 +31,8 @@ export interface DbConnectionStore {
   ): Promise<void>;
   updateLastUsed(id: string, timestamp?: number): Promise<void>;
   deleteConnection(id: string): Promise<void>;
+  saveCredentials(service: string, accountId: string, credentials: string): Promise<void>;
+  loadCredentials(service: string, accountId: string): Promise<string | null>;
 }
 
 function dbToApi(db: DbConnection): Connection {
@@ -70,6 +73,11 @@ export class ConnectionDbAdapter implements ConnectionDb {
     return dbConn ? dbToApi(dbConn) : null;
   }
 
+  async getConnectionByServiceAccount(service: string, accountId: string): Promise<Connection | null> {
+    const dbConn = await this.store.getConnectionByServiceAccount(service, accountId);
+    return dbConn ? dbToApi(dbConn) : null;
+  }
+
   async listConnections(service?: string): Promise<Connection[]> {
     const dbConns = service
       ? await this.store.listByService(service)
@@ -91,6 +99,15 @@ export class ConnectionDbAdapter implements ConnectionDb {
 
   async updateStatus(id: string, status: string, error?: string): Promise<void> {
     await this.store.updateStatus(id, status as 'connected' | 'expired' | 'error', error);
+  }
+
+  async saveCredentials(service: string, accountId: string, credentials: OAuthCredentials): Promise<void> {
+    await this.store.saveCredentials(service, accountId, JSON.stringify(credentials));
+  }
+
+  async loadCredentials(service: string, accountId: string): Promise<OAuthCredentials | null> {
+    const json = await this.store.loadCredentials(service, accountId);
+    return json ? JSON.parse(json) : null;
   }
 }
 

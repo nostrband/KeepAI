@@ -11,6 +11,7 @@ interface ConnectionRow {
   created_at: number;
   last_used_at: number | null;
   metadata: string | null;
+  credentials: string | null;
 }
 
 function rowToConnection(row: ConnectionRow): Connection {
@@ -108,5 +109,25 @@ export class ConnectionStore {
 
   delete(id: string): void {
     this.db.prepare('DELETE FROM connections WHERE id = ?').run(id);
+  }
+
+  saveCredentials(id: string, credentials: string): void {
+    this.db
+      .prepare('UPDATE connections SET credentials = ? WHERE id = ?')
+      .run(credentials, id);
+  }
+
+  loadCredentials(id: string): string | null {
+    const row = this.db
+      .prepare('SELECT credentials FROM connections WHERE id = ?')
+      .get(id) as { credentials: string | null } | undefined;
+    return row?.credentials ?? null;
+  }
+
+  loadCredentialsByServiceAccount(service: string, accountId: string): string | null {
+    const row = this.db
+      .prepare('SELECT credentials FROM connections WHERE service = ? AND account_id = ?')
+      .get(service, accountId) as { credentials: string | null } | undefined;
+    return row?.credentials ?? null;
   }
 }

@@ -1,21 +1,23 @@
 /**
  * Policy routes — per-agent per-service per-account policy management.
  *
- * GET  /api/agents/:agentId/policies                           List all policies for agent
- * GET  /api/agents/:agentId/policies/:service/:accountId       Get policy
- * PUT  /api/agents/:agentId/policies/:service/:accountId       Update policy
- * GET  /api/connections/:service/:accountId/policies            List policies for connection
+ * GET  /api/agents/:agentId/policies                       List all policies for agent
+ * GET  /api/agents/:agentId/policies/:connectionId         Get policy
+ * PUT  /api/agents/:agentId/policies/:connectionId         Update policy
+ * GET  /api/connections/:connectionId/policies              List policies for connection
  */
 
 import type { FastifyInstance } from 'fastify';
 import type { Policy } from '@keepai/proto';
+import type { ConnectionManager } from '@keepai/connectors';
 import type { AgentManager } from '../managers/agent-manager.js';
 import type { PolicyEngine } from '../managers/policy-engine.js';
 
 export async function registerPolicyRoutes(
   app: FastifyInstance,
   agentManager: AgentManager,
-  policyEngine: PolicyEngine
+  policyEngine: PolicyEngine,
+  connectionManager: ConnectionManager
 ): Promise<void> {
   // List all policies for an agent
   app.get<{ Params: { agentId: string } }>(
@@ -32,9 +34,9 @@ export async function registerPolicyRoutes(
     }
   );
 
-  // Get policy for a specific service+account
-  app.get<{ Params: { agentId: string; service: string; accountId: string } }>(
-    '/api/agents/:agentId/policies/:service/:accountId',
+  // Get policy for a specific connection
+  app.get<{ Params: { agentId: string; connectionId: string } }>(
+    '/api/agents/:agentId/policies/:connectionId',
     async (request, reply) => {
       const agent = agentManager.getAgent(request.params.agentId);
       if (!agent) {
@@ -42,9 +44,15 @@ export async function registerPolicyRoutes(
         return { error: 'Agent not found' };
       }
 
+      const connection = await connectionManager.getConnectionById(request.params.connectionId);
+      if (!connection) {
+        reply.status(404);
+        return { error: 'Connection not found' };
+      }
+
       const policy = policyEngine.getPolicy(
-        request.params.service,
-        decodeURIComponent(request.params.accountId),
+        connection.service,
+        connection.accountId,
         agent.id
       );
       return { policy };
@@ -53,13 +61,19 @@ export async function registerPolicyRoutes(
 
   // Update policy
   app.put<{
-    Params: { agentId: string; service: string; accountId: string };
+    Params: { agentId: string; connectionId: string };
     Body: Policy;
-  }>('/api/agents/:agentId/policies/:service/:accountId', async (request, reply) => {
+  }>('/api/agents/:agentId/policies/:connectionId', async (request, reply) => {
     const agent = agentManager.getAgent(request.params.agentId);
     if (!agent) {
       reply.status(404);
       return { error: 'Agent not found' };
+    }
+
+    const connection = await connectionManager.getConnectionById(request.params.connectionId);
+    if (!connection) {
+      reply.status(404);
+      return { error: 'Connection not found' };
     }
 
     const policy = request.body;
@@ -86,8 +100,8 @@ export async function registerPolicyRoutes(
     }
 
     policyEngine.savePolicy(
-      request.params.service,
-      decodeURIComponent(request.params.accountId),
+      connection.service,
+      connection.accountId,
       agent.id,
       policy
     );
@@ -96,12 +110,18 @@ export async function registerPolicyRoutes(
   });
 
   // List policies for a connection
-  app.get<{ Params: { service: string; accountId: string } }>(
-    '/api/connections/:service/:accountId/policies',
-    async (request) => {
+  app.get<{ Params: { connectionId: string } }>(
+    '/api/connections/:connectionId/policies',
+    async (request, reply) => {
+      const connection = await connectionManager.getConnectionById(request.params.connectionId);
+      if (!connection) {
+        reply.status(404);
+        return { error: 'Connection not found' };
+      }
+
       const policies = policyEngine.listByConnection(
-        request.params.service,
-        decodeURIComponent(request.params.accountId)
+        connection.service,
+        connection.accountId
       );
       return { policies };
     }

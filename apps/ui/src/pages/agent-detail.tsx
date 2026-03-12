@@ -2,6 +2,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Shield, Trash2, Activity, Pause, Play } from 'lucide-react';
 import { useAgent, useRevokeAgent, usePauseAgent, useUnpauseAgent } from '../hooks/use-agents';
 import { usePolicies } from '../hooks/use-policies';
+import { useConnections } from '../hooks/use-connections';
 import { useLogs } from '../hooks/use-logs';
 import { StatusBadge } from '../components/status-badge';
 import { ServiceIcon, serviceName } from '../components/service-icon';
@@ -29,6 +30,7 @@ export function AgentDetailPage() {
   const navigate = useNavigate();
   const { data: agent, isLoading } = useAgent(agentId!);
   const { data: policies } = usePolicies(agentId!);
+  const { data: connections } = useConnections();
   const agentName = agent?.name;
   const { data: logsData } = useLogs(
     agentName ? { agent: agentName, limit: '10' } : undefined,
@@ -133,24 +135,31 @@ export function AgentDetailPage() {
           <p className="text-sm text-muted-foreground">No permissions configured.</p>
         ) : (
           <div className="space-y-2">
-            {policyEntries.map((entry: any) => (
-              <div key={`${entry.service}:${entry.accountId}`} className="flex items-center gap-2 p-2 rounded-md bg-accent/30">
-                <ServiceIcon service={entry.service} className="w-4 h-4" />
-                <Link to={`/apps/${entry.service}/${encodeURIComponent(entry.accountId)}`} className="text-sm font-medium hover:underline">
-                  {serviceName(entry.service)}
-                </Link>
-                <span className="text-xs text-muted-foreground truncate max-w-[200px]">{entry.accountId}</span>
-                <span className="text-xs text-muted-foreground ml-auto">
-                  {summarizePolicy(entry.policy)}
-                </span>
-                <Link
-                  to={`/agents/${agentId}/policies`}
-                  className="text-xs text-primary hover:underline"
-                >
-                  Edit
-                </Link>
-              </div>
-            ))}
+            {policyEntries.map((entry: any) => {
+              const conn = connections?.find((c: any) => c.service === entry.service && c.accountId === entry.accountId);
+              return (
+                <div key={`${entry.service}:${entry.accountId}`} className="flex items-center gap-2 p-2 rounded-md bg-accent/30">
+                  <ServiceIcon service={entry.service} className="w-4 h-4" />
+                  {conn ? (
+                    <Link to={`/apps/${conn.id}`} className="text-sm font-medium hover:underline">
+                      {serviceName(entry.service)}
+                    </Link>
+                  ) : (
+                    <span className="text-sm font-medium">{serviceName(entry.service)}</span>
+                  )}
+                  <span className="text-xs text-muted-foreground truncate max-w-[200px]">{entry.accountId}</span>
+                  <span className="text-xs text-muted-foreground ml-auto">
+                    {summarizePolicy(entry.policy)}
+                  </span>
+                  <Link
+                    to={`/agents/${agentId}/policies`}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Edit
+                  </Link>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

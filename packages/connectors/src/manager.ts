@@ -6,7 +6,6 @@ import { randomUUID } from 'crypto';
 import { AuthError, isClassifiedError } from '@keepai/proto';
 import { McpOAuthClient, McpSession } from '@keepai/mcp-client';
 import { OAuthHandler, tokenResponseToCredentials } from './oauth.js';
-import { CredentialStore } from './store.js';
 import { getCredentialsForService } from './credentials.js';
 import type {
   Connection,
@@ -43,7 +42,6 @@ export class ConnectionManager {
   private cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
-    private store: CredentialStore,
     private db: ConnectionDb
   ) {
     this.cleanupTimer = setInterval(() => {
@@ -354,24 +352,23 @@ export class ConnectionManager {
         credentials.metadata = metadata;
       }
 
-      const connectionId: ConnectionId = { service: serviceId, accountId };
-
-      await this.store.save(connectionId, credentials);
-
+      // Reuse existing UUID if re-authenticating, otherwise generate new one
+      const existing = await this.db.getConnectionByServiceAccount(serviceId, accountId);
       const now = Date.now();
       const connection: Connection = {
-        id: `${serviceId}:${accountId}`,
+        id: existing?.id ?? randomUUID(),
         service: serviceId,
         accountId,
         status: 'connected',
-        label: undefined,
+        label: existing?.label,
         error: undefined,
-        createdAt: now,
-        lastUsedAt: undefined,
+        createdAt: existing?.createdAt ?? now,
+        lastUsedAt: existing?.lastUsedAt,
         metadata,
       };
 
       await this.db.upsertConnection(connection);
+      await this.db.saveCredentials(serviceId, accountId, credentials);
 
       return { success: true, connection };
     } catch (err) {
@@ -396,17 +393,21 @@ export class ConnectionManager {
   }
 
   async getConnection(id: ConnectionId): Promise<Connection | null> {
-    return this.db.getConnection(`${id.service}:${id.accountId}`);
+    return this.db.getConnectionByServiceAccount(id.service, id.accountId);
+  }
+
+  async getConnectionById(id: string): Promise<Connection | null> {
+    return this.db.getConnection(id);
   }
 
   async disconnect(id: ConnectionId, revokeToken = true): Promise<void> {
-    const connectionId = `${id.service}:${id.accountId}`;
+    const connection = await this.db.getConnectionByServiceAccount(id.service, id.accountId);
 
     if (revokeToken) {
       const service = this.services.get(id.service);
       if (service?.oauthConfig.revokeUrl) {
         try {
-          const creds = await this.store.load(id);
+          const creds = await this.db.loadCredentials(id.service, id.accountId);
           if (creds?.accessToken) {
             const { clientId, clientSecret } = getCredentialsForService(id.service);
             const handler = new OAuthHandler(
@@ -423,41 +424,38 @@ export class ConnectionManager {
       }
     }
 
-    await this.store.delete(id);
-    await this.db.deleteConnection(connectionId);
+    if (connection) {
+      await this.db.deleteConnection(connection.id);
+    }
   }
 
   async pauseConnection(id: ConnectionId): Promise<void> {
-    const connectionId = `${id.service}:${id.accountId}`;
-    const connection = await this.db.getConnection(connectionId);
+    const connection = await this.db.getConnectionByServiceAccount(id.service, id.accountId);
     if (connection && connection.status === 'connected') {
       await this.db.upsertConnection({ ...connection, status: 'paused' });
     }
   }
 
   async unpauseConnection(id: ConnectionId): Promise<void> {
-    const connectionId = `${id.service}:${id.accountId}`;
-    const connection = await this.db.getConnection(connectionId);
+    const connection = await this.db.getConnectionByServiceAccount(id.service, id.accountId);
     if (connection && connection.status === 'paused') {
       await this.db.upsertConnection({ ...connection, status: 'connected' });
     }
   }
 
   async updateLabel(id: ConnectionId, label: string): Promise<void> {
-    const connection = await this.db.getConnection(
-      `${id.service}:${id.accountId}`
-    );
+    const connection = await this.db.getConnectionByServiceAccount(id.service, id.accountId);
     if (connection) {
       await this.db.upsertConnection({ ...connection, label });
     }
   }
 
   async getCredentials(id: ConnectionId): Promise<OAuthCredentials> {
-    const connectionId = `${id.service}:${id.accountId}`;
+    const refreshKey = `${id.service}:${id.accountId}`;
 
-    const creds = await this.store.load(id);
+    const creds = await this.db.loadCredentials(id.service, id.accountId);
     if (!creds) {
-      throw new AuthError(`No credentials for ${connectionId}`, {
+      throw new AuthError(`No credentials for ${id.service}:${id.accountId}`, {
         source: 'ConnectionManager.getCredentials',
         serviceId: id.service,
         accountId: id.accountId,
@@ -473,29 +471,29 @@ export class ConnectionManager {
       if (needsRefresh) {
         if (!creds.refreshToken) {
           await this.markError(id, 'Token expired, no refresh token');
-          throw new AuthError(`Token expired for ${connectionId}`, {
+          throw new AuthError(`Token expired for ${id.service}:${id.accountId}`, {
             source: 'ConnectionManager.getCredentials',
             serviceId: id.service,
             accountId: id.accountId,
           });
         }
 
-        const existingRefresh = this.refreshPromises.get(connectionId);
+        const existingRefresh = this.refreshPromises.get(refreshKey);
         if (existingRefresh) {
           return existingRefresh;
         }
 
         const refreshPromise = this.refreshTokenInternal(id, creds)
           .then((refreshed) => {
-            this.refreshPromises.delete(connectionId);
+            this.refreshPromises.delete(refreshKey);
             return refreshed;
           })
           .catch((err) => {
-            this.refreshPromises.delete(connectionId);
+            this.refreshPromises.delete(refreshKey);
             throw err;
           });
 
-        this.refreshPromises.set(connectionId, refreshPromise);
+        this.refreshPromises.set(refreshKey, refreshPromise);
 
         try {
           return await refreshPromise;
@@ -524,7 +522,10 @@ export class ConnectionManager {
       }
     }
 
-    await this.db.updateLastUsed(connectionId, Date.now());
+    const connection = await this.db.getConnectionByServiceAccount(id.service, id.accountId);
+    if (connection) {
+      await this.db.updateLastUsed(connection.id, Date.now());
+    }
     return creds;
   }
 
@@ -562,7 +563,7 @@ export class ConnectionManager {
         newCreds.expiresAt = Date.now() + mcpTokens.expires_in * 1000;
       }
 
-      await this.store.save(id, newCreds);
+      await this.db.saveCredentials(id.service, id.accountId, newCreds);
       return newCreds;
     }
 
@@ -584,35 +585,42 @@ export class ConnectionManager {
 
     newCreds.metadata = currentCreds.metadata;
 
-    await this.store.save(id, newCreds);
+    await this.db.saveCredentials(id.service, id.accountId, newCreds);
     return newCreds;
   }
 
   async markConnected(id: ConnectionId): Promise<void> {
-    const connectionId = `${id.service}:${id.accountId}`;
-    await this.db.updateStatus(connectionId, 'connected');
+    const connection = await this.db.getConnectionByServiceAccount(id.service, id.accountId);
+    if (connection) {
+      await this.db.updateStatus(connection.id, 'connected');
+    }
   }
 
   async markError(id: ConnectionId, error: string): Promise<void> {
-    const connectionId = `${id.service}:${id.accountId}`;
-    await this.db.updateStatus(connectionId, 'error', error);
+    const connection = await this.db.getConnectionByServiceAccount(id.service, id.accountId);
+    if (connection) {
+      await this.db.updateStatus(connection.id, 'error', error);
+    }
   }
 
-  async reconcile(): Promise<void> {
-    const fileConnections = await this.store.listAll();
-    const fileIds = new Set(
-      fileConnections.map((c) => `${c.service}:${c.accountId}`)
-    );
-
-    const dbConnections = await this.db.listConnections();
-    const dbIds = new Set(dbConnections.map((c) => c.id));
+  /**
+   * Migrate credentials from legacy file-based storage into the database.
+   * Called once at startup. After migration, credential files can be removed.
+   */
+  async migrateFileCredentials(fileStore: {
+    listAll(): Promise<ConnectionId[]>;
+    load(id: ConnectionId): Promise<OAuthCredentials | null>;
+    delete(id: ConnectionId): Promise<void>;
+  }): Promise<void> {
+    const fileConnections = await fileStore.listAll();
 
     for (const fileConn of fileConnections) {
-      const id = `${fileConn.service}:${fileConn.accountId}`;
-      if (!dbIds.has(id)) {
-        const creds = await this.store.load(fileConn);
-        const connection: Connection = {
-          id,
+      // Ensure DB record exists
+      let connection = await this.db.getConnectionByServiceAccount(fileConn.service, fileConn.accountId);
+      if (!connection) {
+        const creds = await fileStore.load(fileConn);
+        connection = {
+          id: randomUUID(),
           service: fileConn.service,
           accountId: fileConn.accountId,
           status: 'connected',
@@ -624,16 +632,18 @@ export class ConnectionManager {
         };
         await this.db.upsertConnection(connection);
       }
-    }
 
-    for (const dbConn of dbConnections) {
-      if (!fileIds.has(dbConn.id)) {
-        await this.db.upsertConnection({
-          ...dbConn,
-          status: 'error',
-          error: 'Credentials file missing',
-        });
+      // Migrate credentials if not already in DB
+      const dbCreds = await this.db.loadCredentials(fileConn.service, fileConn.accountId);
+      if (!dbCreds) {
+        const fileCreds = await fileStore.load(fileConn);
+        if (fileCreds) {
+          await this.db.saveCredentials(fileConn.service, fileConn.accountId, fileCreds);
+        }
       }
+
+      // Delete the file after successful migration
+      await fileStore.delete(fileConn);
     }
   }
 

@@ -26,14 +26,14 @@ function summarizePolicy(policy: any): string {
 }
 
 export function AppDetailPage() {
-  const { service, accountId } = useParams<{ service: string; accountId: string }>();
-  const decodedAccountId = decodeURIComponent(accountId!);
+  const { connectionId } = useParams<{ connectionId: string }>();
   const navigate = useNavigate();
-  const { data: connection, isLoading } = useConnection(service!, decodedAccountId);
+  const { data: connection, isLoading } = useConnection(connectionId!);
   const { data: agents } = useAgents();
-  const { data: connectionPolicies } = useConnectionPolicies(service!, decodedAccountId);
+  const { data: connectionPolicies } = useConnectionPolicies(connectionId!);
   const { data: logsData } = useLogs(
-    { service: service!, limit: '10' },
+    connection ? { service: connection.service, limit: '10' } : undefined,
+    { enabled: !!connection }
   );
   const disconnectMutation = useDisconnectService();
   const checkMutation = useCheckConnection();
@@ -44,9 +44,9 @@ export function AppDetailPage() {
   if (!connection) return <div className="text-sm text-muted-foreground">App not found.</div>;
 
   const handleDisconnect = async () => {
-    if (!confirm(`Disconnect ${decodedAccountId}?`)) return;
+    if (!confirm(`Disconnect ${connection.accountId}?`)) return;
     try {
-      await disconnectMutation.mutateAsync({ service: service!, accountId: decodedAccountId });
+      await disconnectMutation.mutateAsync({ connectionId: connectionId!, service: connection.service });
       navigate('/apps');
     } catch {
       // error toast shown by global handler
@@ -56,9 +56,9 @@ export function AppDetailPage() {
   const handlePauseToggle = async () => {
     try {
       if (connection.status === 'paused') {
-        await unpauseMutation.mutateAsync({ service: service!, accountId: decodedAccountId });
+        await unpauseMutation.mutateAsync({ connectionId: connectionId!, service: connection.service });
       } else {
-        await pauseMutation.mutateAsync({ service: service!, accountId: decodedAccountId });
+        await pauseMutation.mutateAsync({ connectionId: connectionId!, service: connection.service });
       }
     } catch {
       // error toast shown by global handler
@@ -76,13 +76,13 @@ export function AppDetailPage() {
 
   return (
     <div>
-      <PageTitle>App: {serviceName(service!)}</PageTitle>
+      <PageTitle>App: {serviceName(connection.service)}</PageTitle>
 
       <div className="flex items-start justify-between mb-6">
         <div className="flex items-center gap-3">
-          <ServiceIcon service={service!} className="w-12 h-12" />
+          <ServiceIcon service={connection.service} className="w-12 h-12" />
           <div>
-            <div className="font-medium">{decodedAccountId}</div>
+            <div className="font-medium">{connection.accountId}</div>
             <StatusBadge status={connection.status === 'connected' && connection.offline ? 'offline' : connection.status === 'connected' ? 'active' : connection.status === 'paused' ? 'paused' : 'error'} />
           </div>
         </div>
@@ -106,7 +106,7 @@ export function AppDetailPage() {
           )}
           {connection.status !== 'paused' && (
             <button
-              onClick={() => checkMutation.mutate({ service: service!, accountId: decodedAccountId })}
+              onClick={() => checkMutation.mutate({ connectionId: connectionId! })}
               disabled={checkMutation.isPending}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-border hover:bg-accent disabled:opacity-50"
             >
@@ -136,9 +136,9 @@ export function AppDetailPage() {
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Details</h2>
         <dl className="grid grid-cols-2 gap-y-2 text-sm">
           <dt className="text-muted-foreground">Service</dt>
-          <dd>{serviceName(service!)}</dd>
+          <dd>{serviceName(connection.service)}</dd>
           <dt className="text-muted-foreground">Account</dt>
-          <dd className="font-mono text-xs">{decodedAccountId}</dd>
+          <dd className="font-mono text-xs">{connection.accountId}</dd>
           <dt className="text-muted-foreground">Status</dt>
           <dd>{connection.status}</dd>
           <dt className="text-muted-foreground">Connected</dt>
@@ -194,7 +194,7 @@ export function AppDetailPage() {
             Recent Activity
           </h2>
           <Link
-            to={`/logs?service=${service}`}
+            to={`/logs?service=${connection.service}`}
             className="text-sm text-primary hover:underline"
           >
             View all

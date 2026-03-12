@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3';
 
-export const MAX_VERSION = 3;
+export const MAX_VERSION = 5;
 
 export const migrations = new Map<number, (db: Database.Database) => void>();
 
@@ -131,4 +131,33 @@ migrations.set(2, (db) => {
 
 migrations.set(3, (db) => {
   db.exec(`ALTER TABLE connections ADD COLUMN last_health_check_at INTEGER`);
+});
+
+migrations.set(4, (db) => {
+  // Re-key connections from "service:accountId" to random UUIDs
+  // to prevent PII (emails, usernames) from leaking into URLs and telemetry.
+  const { randomUUID } = require('crypto');
+
+  const rows = db.prepare('SELECT id, service, account_id FROM connections').all() as Array<{ id: string; service: string; account_id: string }>;
+
+  // Build old→new ID mapping
+  const idMap = new Map<string, string>();
+  for (const row of rows) {
+    idMap.set(row.id, randomUUID());
+  }
+
+  // Update each connection's primary key
+  for (const [oldId, newId] of idMap) {
+    db.prepare('UPDATE connections SET id = ? WHERE id = ?').run(newId, oldId);
+  }
+
+  // Add unique constraint on (service, account_id)
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_connections_service_account ON connections(service, account_id)`);
+});
+
+migrations.set(5, (db) => {
+  // Move credentials from files into the database.
+  // The column stores a JSON blob of OAuthCredentials.
+  // Actual file→DB migration is done at startup by ConnectionManager.migrateFileCredentials().
+  db.exec(`ALTER TABLE connections ADD COLUMN credentials TEXT`);
 });

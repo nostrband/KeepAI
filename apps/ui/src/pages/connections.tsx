@@ -56,8 +56,8 @@ export function ConnectionsPage() {
         <div className="space-y-3">
           {connections.map((conn: any) => (
             <Link
-              key={`${conn.service}:${conn.accountId}`}
-              to={`/apps/${conn.service}/${encodeURIComponent(conn.accountId)}`}
+              key={conn.id}
+              to={`/apps/${conn.id}`}
               className="flex items-center gap-3 p-4 border border-border rounded-xl bg-card shadow-sm hover:shadow-md hover:border-[#D1CBC4] transition-all"
             >
               <ServiceIcon service={conn.service} className="w-6 h-6" />
@@ -70,7 +70,7 @@ export function ConnectionsPage() {
               </div>
               <StatusBadge status={conn.status === 'connected' && conn.offline ? 'offline' : conn.status === 'connected' ? 'active' : conn.status === 'paused' ? 'paused' : 'error'} />
               <button
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); checkMutation.mutate({ service: conn.service, accountId: conn.accountId }); }}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); checkMutation.mutate({ connectionId: conn.id }); }}
                 disabled={checkMutation.isPending}
                 className="p-2 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground"
                 title="Test connection"
@@ -82,7 +82,7 @@ export function ConnectionsPage() {
                   e.preventDefault();
                   e.stopPropagation();
                   if (confirm(`Disconnect ${conn.accountId}?`)) {
-                    disconnectMutation.mutate({ service: conn.service, accountId: conn.accountId });
+                    disconnectMutation.mutate({ connectionId: conn.id, service: conn.service });
                   }
                 }}
                 disabled={disconnectMutation.isPending}

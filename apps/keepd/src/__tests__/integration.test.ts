@@ -147,6 +147,12 @@ function createMockConnectionManager() {
         status: 'connected' as const,
       },
     ],
+    getConnectionById: async (id: string) => ({
+      id,
+      service: 'testservice',
+      accountId: 'test@example.com',
+      status: 'connected' as const,
+    }),
     getCredentials: async (_opts: { service: string; accountId: string }) => ({
       accessToken: 'mock-token-123',
       refreshToken: 'mock-refresh',
@@ -173,6 +179,7 @@ let policyEngine: PolicyEngine;
 let approvalQueue: ApprovalQueue;
 let auditLogger: AuditLogger;
 let connectorExecutor: ConnectorExecutor;
+let connectionManager: any;
 let sse: SSEBroadcaster;
 let rpcRouter: RPCRouter;
 
@@ -200,13 +207,15 @@ beforeEach(() => {
   connectorExecutor = new ConnectorExecutor();
   connectorExecutor.register(createTestConnector());
 
+  connectionManager = createMockConnectionManager();
+
   rpcRouter = new RPCRouter({
     agentManager,
     policyEngine,
     approvalQueue,
     auditLogger,
     connectorExecutor,
-    connectionManager: createMockConnectionManager() as any,
+    connectionManager: connectionManager as any,
     sse,
   });
 });
@@ -792,7 +801,7 @@ describe('HTTP API — Fastify inject', () => {
 
     await registerAgentRoutes(app, agentManager, policyEngine, () => {});
     await registerQueueRoutes(app, approvalQueue);
-    await registerPolicyRoutes(app, agentManager, policyEngine);
+    await registerPolicyRoutes(app, agentManager, policyEngine, connectionManager);
     await registerLogRoutes(app, auditLogger);
     await registerConfigRoutes(app, db, sse, () => DEFAULT_PORT);
 

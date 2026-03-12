@@ -136,9 +136,12 @@ export interface TokenResponse {
 
 export interface ConnectionDb {
   getConnection(id: string): Promise<Connection | null>;
+  getConnectionByServiceAccount(service: string, accountId: string): Promise<Connection | null>;
   listConnections(service?: string): Promise<Connection[]>;
   upsertConnection(connection: Connection): Promise<void>;
   deleteConnection(id: string): Promise<void>;
   updateLastUsed(id: string, timestamp: number): Promise<void>;
   updateStatus(id: string, status: ConnectionStatus, error?: string): Promise<void>;
+  saveCredentials(service: string, accountId: string, credentials: OAuthCredentials): Promise<void>;
+  loadCredentials(service: string, accountId: string): Promise<OAuthCredentials | null>;
 }

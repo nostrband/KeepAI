@@ -32,7 +32,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/apps" element={<ConnectionsPage />} />
-            <Route path="/apps/:service/:accountId" element={<AppDetailPage />} />
+            <Route path="/apps/:connectionId" element={<AppDetailPage />} />
             <Route path="/agents" element={<AgentsPage />} />
             <Route path="/agents/:agentId" element={<AgentDetailPage />} />
             <Route path="/agents/:agentId/policies" element={<PermissionsPage />} />

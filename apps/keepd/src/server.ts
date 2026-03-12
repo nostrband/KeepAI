@@ -101,21 +101,21 @@ export async function createServer(config: ServerConfig = {}) {
     log('generated new telemetry ID');
   }
 
-  // 4. Initialize credential store and connection DB adapter
-  const credentialStore = new CredentialStore(dataDir);
+  // 4. Initialize connection DB adapter
   const dbBridge = createDbBridge(db.connections);
   const connectionDbAdapter = createConnectionDbAdapter(dbBridge);
 
   // 5. Initialize ConnectionManager
-  const connectionManager = new ConnectionManager(credentialStore, connectionDbAdapter);
+  const connectionManager = new ConnectionManager(connectionDbAdapter);
   connectionManager.registerService(gmailService);
   connectionManager.registerService(notionService);
   connectionManager.registerService(githubService);
   connectionManager.registerService(airtableService);
   connectionManager.registerService(trelloService);
 
-  // 6. Reconcile file ↔ DB state
-  await connectionManager.reconcile();
+  // 6. Migrate any legacy file-based credentials into the database
+  const credentialStore = new CredentialStore(dataDir);
+  await connectionManager.migrateFileCredentials(credentialStore);
 
   // 7. Initialize ConnectorExecutor
   const connectorExecutor = new ConnectorExecutor();
@@ -230,7 +230,7 @@ export async function createServer(config: ServerConfig = {}) {
   // Register routes
   await registerConnectionRoutes(app, connectionManager, () => `http://${host}:${port}`, connectorExecutor, sse, agentManager, policyEngine, healthTracker);
   await registerAgentRoutes(app, agentManager, policyEngine, updateSubscription, sse);
-  await registerPolicyRoutes(app, agentManager, policyEngine);
+  await registerPolicyRoutes(app, agentManager, policyEngine, connectionManager);
   await registerQueueRoutes(app, approvalQueue);
   await registerLogRoutes(app, auditLogger);
   await registerConfigRoutes(app, db, sse, () => port);

@@ -1,12 +1,14 @@
 /**
  * Connection routes — OAuth flow management.
  *
- * GET    /api/connections                     List all connections
- * GET    /api/connections/services            List available services
- * POST   /api/connections/:service/connect    Start OAuth flow → { authUrl }
- * GET    /api/connections/:service/callback   OAuth callback
- * DELETE /api/connections/:service/:accountId Disconnect
- * POST   /api/connections/:service/:accountId/check  Test connection
+ * GET    /api/connections                          List all connections
+ * GET    /api/connections/services                 List available services
+ * POST   /api/connections/:service/connect         Start OAuth flow → { authUrl }
+ * GET    /api/connections/:service/callback        OAuth callback
+ * DELETE /api/connections/:connectionId            Disconnect
+ * POST   /api/connections/:connectionId/pause      Pause
+ * POST   /api/connections/:connectionId/unpause    Unpause
+ * POST   /api/connections/:connectionId/check      Test connection
  */
 
 import type { FastifyInstance } from 'fastify';
@@ -175,10 +177,15 @@ export async function registerConnectionRoutes(
   });
 
   // Disconnect
-  app.delete<{ Params: { service: string; accountId: string } }>(
-    '/api/connections/:service/:accountId',
+  app.delete<{ Params: { connectionId: string } }>(
+    '/api/connections/:connectionId',
     async (request, reply) => {
-      const { service, accountId } = request.params;
+      const connection = await connectionManager.getConnectionById(request.params.connectionId);
+      if (!connection) {
+        reply.status(404);
+        return { error: 'Connection not found' };
+      }
+      const { service, accountId } = connection;
 
       try {
         // Delete policies for this connection
@@ -206,11 +213,10 @@ export async function registerConnectionRoutes(
   );
 
   // Pause connection
-  app.post<{ Params: { service: string; accountId: string } }>(
-    '/api/connections/:service/:accountId/pause',
+  app.post<{ Params: { connectionId: string } }>(
+    '/api/connections/:connectionId/pause',
     async (request, reply) => {
-      const { service, accountId } = request.params;
-      const connection = await connectionManager.getConnection({ service, accountId });
+      const connection = await connectionManager.getConnectionById(request.params.connectionId);
       if (!connection) {
         reply.status(404);
         return { error: 'Connection not found' };
@@ -219,6 +225,7 @@ export async function registerConnectionRoutes(
         reply.status(400);
         return { error: `Cannot pause connection with status "${connection.status}"` };
       }
+      const { service, accountId } = connection;
       await connectionManager.pauseConnection({ service, accountId });
       sse?.broadcast('connection_updated', { service, accountId, status: 'paused' });
       return { success: true };
@@ -226,11 +233,10 @@ export async function registerConnectionRoutes(
   );
 
   // Unpause connection
-  app.post<{ Params: { service: string; accountId: string } }>(
-    '/api/connections/:service/:accountId/unpause',
+  app.post<{ Params: { connectionId: string } }>(
+    '/api/connections/:connectionId/unpause',
     async (request, reply) => {
-      const { service, accountId } = request.params;
-      const connection = await connectionManager.getConnection({ service, accountId });
+      const connection = await connectionManager.getConnectionById(request.params.connectionId);
       if (!connection) {
         reply.status(404);
         return { error: 'Connection not found' };
@@ -239,6 +245,7 @@ export async function registerConnectionRoutes(
         reply.status(400);
         return { error: `Cannot unpause connection with status "${connection.status}"` };
       }
+      const { service, accountId } = connection;
       await connectionManager.unpauseConnection({ service, accountId });
       sse?.broadcast('connection_updated', { service, accountId, status: 'connected' });
       return { success: true };
@@ -246,10 +253,15 @@ export async function registerConnectionRoutes(
   );
 
   // Check connection (test by making a live API call)
-  app.post<{ Params: { service: string; accountId: string } }>(
-    '/api/connections/:service/:accountId/check',
-    async (request) => {
-      const { service, accountId } = request.params;
+  app.post<{ Params: { connectionId: string } }>(
+    '/api/connections/:connectionId/check',
+    async (request, reply) => {
+      const connection = await connectionManager.getConnectionById(request.params.connectionId);
+      if (!connection) {
+        reply.status(404);
+        return { error: 'Connection not found' };
+      }
+      const { service, accountId } = connection;
       const id = { service, accountId };
 
       if (!connectorExecutor) {

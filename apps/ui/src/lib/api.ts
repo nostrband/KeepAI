@@ -61,17 +61,17 @@ export const api = {
   connectService: (service: string) =>
     request<{ authUrl: string }>(`/connections/${service}/connect`, { method: 'POST' }),
 
-  disconnectService: (service: string, accountId: string) =>
-    request<void>(`/connections/${service}/${encodeURIComponent(accountId)}`, { method: 'DELETE' }),
+  disconnectService: (connectionId: string) =>
+    request<void>(`/connections/${connectionId}`, { method: 'DELETE' }),
 
-  pauseConnection: (service: string, accountId: string) =>
-    request<void>(`/connections/${service}/${encodeURIComponent(accountId)}/pause`, { method: 'POST' }),
+  pauseConnection: (connectionId: string) =>
+    request<void>(`/connections/${connectionId}/pause`, { method: 'POST' }),
 
-  unpauseConnection: (service: string, accountId: string) =>
-    request<void>(`/connections/${service}/${encodeURIComponent(accountId)}/unpause`, { method: 'POST' }),
+  unpauseConnection: (connectionId: string) =>
+    request<void>(`/connections/${connectionId}/unpause`, { method: 'POST' }),
 
-  checkConnection: (service: string, accountId: string) =>
-    request<{ success: boolean; error?: string; errorType?: 'auth' | 'network' }>(`/connections/${service}/${encodeURIComponent(accountId)}/check`, { method: 'POST' }),
+  checkConnection: (connectionId: string) =>
+    request<{ success: boolean; error?: string; errorType?: 'auth' | 'network' }>(`/connections/${connectionId}/check`, { method: 'POST' }),
 
   // Agents
   listAgents: () =>
@@ -99,17 +99,17 @@ export const api = {
   listPolicies: (agentId: string) =>
     request<{ policies: any[] }>(`/agents/${agentId}/policies`).then((r) => r.policies),
 
-  getPolicy: (agentId: string, service: string, accountId: string) =>
-    request<{ policy: any }>(`/agents/${agentId}/policies/${service}/${encodeURIComponent(accountId)}`).then((r) => r.policy),
+  getPolicy: (agentId: string, connectionId: string) =>
+    request<{ policy: any }>(`/agents/${agentId}/policies/${connectionId}`).then((r) => r.policy),
 
-  savePolicy: (agentId: string, service: string, accountId: string, policy: any) =>
-    request<void>(`/agents/${agentId}/policies/${service}/${encodeURIComponent(accountId)}`, {
+  savePolicy: (agentId: string, connectionId: string, policy: any) =>
+    request<void>(`/agents/${agentId}/policies/${connectionId}`, {
       method: 'PUT',
       body: JSON.stringify(policy),
     }),
 
-  listConnectionPolicies: (service: string, accountId: string) =>
-    request<{ policies: any[] }>(`/connections/${service}/${encodeURIComponent(accountId)}/policies`).then((r) => r.policies),
+  listConnectionPolicies: (connectionId: string) =>
+    request<{ policies: any[] }>(`/connections/${connectionId}/policies`).then((r) => r.policies),
 
   // Approval Queue
   listQueue: () =>

@@ -29,6 +29,22 @@ export function createDbBridge(store: ConnectionStore): DbConnectionStore {
       };
     },
 
+    async getConnectionByServiceAccount(service: string, accountId: string): Promise<DbConnection | null> {
+      const row = store.getByServiceAndAccount(service, accountId);
+      if (!row) return null;
+      return {
+        id: row.id,
+        service: row.service,
+        account_id: row.accountId,
+        status: row.status as DbConnection['status'],
+        label: row.label,
+        error: row.error,
+        created_at: row.createdAt,
+        last_used_at: row.lastUsedAt,
+        metadata: row.metadata ? JSON.parse(row.metadata) : null,
+      };
+    },
+
     async listConnections(): Promise<DbConnection[]> {
       return store.listAll().map((row) => ({
         id: row.id,
@@ -84,6 +100,17 @@ export function createDbBridge(store: ConnectionStore): DbConnectionStore {
 
     async deleteConnection(id: string): Promise<void> {
       store.delete(id);
+    },
+
+    async saveCredentials(service: string, accountId: string, credentials: string): Promise<void> {
+      const conn = store.getByServiceAndAccount(service, accountId);
+      if (conn) {
+        store.saveCredentials(conn.id, credentials);
+      }
+    },
+
+    async loadCredentials(service: string, accountId: string): Promise<string | null> {
+      return store.loadCredentialsByServiceAccount(service, accountId);
     },
   };
 }

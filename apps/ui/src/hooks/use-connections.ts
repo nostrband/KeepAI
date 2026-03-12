@@ -32,8 +32,8 @@ export function useDisconnectService() {
   const queryClient = useQueryClient();
   const posthog = usePostHog();
   return useMutation({
-    mutationFn: ({ service, accountId }: { service: string; accountId: string }) =>
-      api.disconnectService(service, accountId),
+    mutationFn: ({ connectionId, service }: { connectionId: string; service: string }) =>
+      api.disconnectService(connectionId),
     onSuccess: (_data, { service }) => {
       queryClient.invalidateQueries({ queryKey: qk.connections() });
       toast.success('Service disconnected');
@@ -42,10 +42,10 @@ export function useDisconnectService() {
   });
 }
 
-export function useConnection(service: string, accountId: string) {
+export function useConnection(connectionId: string) {
   const { data: connections, ...rest } = useConnections();
   const connection = connections?.find(
-    (c: any) => c.service === service && c.accountId === accountId
+    (c: any) => c.id === connectionId
   );
   return { data: connection, ...rest };
 }
@@ -54,8 +54,8 @@ export function usePauseConnection() {
   const queryClient = useQueryClient();
   const posthog = usePostHog();
   return useMutation({
-    mutationFn: ({ service, accountId }: { service: string; accountId: string }) =>
-      api.pauseConnection(service, accountId),
+    mutationFn: ({ connectionId }: { connectionId: string; service: string }) =>
+      api.pauseConnection(connectionId),
     onSuccess: (_data, { service }) => {
       queryClient.invalidateQueries({ queryKey: qk.connections() });
       toast.success('App paused');
@@ -68,8 +68,8 @@ export function useUnpauseConnection() {
   const queryClient = useQueryClient();
   const posthog = usePostHog();
   return useMutation({
-    mutationFn: ({ service, accountId }: { service: string; accountId: string }) =>
-      api.unpauseConnection(service, accountId),
+    mutationFn: ({ connectionId }: { connectionId: string; service: string }) =>
+      api.unpauseConnection(connectionId),
     onSuccess: (_data, { service }) => {
       queryClient.invalidateQueries({ queryKey: qk.connections() });
       toast.success('App resumed');
@@ -81,8 +81,8 @@ export function useUnpauseConnection() {
 export function useCheckConnection() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ service, accountId }: { service: string; accountId: string }) =>
-      api.checkConnection(service, accountId),
+    mutationFn: ({ connectionId }: { connectionId: string }) =>
+      api.checkConnection(connectionId),
     onSuccess: (data) => {
       if (data.success) {
         toast.success('Connection is working');

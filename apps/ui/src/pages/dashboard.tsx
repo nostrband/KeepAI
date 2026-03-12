@@ -169,8 +169,8 @@ export function DashboardPage() {
           <div className="space-y-2">
             {connections.map((conn: any) => (
               <Link
-                key={`${conn.service}:${conn.accountId}`}
-                to={`/apps/${conn.service}/${encodeURIComponent(conn.accountId)}`}
+                key={conn.id}
+                to={`/apps/${conn.id}`}
                 className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card shadow-sm hover:shadow-md hover:border-[#D1CBC4] transition-all"
               >
                 <ServiceIcon service={conn.service} />

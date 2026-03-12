@@ -74,67 +74,51 @@ export function PermissionsPage() {
   const { data: connections } = useConnections();
   const saveMutation = useSavePolicy();
 
-  // Key: "service:accountId" → PolicyState
+  // Key: connectionId → PolicyState
   const [localPolicies, setLocalPolicies] = useState<Record<string, PolicyState>>({});
-  const [showRaw, setShowRaw] = useState<string | null>(null);
-  const [rawJson, setRawJson] = useState('');
-  const [rawError, setRawError] = useState('');
+
+  // Build a map of service:accountId → connectionId for lookup
+  const connectionByKey = new Map<string, any>();
+  for (const conn of connections ?? []) {
+    connectionByKey.set(`${conn.service}:${conn.accountId}`, conn);
+  }
 
   // Initialize local state from server policy entries
   useEffect(() => {
-    if (serverPolicies) {
+    if (serverPolicies && connections) {
       const map: Record<string, PolicyState> = {};
       for (const entry of serverPolicies as any[]) {
-        const key = `${entry.service}:${entry.accountId}`;
-        map[key] = entry.policy;
+        const conn = connectionByKey.get(`${entry.service}:${entry.accountId}`);
+        if (conn) {
+          map[conn.id] = entry.policy;
+        }
       }
       setLocalPolicies(map);
     }
-  }, [serverPolicies]);
+  }, [serverPolicies, connections]);
 
-  // Get connected accounts as (service, accountId) pairs
+  // Get connected accounts
   const connectedAccounts = (connections ?? [])
-    .filter((c: any) => c.status === 'connected')
-    .map((c: any) => ({ service: c.service, accountId: c.accountId }));
+    .filter((c: any) => c.status === 'connected');
 
-  const updatePolicy = (key: string, policy: PolicyState) => {
-    setLocalPolicies((prev) => ({ ...prev, [key]: policy }));
+  const updatePolicy = (connectionId: string, policy: PolicyState) => {
+    setLocalPolicies((prev) => ({ ...prev, [connectionId]: policy }));
   };
 
-  const handleSave = async (service: string, accountId: string) => {
-    const key = `${service}:${accountId}`;
+  const handleSave = async (connectionId: string) => {
     try {
       await saveMutation.mutateAsync({
         agentId: agentId!,
-        service,
-        accountId,
-        policy: localPolicies[key] ?? DEFAULT_POLICY,
+        connectionId,
+        policy: localPolicies[connectionId] ?? DEFAULT_POLICY,
       });
     } catch {
       // error toast shown by global mutation handler
     }
   };
 
-  const handleReset = (key: string) => {
-    setLocalPolicies((prev) => ({ ...prev, [key]: DEFAULT_POLICY }));
-  };
-
-  const handleSaveRaw = async (service: string, accountId: string) => {
-    let parsed: any;
-    try {
-      parsed = JSON.parse(rawJson);
-    } catch {
-      setRawError('Invalid JSON');
-      return;
-    }
-    setRawError('');
-    const key = `${service}:${accountId}`;
-    try {
-      await saveMutation.mutateAsync({ agentId: agentId!, service, accountId, policy: parsed });
-      setLocalPolicies((prev) => ({ ...prev, [key]: parsed }));
-    } catch {
-      // error toast shown by global mutation handler
-    }
+  const handleReset = (connectionId: string) => {
+    setLocalPolicies((prev) => ({ ...prev, [connectionId]: DEFAULT_POLICY }));
   };
 
   if (isLoading) return <div className="text-sm text-muted-foreground">Loading...</div>;
@@ -149,40 +133,20 @@ export function PermissionsPage() {
         </p>
       ) : (
         <div className="space-y-6">
-          {connectedAccounts.map(({ service, accountId }: { service: string; accountId: string }) => {
-            const key = `${service}:${accountId}`;
-            const policy = localPolicies[key] ?? DEFAULT_POLICY;
-            const isShowingRaw = showRaw === key;
+          {connectedAccounts.map((conn: any) => {
+            const policy = localPolicies[conn.id] ?? DEFAULT_POLICY;
             return (
-              <div key={key} className="border border-border rounded-xl p-4 bg-card shadow-sm">
+              <div key={conn.id} className="border border-border rounded-xl p-4 bg-card shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <ServiceIcon service={service} />
-                    <Link to={`/apps/${service}/${encodeURIComponent(accountId)}`} className="font-semibold hover:underline">
-                      {serviceName(service)}
+                    <ServiceIcon service={conn.service} />
+                    <Link to={`/apps/${conn.id}`} className="font-semibold hover:underline">
+                      {serviceName(conn.service)}
                     </Link>
-                    <Link to={`/apps/${service}/${encodeURIComponent(accountId)}`} className="text-xs text-muted-foreground hover:underline">
-                      {accountId}
+                    <Link to={`/apps/${conn.id}`} className="text-xs text-muted-foreground hover:underline">
+                      {conn.accountId}
                     </Link>
                   </div>
-                  {/* Raw JSON toggle – hidden for now, too complex for users
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => {
-                        if (isShowingRaw) {
-                          setShowRaw(null);
-                        } else {
-                          setShowRaw(key);
-                          setRawJson(JSON.stringify(policy, null, 2));
-                          setRawError('');
-                        }
-                      }}
-                      className="text-xs text-muted-foreground hover:text-foreground"
-                    >
-                      {isShowingRaw ? 'Visual' : 'Raw JSON'}
-                    </button>
-                  </div>
-                  */}
                 </div>
 
                   <div>
@@ -196,7 +160,7 @@ export function PermissionsPage() {
                               value={actions[op]}
                               onChange={(v) => {
                                 const newActions = { ...actions, [op]: v };
-                                updatePolicy(key, { ...policy, rules: actionsToPolicyRules(newActions) });
+                                updatePolicy(conn.id, { ...policy, rules: actionsToPolicyRules(newActions) });
                               }}
                             />
                           </div>
@@ -206,14 +170,14 @@ export function PermissionsPage() {
 
                     <div className="flex justify-end gap-2 mt-4">
                       <button
-                        onClick={() => handleReset(key)}
+                        onClick={() => handleReset(conn.id)}
                         className="inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg hover:bg-accent text-muted-foreground"
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
                         Reset
                       </button>
                       <button
-                        onClick={() => handleSave(service, accountId)}
+                        onClick={() => handleSave(conn.id)}
                         disabled={saveMutation.isPending}
                         className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover disabled:opacity-50"
                       >
