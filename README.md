@@ -6,7 +6,7 @@ KeepAI is a desktop app that gives AI agents controlled access to your Gmail and
 
 **Your credentials never leave your device.** All communication between your agent's device and your desktop device is **end-to-end encrypted**. Your OAuth credentials and encryption keys are stored locally on your devices, our servers cannot access your credentials or content. KeepAI acts as a secure gateway: agents send requests from agent's device, you set the rules for what's allowed, and KeepAI executes API calls on your behalf from your trusted device.
 
-> **Status:** Beta — functional with Gmail support. More connectors coming soon.
+> **Status:** Beta — functional with Gmail, Notion, Github, Trello and Airtable support.
 
 Website: [https://www.getkeep.ai](https://www.getkeep.ai)
 
@@ -47,7 +47,6 @@ Your desktop device                        Your agent device (MacMini, VPS, Dock
 |-----------|-------------|
 | **Desktop App** | Electron app that runs on your trusted machine — manages connections, agents, policies, and approvals |
 | **CLI** (`npx keepai`) | Command-line tool that agents use to access your services remotely |
-| **SDK** (`import { KeepAI } from 'keepai'`) | JavaScript/TypeScript library for building agents that use KeepAI programmatically |
 
 ## Getting Started
 
@@ -106,21 +105,6 @@ npx keepai run gmail messages.send --account=you@gmail.com --params='{"to": "fri
 
 Use `npx keepai run <service> --help` to see all available methods for a service.
 
-## Using the SDK
-
-For building agents in JavaScript/TypeScript:
-
-```typescript
-import { KeepAI } from 'keepai'
-
-const keepai = new KeepAI()
-
-// List recent emails
-const messages = await keepai.run('gmail', 'messages.list', {
-  account: 'you@gmail.com'
-})
-```
-
 ## Policies
 
 Each agent gets its own set of policies per service. The defaults are:
@@ -140,6 +124,10 @@ When a write or delete requires approval, you'll get a desktop notification. Ope
 | Service | Operations |
 |---------|-----------|
 | **Gmail** | List messages, read messages, search, send emails, manage labels, trash/untrash |
+| **Notion** | List/read/create/update pages, databases, blocks |
+| **Github** | List/read/create/update repos, issues, pull requests, comments |
+| **Trello** | List/read/create/update boards, lists, cards |
+| **Airtable** | List/read/create/update bases, tables, records |
 
 ## Building from Source
 
