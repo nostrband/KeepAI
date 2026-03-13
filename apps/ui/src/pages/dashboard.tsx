@@ -13,8 +13,12 @@ import { EmptyState } from '../components/empty-state';
 import { ConnectAppDialog } from '../components/connect-app-dialog';
 import { AddAgentDialog } from '../components/add-agent-dialog';
 import { UpgradeDialog } from '../components/upgrade-dialog';
+import { AgentActivityBadge } from '../components/agent-activity-badge';
+import { AppActivityBadge } from '../components/app-activity-badge';
 import { useApproveRequest, useDenyRequest } from '../hooks/use-queue';
 import { useOAuthFlow } from '../hooks/use-oauth-flow';
+import { useAgentActivity, useAppActivity } from '../hooks/use-agent-activity';
+import { timeAgo } from '../lib/time-ago';
 
 function WelcomeScreen({
   onConnectApp,
@@ -89,6 +93,8 @@ export function DashboardPage() {
   } = useOAuthFlow();
   const [showAgentDialog, setShowAgentDialog] = useState(false);
   const [upgradeType, setUpgradeType] = useState<'agents' | 'apps' | null>(null);
+  const agentActivities = useAgentActivity();
+  const appActivities = useAppActivity();
 
   const pendingApprovals = queue ?? [];
   const isLoading = connectionsLoading || agentsLoading;
@@ -207,6 +213,7 @@ export function DashboardPage() {
                   <div className="text-sm font-medium truncate">{conn.accountId}</div>
                   <div className="text-xs text-muted-foreground">{serviceName(conn.service)}</div>
                 </div>
+                <AppActivityBadge activity={appActivities.get(`${conn.service}:${conn.accountId}`)} />
                 <StatusBadge status={conn.status === 'connected' ? 'active' : conn.status === 'paused' ? 'paused' : 'error'} />
               </Link>
             ))}
@@ -257,10 +264,12 @@ export function DashboardPage() {
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate">{agent.name || 'Unnamed'}</div>
                   <div className="text-xs text-muted-foreground">
-                    {agent.type && <span>{agent.type} · </span>}
-                    {agent.lastSeenAt ? `Last seen ${new Date(agent.lastSeenAt).toLocaleString()}` : 'Never connected'}
+                    {agent.type && <span>{agent.type}</span>}
+                    {agent.type && agent.lastSeenAt && <span> · </span>}
+                    {agent.lastSeenAt && <span>Active {timeAgo(agent.lastSeenAt)}</span>}
                   </div>
                 </div>
+                <AgentActivityBadge activity={agentActivities.get(agent.id)} />
                 <StatusBadge status={agent.status === 'revoked' ? 'revoked' : agent.status === 'paused' ? 'paused' : 'active'} />
               </Link>
             ))}

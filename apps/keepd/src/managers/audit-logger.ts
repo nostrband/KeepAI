@@ -61,6 +61,8 @@ export class AuditLogger {
       agentName: params.agent.name,
       service: params.metadata.service,
       method: params.metadata.method,
+      accountId: params.metadata.accountId,
+      requestSummary: params.metadata.description,
       responseStatus: params.responseStatus,
     });
   }

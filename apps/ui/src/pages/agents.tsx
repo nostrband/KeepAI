@@ -9,12 +9,16 @@ import { EmptyState } from '../components/empty-state';
 import { PageTitle } from '../components/page-title';
 import { AddAgentDialog } from '../components/add-agent-dialog';
 import { UpgradeDialog } from '../components/upgrade-dialog';
+import { AgentActivityBadge } from '../components/agent-activity-badge';
+import { useAgentActivity } from '../hooks/use-agent-activity';
+import { timeAgo } from '../lib/time-ago';
 
 export function AgentsPage() {
   const { data: agents, isLoading } = useAgents();
   const { data: billing } = useBilling();
   const [showDialog, setShowDialog] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const agentActivities = useAgentActivity();
 
   const handleAddAgent = () => {
     if (billing) {
@@ -75,11 +79,12 @@ export function AgentsPage() {
               <div className="flex-1 min-w-0">
                 <div className="font-medium">{agent.name || 'Unnamed'}</div>
                 <div className="text-sm text-muted-foreground">
-                  {agent.type && <span>{agent.type} · </span>}
-                  Paired {new Date(agent.pairedAt).toLocaleDateString()}
-                  {agent.lastSeenAt && ` — last seen ${new Date(agent.lastSeenAt).toLocaleString()}`}
+                  {agent.type && <span>{agent.type}</span>}
+                  {agent.type && agent.lastSeenAt && <span> · </span>}
+                  {agent.lastSeenAt && <span>Active {timeAgo(agent.lastSeenAt)}</span>}
                 </div>
               </div>
+              <AgentActivityBadge activity={agentActivities.get(agent.id)} />
               <StatusBadge status={agent.status === 'revoked' ? 'revoked' : agent.status === 'paused' ? 'paused' : 'active'} />
             </Link>
           ))}

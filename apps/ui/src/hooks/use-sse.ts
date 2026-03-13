@@ -61,6 +61,9 @@ export function useSSE() {
       queryClient.invalidateQueries({ queryKey: ['logs'] });
       try {
         const data = JSON.parse(e.data);
+        window.dispatchEvent(
+          new CustomEvent('keepai:request-completed', { detail: data })
+        );
         posthog?.capture('rpc_call', {
           service: data.service,
           method: data.method,

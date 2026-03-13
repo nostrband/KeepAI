@@ -9,7 +9,9 @@ import { EmptyState } from '../components/empty-state';
 import { PageTitle } from '../components/page-title';
 import { ConnectAppDialog } from '../components/connect-app-dialog';
 import { UpgradeDialog } from '../components/upgrade-dialog';
+import { AppActivityBadge } from '../components/app-activity-badge';
 import { useOAuthFlow } from '../hooks/use-oauth-flow';
+import { useAppActivity } from '../hooks/use-agent-activity';
 
 export function ConnectionsPage() {
   const { data: connections, isLoading } = useConnections();
@@ -18,6 +20,7 @@ export function ConnectionsPage() {
   const checkMutation = useCheckConnection();
   const { showDialog, connectedService, connectionFailure, openDialog, closeDialog } = useOAuthFlow();
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const appActivities = useAppActivity();
 
   const handleAddApp = () => {
     if (billing) {
@@ -85,6 +88,7 @@ export function ConnectionsPage() {
                   {conn.lastUsedAt && ` — last used ${new Date(conn.lastUsedAt).toLocaleString()}`}
                 </div>
               </div>
+              <AppActivityBadge activity={appActivities.get(`${conn.service}:${conn.accountId}`)} />
               <StatusBadge status={conn.status === 'connected' && conn.offline ? 'offline' : conn.status === 'connected' ? 'active' : conn.status === 'paused' ? 'paused' : 'error'} />
               <button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); checkMutation.mutate({ connectionId: conn.id }); }}
