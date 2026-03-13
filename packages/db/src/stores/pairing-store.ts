@@ -4,6 +4,7 @@ import type { PendingPairing } from '@keepai/proto/types.js';
 interface PairingRow {
   id: string;
   name: string;
+  type: string;
   secret: string;
   keepd_pubkey: string;
   keepd_privkey: string;
@@ -15,6 +16,7 @@ function rowToPairing(row: PairingRow): PendingPairing {
   return {
     id: row.id,
     name: row.name,
+    type: row.type,
     secret: row.secret,
     keepdPubkey: row.keepd_pubkey,
     keepdPrivkey: row.keepd_privkey,
@@ -29,12 +31,13 @@ export class PairingStore {
   create(pairing: PendingPairing): void {
     this.db
       .prepare(
-        `INSERT INTO pending_pairings (id, name, secret, keepd_pubkey, keepd_privkey, expires_at)
-         VALUES (?, ?, ?, ?, ?, ?)`
+        `INSERT INTO pending_pairings (id, name, type, secret, keepd_pubkey, keepd_privkey, expires_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         pairing.id,
         pairing.name,
+        pairing.type,
         pairing.secret,
         pairing.keepdPubkey,
         pairing.keepdPrivkey,

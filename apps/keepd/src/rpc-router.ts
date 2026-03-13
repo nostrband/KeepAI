@@ -300,7 +300,7 @@ export class RPCRouter {
       }
 
       log('completing pairing for agent pubkey:%s', agentPubkey);
-      const agent = this.agentManager.completePairing(agentPubkey, secret);
+      const agent = await this.agentManager.completePairing(agentPubkey, secret);
       log('pairing completed: agent %s (%s)', agent.name, agent.id);
 
       // Create default policies for all connected accounts

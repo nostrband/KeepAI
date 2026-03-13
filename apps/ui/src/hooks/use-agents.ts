@@ -24,7 +24,7 @@ export function useCreateAgent() {
   const queryClient = useQueryClient();
   const posthog = usePostHog();
   return useMutation({
-    mutationFn: (name: string) => api.createAgent(name),
+    mutationFn: ({ name, type }: { name: string; type: string }) => api.createAgent(name, type),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: qk.agents() });
       posthog?.capture('agent_created');
@@ -62,6 +62,45 @@ export function useUnpauseAgent() {
       queryClient.invalidateQueries({ queryKey: qk.agent(agentId) });
       toast.success('Agent resumed');
       posthog?.capture('agent_resumed');
+    },
+  });
+}
+
+export function useRenameAgent() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ agentId, name }: { agentId: string; name: string }) =>
+      api.renameAgent(agentId, name),
+    onSuccess: (_data, { agentId }) => {
+      queryClient.invalidateQueries({ queryKey: qk.agents() });
+      queryClient.invalidateQueries({ queryKey: qk.agent(agentId) });
+      toast.success('Agent renamed');
+    },
+  });
+}
+
+export function useUploadAgentIcon() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ agentId, file }: { agentId: string; file: File }) =>
+      api.uploadAgentIcon(agentId, file),
+    onSuccess: (_data, { agentId }) => {
+      queryClient.invalidateQueries({ queryKey: qk.agent(agentId) });
+      toast.success('Avatar updated');
+    },
+  });
+}
+
+export function useRefreshAgentIcon() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (agentId: string) => api.refreshAgentIcon(agentId),
+    onSuccess: (_data, agentId) => {
+      queryClient.invalidateQueries({ queryKey: qk.agent(agentId) });
+      toast.success('Avatar refreshed');
+    },
+    onError: () => {
+      toast.error('Failed to fetch new avatar');
     },
   });
 }

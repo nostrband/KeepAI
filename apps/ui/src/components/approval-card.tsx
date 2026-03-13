@@ -1,11 +1,13 @@
 import { useState, useEffect, useReducer } from 'react';
 import { ServiceIcon, serviceName } from './service-icon';
-import { Bot, ArrowRight, Check, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowRight, Check, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { AgentAvatar } from './agent-avatar';
 import { api } from '../lib/api';
 
 interface ApprovalCardProps {
   item: {
     id: string;
+    agentId?: string;
     agentName?: string;
     service: string;
     method: string;
@@ -64,7 +66,7 @@ export function ApprovalCard({ item, onApprove, onDeny, isApproving, isDenying }
         <div className="flex-1 min-w-0">
           {/* Row 1: Agent → Service (account) */}
           <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <Bot className="w-4 h-4 shrink-0 text-muted-foreground" />
+            <AgentAvatar agentId={item.agentId ?? ''} name={item.agentName ?? '?'} size={16} />
             <span className="font-semibold text-sm">{item.agentName || 'Unknown agent'}</span>
             <ArrowRight className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
             <ServiceIcon service={item.service} className="w-4 h-4 shrink-0" />

@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Shield, Trash2, Activity, Pause, Play } from 'lucide-react';
-import { useAgent, useRevokeAgent, usePauseAgent, useUnpauseAgent } from '../hooks/use-agents';
+import { Shield, Trash2, Activity, Pause, Play, MoreHorizontal } from 'lucide-react';
+import { AgentAvatar } from '../components/agent-avatar';
+import { useAgent, useRevokeAgent, usePauseAgent, useUnpauseAgent, useRenameAgent } from '../hooks/use-agents';
 import { usePolicies } from '../hooks/use-policies';
 import { useConnections } from '../hooks/use-connections';
 import { useLogs } from '../hooks/use-logs';
@@ -39,6 +41,8 @@ export function AgentDetailPage() {
   const revokeMutation = useRevokeAgent();
   const pauseMutation = usePauseAgent();
   const unpauseMutation = useUnpauseAgent();
+  const renameMutation = useRenameAgent();
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
 
   if (isLoading) return <div className="text-sm text-muted-foreground">Loading...</div>;
   if (!agent) return <div className="text-sm text-muted-foreground">Agent not found.</div>;
@@ -70,13 +74,20 @@ export function AgentDetailPage() {
 
   return (
     <div>
-      <PageTitle>Agent: {agent.name || 'Unnamed'}</PageTitle>
+      <div className="flex items-center gap-2 mb-6">
+        <PageTitle className="mb-0">Agent: {agent.name || 'Unnamed'}</PageTitle>
+        <button
+          onClick={() => setShowRenameDialog(true)}
+          className="p-1 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+          title="Rename agent"
+        >
+          <MoreHorizontal className="w-5 h-5" />
+        </button>
+      </div>
 
       <div className="flex items-start justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-lg font-semibold">
-            {(agent.name || '?')[0].toUpperCase()}
-          </div>
+          <AgentAvatar agentId={agent.id} name={agent.name} size={48} editable={agent.status !== 'revoked'} />
           <StatusBadge status={agent.status === 'revoked' ? 'revoked' : agent.status === 'paused' ? 'paused' : 'active'} />
         </div>
         {agent.status !== 'revoked' && (
@@ -112,6 +123,8 @@ export function AgentDetailPage() {
       <div className="border border-border rounded-xl p-4 bg-card shadow-sm mb-6">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Details</h2>
         <dl className="grid grid-cols-2 gap-y-2 text-sm">
+          <dt className="text-muted-foreground">Type</dt>
+          <dd className="capitalize">{agent.type || 'Other'}</dd>
           <dt className="text-muted-foreground">Agent ID</dt>
           <dd className="font-mono text-xs">{agent.id}</dd>
           <dt className="text-muted-foreground">Public Key</dt>
@@ -212,6 +225,63 @@ export function AgentDetailPage() {
             ))}
           </div>
         )}
+      </div>
+
+      {showRenameDialog && (
+        <RenameAgentDialog
+          currentName={agent.name}
+          onSave={async (newName) => {
+            await renameMutation.mutateAsync({ agentId: agentId!, name: newName });
+            setShowRenameDialog(false);
+          }}
+          onClose={() => setShowRenameDialog(false)}
+          isPending={renameMutation.isPending}
+        />
+      )}
+    </div>
+  );
+}
+
+function RenameAgentDialog({
+  currentName,
+  onSave,
+  onClose,
+  isPending,
+}: {
+  currentName: string;
+  onSave: (name: string) => void;
+  onClose: () => void;
+  isPending: boolean;
+}) {
+  const [name, setName] = useState(currentName);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="bg-card border border-border rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4">
+        <h2 className="text-lg font-semibold mb-4">Rename Agent</h2>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="w-full px-4 py-3 border border-input rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ring/10 focus:border-foreground"
+          onKeyDown={(e) => e.key === 'Enter' && name.trim() && onSave(name.trim())}
+          autoFocus
+        />
+        <div className="flex justify-end gap-2 mt-4">
+          <button
+            onClick={onClose}
+            className="px-3 py-1.5 text-sm rounded-lg hover:bg-accent"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onSave(name.trim())}
+            disabled={!name.trim() || name.trim() === currentName || isPending}
+            className="px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover disabled:opacity-50"
+          >
+            {isPending ? 'Saving...' : 'Save'}
+          </button>
+        </div>
       </div>
     </div>
   );

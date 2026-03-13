@@ -358,22 +358,18 @@ export class BillingManager {
         }
       }
 
-      // Delete revoked agents from server
+      // Unregister revoked agents from billing server (but keep local DB rows)
       const revokedAgents = this.db.agents.list().filter(a => a.status === 'revoked');
       for (const agent of revokedAgents) {
         if (serverAgents.has(agent.agentPubkey)) {
           try {
             const res = await this.apiCall('DELETE', `/api/agents?pubkey=${encodeURIComponent(agent.agentPubkey)}`);
             if (res.ok || res.status === 404) {
-              this.db.agents.delete(agent.id);
-              log('unregistered and cleaned up agent %s', agent.name);
+              log('unregistered revoked agent %s from billing', agent.name);
             }
           } catch (err) {
             log('failed to unregister agent %s: %O', agent.name, err);
           }
-        } else {
-          // Not on server (maybe already deleted), clean up locally
-          this.db.agents.delete(agent.id);
         }
       }
 

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plug, Bot, Plus, ShieldCheck, Loader2 } from 'lucide-react';
+import { AgentAvatar } from '../components/agent-avatar';
 import { useConnections } from '../hooks/use-connections';
 import { useAgents } from '../hooks/use-agents';
 import { useBilling } from '../hooks/use-billing';
@@ -246,18 +247,17 @@ export function DashboardPage() {
           />
         ) : (
           <div className="space-y-2">
-            {agents.map((agent: any) => (
+            {agents.filter((a: any) => a.status !== 'revoked').map((agent: any) => (
               <Link
                 key={agent.id}
                 to={`/agents/${agent.id}`}
                 className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card shadow-sm hover:shadow-md hover:border-[#D1CBC4] transition-all"
               >
-                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-medium">
-                  {(agent.name || '?')[0].toUpperCase()}
-                </div>
+                <AgentAvatar agentId={agent.id} name={agent.name} size={32} />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate">{agent.name || 'Unnamed'}</div>
                   <div className="text-xs text-muted-foreground">
+                    {agent.type && <span className="capitalize">{agent.type} · </span>}
                     {agent.lastSeenAt ? `Last seen ${new Date(agent.lastSeenAt).toLocaleString()}` : 'Never connected'}
                   </div>
                 </div>

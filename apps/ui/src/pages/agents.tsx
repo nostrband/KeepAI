@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bot, Plus } from 'lucide-react';
+import { AgentAvatar } from '../components/agent-avatar';
 import { useAgents } from '../hooks/use-agents';
 import { useBilling } from '../hooks/use-billing';
 import { StatusBadge } from '../components/status-badge';
@@ -64,18 +65,17 @@ export function AgentsPage() {
         />
       ) : (
         <div className="space-y-3">
-          {agents.map((agent: any) => (
+          {[...agents].sort((a: any, b: any) => (a.status === 'revoked' ? 1 : 0) - (b.status === 'revoked' ? 1 : 0)).map((agent: any) => (
             <Link
               key={agent.id}
               to={`/agents/${agent.id}`}
               className="flex items-center gap-3 p-4 border border-border rounded-xl bg-card shadow-sm hover:shadow-md hover:border-[#D1CBC4] transition-all"
             >
-              <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-semibold">
-                {(agent.name || '?')[0].toUpperCase()}
-              </div>
+              <AgentAvatar agentId={agent.id} name={agent.name} size={40} />
               <div className="flex-1 min-w-0">
                 <div className="font-medium">{agent.name || 'Unnamed'}</div>
                 <div className="text-sm text-muted-foreground">
+                  {agent.type && <span className="capitalize">{agent.type} · </span>}
                   Paired {new Date(agent.pairedAt).toLocaleDateString()}
                   {agent.lastSeenAt && ` — last seen ${new Date(agent.lastSeenAt).toLocaleString()}`}
                 </div>

@@ -135,6 +135,7 @@ export type AgentStatus = 'paired' | 'paused' | 'revoked';
 export interface Agent {
   id: string;
   name: string;
+  type: string;
   agentPubkey: string;
   keepdPubkey: string;
   keepdPrivkey: string;
@@ -147,6 +148,7 @@ export interface Agent {
 export interface PendingPairing {
   id: string;
   name: string;
+  type: string;
   secret: string;
   keepdPubkey: string;
   keepdPrivkey: string;

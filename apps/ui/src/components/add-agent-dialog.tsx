@@ -12,6 +12,7 @@ export function AddAgentDialog({ open, onClose }: AddAgentDialogProps) {
   const createMutation = useCreateAgent();
   const cancelMutation = useCancelPairing();
   const [agentName, setAgentName] = useState('');
+  const [agentType, setAgentType] = useState('openclaw');
   const [pairingCode, setPairingCode] = useState<string | null>(null);
   const [pairingId, setPairingId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -28,7 +29,10 @@ export function AddAgentDialog({ open, onClose }: AddAgentDialogProps) {
   const handleCreate = async () => {
     if (!agentName.trim()) return;
     try {
-      const result = await createMutation.mutateAsync(agentName.trim());
+      const result = await createMutation.mutateAsync({
+        name: agentName.trim(),
+        type: agentType === 'other' ? '' : agentType,
+      });
       setPairingCode(result.code);
       setPairingId(result.id);
     } catch {
@@ -52,6 +56,7 @@ export function AddAgentDialog({ open, onClose }: AddAgentDialogProps) {
 
   const handleClose = () => {
     setAgentName('');
+    setAgentType('openclaw');
     setPairingCode(null);
     setPairingId(null);
     setCopied(false);
@@ -67,6 +72,18 @@ export function AddAgentDialog({ open, onClose }: AddAgentDialogProps) {
         {!pairingCode ? (
           <>
             <h2 className="text-lg font-semibold mb-4">Add Agent</h2>
+            <label className="block text-sm font-medium mb-1">Type</label>
+            <select
+              value={agentType}
+              onChange={(e) => setAgentType(e.target.value)}
+              className="w-full px-4 py-3 border border-input rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ring/10 focus:border-foreground bg-transparent mb-3"
+            >
+              <option value="openclaw">OpenClaw</option>
+              <option value="codex">Codex</option>
+              <option value="claude">Claude</option>
+              <option value="nanoclaw">NanoClaw</option>
+              <option value="other">Other</option>
+            </select>
             <label className="block text-sm font-medium mb-1">Agent name</label>
             <input
               type="text"

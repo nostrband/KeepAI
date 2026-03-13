@@ -80,8 +80,11 @@ export const api = {
   getAgent: (agentId: string) =>
     request<any>(`/agents/${agentId}`),
 
-  createAgent: (name: string) =>
-    request<{ code: string; id: string }>(`/agents/new?name=${encodeURIComponent(name)}`, { method: 'POST' }),
+  createAgent: (name: string, type: string = '') =>
+    request<{ code: string; id: string }>(`/agents/new?name=${encodeURIComponent(name)}&type=${encodeURIComponent(type)}`, { method: 'POST' }),
+
+  renameAgent: (agentId: string, name: string) =>
+    request<void>(`/agents/${agentId}/name`, { method: 'PUT', body: JSON.stringify({ name }) }),
 
   revokeAgent: (agentId: string) =>
     request<void>(`/agents/${agentId}`, { method: 'DELETE' }),
@@ -158,4 +161,26 @@ export const api = {
 
   signOut: () =>
     request<void>('/billing/signout', { method: 'POST' }),
+
+  // Agent icons
+  getAgentIconUrl: (agentId: string) =>
+    `${BASE}/agents/${agentId}/icon`,
+
+  uploadAgentIcon: async (agentId: string, file: File) => {
+    const token = await getAccessToken();
+    const form = new FormData();
+    form.append('file', file);
+    const res = await fetch(`${BASE}/agents/${agentId}/icon`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      throw new Error(json.error || `Upload failed (${res.status})`);
+    }
+  },
+
+  refreshAgentIcon: (agentId: string) =>
+    request<{ success: boolean; error?: string }>(`/agents/${agentId}/icon/refresh`, { method: 'POST' }),
 };

@@ -4,6 +4,7 @@ import type { Agent } from '@keepai/proto/types.js';
 interface AgentRow {
   id: string;
   name: string;
+  type: string;
   agent_pubkey: string;
   keepd_pubkey: string;
   keepd_privkey: string;
@@ -17,6 +18,7 @@ function rowToAgent(row: AgentRow): Agent {
   return {
     id: row.id,
     name: row.name,
+    type: row.type,
     agentPubkey: row.agent_pubkey,
     keepdPubkey: row.keepd_pubkey,
     keepdPrivkey: row.keepd_privkey,
@@ -33,6 +35,7 @@ export class AgentStore {
   create(agent: {
     id: string;
     name: string;
+    type?: string;
     agentPubkey: string;
     keepdPubkey: string;
     keepdPrivkey: string;
@@ -40,12 +43,13 @@ export class AgentStore {
   }): void {
     this.db
       .prepare(
-        `INSERT INTO agents (id, name, agent_pubkey, keepd_pubkey, keepd_privkey, paired_at)
-         VALUES (?, ?, ?, ?, ?, ?)`
+        `INSERT INTO agents (id, name, type, agent_pubkey, keepd_pubkey, keepd_privkey, paired_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         agent.id,
         agent.name,
+        agent.type ?? '',
         agent.agentPubkey,
         agent.keepdPubkey,
         agent.keepdPrivkey,
@@ -92,6 +96,10 @@ export class AgentStore {
     this.db
       .prepare('UPDATE agents SET last_seen_at = (unixepoch(\'now\') * 1000) WHERE id = ?')
       .run(id);
+  }
+
+  rename(id: string, name: string): void {
+    this.db.prepare('UPDATE agents SET name = ? WHERE id = ?').run(name, id);
   }
 
   pause(id: string): void {

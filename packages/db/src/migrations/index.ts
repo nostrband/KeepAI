@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3';
 
-export const MAX_VERSION = 5;
+export const MAX_VERSION = 6;
 
 export const migrations = new Map<number, (db: Database.Database) => void>();
 
@@ -160,4 +160,9 @@ migrations.set(5, (db) => {
   // The column stores a JSON blob of OAuthCredentials.
   // Actual file→DB migration is done at startup by ConnectionManager.migrateFileCredentials().
   db.exec(`ALTER TABLE connections ADD COLUMN credentials TEXT`);
+});
+
+migrations.set(6, (db) => {
+  db.exec(`ALTER TABLE agents ADD COLUMN type TEXT NOT NULL DEFAULT ''`);
+  db.exec(`ALTER TABLE pending_pairings ADD COLUMN type TEXT NOT NULL DEFAULT ''`);
 });

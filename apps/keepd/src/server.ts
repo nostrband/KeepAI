@@ -25,6 +25,7 @@ import Fastify from 'fastify';
 const log = createDebug('keepai:server');
 import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
+import multipart from '@fastify/multipart';
 import { KeepDB, KeepDBApi } from '@keepai/db';
 import {
   ConnectionManager,
@@ -160,7 +161,7 @@ export async function createServer(config: ServerConfig = {}) {
   const healthTracker = new ConnectionHealthTracker();
 
   // 9. Initialize AgentManager
-  const agentManager = new AgentManager({ db, relays });
+  const agentManager = new AgentManager({ db, relays, dataDir });
 
   // 10. Initialize PolicyEngine
   const policyEngine = new PolicyEngine(db);
@@ -218,6 +219,10 @@ export async function createServer(config: ServerConfig = {}) {
     origin: true,
   });
 
+  await app.register(multipart, {
+    limits: { fileSize: 500 * 1024 },
+  });
+
   // Access-token guard: all /api/ routes require Bearer token,
   // except OAuth callbacks which are called by external providers.
   app.addHook('onRequest', async (request, reply) => {
@@ -225,6 +230,8 @@ export async function createServer(config: ServerConfig = {}) {
     if (!url.startsWith('/api/')) return;
     // Allow OAuth callback (browser redirect from provider)
     if (/^\/api\/connections\/[^/]+\/callback(\?|$)/.test(url)) return;
+    // Allow unauthenticated icon access
+    if (/^\/api\/agents\/[^/]+\/icon(\?|$)/.test(url) && request.method === 'GET') return;
 
     const auth = request.headers.authorization;
     const queryToken = (request.query as any)?.access_token;

@@ -21,12 +21,13 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@keepai/proto": "file:../../packages/proto",
-    "@keepai/db": "file:../../packages/db",
-    "@keepai/connectors": "file:../../packages/connectors",
-    "@keepai/nostr-rpc": "file:../../packages/nostr-rpc",
     "@fastify/cors": "^10.0.0",
+    "@fastify/multipart": "^9.4.0",
     "@fastify/static": "^8.0.0",
+    "@keepai/connectors": "file:../../packages/connectors",
+    "@keepai/db": "file:../../packages/db",
+    "@keepai/nostr-rpc": "file:../../packages/nostr-rpc",
+    "@keepai/proto": "file:../../packages/proto",
     "fastify": "^5.0.0"
   },
   "devDependencies": {
