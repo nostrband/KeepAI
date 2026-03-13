@@ -32,6 +32,7 @@ import type { ApprovalQueue } from './managers/approval-queue.js';
 import type { AuditLogger } from './managers/audit-logger.js';
 import type { ConnectorExecutor, ConnectionManager } from '@keepai/connectors';
 import type { SSEBroadcaster } from './sse.js';
+import type { BillingManager } from './managers/billing-manager.js';
 
 export interface RPCRouterOptions {
   agentManager: AgentManager;
@@ -41,6 +42,7 @@ export interface RPCRouterOptions {
   connectorExecutor: ConnectorExecutor;
   connectionManager: ConnectionManager;
   sse: SSEBroadcaster;
+  billingManager?: BillingManager;
 }
 
 export class RPCRouter {
@@ -51,6 +53,7 @@ export class RPCRouter {
   private connectorExecutor: ConnectorExecutor;
   private connectionManager: ConnectionManager;
   private sse: SSEBroadcaster;
+  private billingManager?: BillingManager;
 
   constructor(options: RPCRouterOptions) {
     this.agentManager = options.agentManager;
@@ -60,6 +63,7 @@ export class RPCRouter {
     this.connectorExecutor = options.connectorExecutor;
     this.connectionManager = options.connectionManager;
     this.sse = options.sse;
+    this.billingManager = options.billingManager;
   }
 
   /**
@@ -317,6 +321,12 @@ export class RPCRouter {
         name: agent.name,
         agentPubkey: agent.agentPubkey,
       });
+
+      // Sync with billing (best-effort, non-blocking)
+      this.billingManager?.registerAgent({
+        agent_pubkey: agent.agentPubkey,
+        name: agent.name,
+      }).catch(() => {});
 
       return {
         result: {

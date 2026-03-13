@@ -18,6 +18,7 @@ import type { SSEBroadcaster } from '../sse.js';
 import type { AgentManager } from '../managers/agent-manager.js';
 import type { PolicyEngine } from '../managers/policy-engine.js';
 import type { ConnectionHealthTracker } from '../health-tracker.js';
+import type { BillingManager } from '../managers/billing-manager.js';
 
 export const HEALTH_CHECK_METHODS: Record<string, { method: string; params: Record<string, unknown> }> = {
   gmail: { method: 'profile.get', params: {} },
@@ -74,7 +75,8 @@ export async function registerConnectionRoutes(
   sse?: SSEBroadcaster,
   agentManager?: AgentManager,
   policyEngine?: PolicyEngine,
-  healthTracker?: ConnectionHealthTracker
+  healthTracker?: ConnectionHealthTracker,
+  billingManager?: BillingManager
 ): Promise<void> {
   // List all connections (merge in-memory offline state)
   app.get('/api/connections', async () => {
@@ -169,6 +171,16 @@ export async function registerConnectionRoutes(
       }
 
       sse?.broadcast('connection_updated', { service, serviceName, action: 'connected' });
+
+      // Sync with billing (best-effort, non-blocking)
+      if (billingManager && result.connection) {
+        billingManager.registerApp({
+          id: result.connection.id,
+          service: result.connection.service,
+          label: result.connection.label,
+        }).catch(() => {});
+      }
+
       return callbackPage(`Connected to ${escapeHtml(serviceName)}`, 'You can close this window.', { autoClose: true });
     } else {
       sse?.broadcast('connection_updated', { service, serviceName, action: 'failed', error: result.error || 'Unknown error' });
@@ -191,6 +203,9 @@ export async function registerConnectionRoutes(
         // Delete policies for this connection
         policyEngine?.deleteByConnection(service, accountId);
 
+        // Store connection id before disconnect (soft-delete will keep the row)
+        const connectionId = connection.id;
+
         await connectionManager.disconnect({ service, accountId });
 
         // If no accounts remain, reset the MCP connector state
@@ -203,6 +218,9 @@ export async function registerConnectionRoutes(
             }
           }
         }
+
+        // Sync with billing (best-effort, non-blocking)
+        billingManager?.unregisterApp(connectionId).catch(() => {});
 
         return { success: true };
       } catch (err: any) {

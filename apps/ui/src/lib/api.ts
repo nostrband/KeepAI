@@ -142,4 +142,20 @@ export const api = {
 
   getStatus: () =>
     request<any>('/status'),
+
+  // Billing
+  getBillingStatus: () =>
+    request<any>('/billing/status'),
+
+  startSignIn: () =>
+    request<{ user_code: string; device_code: string; expires_at: string }>('/billing/signin', { method: 'POST' }),
+
+  pollSignIn: (device_code: string) =>
+    request<{ status: string; api_token?: string; user?: any }>('/billing/signin/poll', {
+      method: 'POST',
+      body: JSON.stringify({ device_code }),
+    }),
+
+  signOut: () =>
+    request<void>('/billing/signout', { method: 'POST' }),
 };

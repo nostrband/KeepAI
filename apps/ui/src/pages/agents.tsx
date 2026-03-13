@@ -2,21 +2,38 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bot, Plus } from 'lucide-react';
 import { useAgents } from '../hooks/use-agents';
+import { useBilling } from '../hooks/use-billing';
 import { StatusBadge } from '../components/status-badge';
 import { EmptyState } from '../components/empty-state';
 import { PageTitle } from '../components/page-title';
 import { AddAgentDialog } from '../components/add-agent-dialog';
+import { UpgradeDialog } from '../components/upgrade-dialog';
 
 export function AgentsPage() {
   const { data: agents, isLoading } = useAgents();
+  const { data: billing } = useBilling();
   const [showDialog, setShowDialog] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
+
+  const handleAddAgent = () => {
+    if (billing) {
+      const activeCount = (agents ?? []).filter(
+        (a: any) => a.status !== 'revoked'
+      ).length;
+      if (activeCount >= billing.plan.max_agents) {
+        setShowUpgrade(true);
+        return;
+      }
+    }
+    setShowDialog(true);
+  };
 
   return (
     <div>
       <div className="flex items-center justify-between">
         <PageTitle>Agents</PageTitle>
         <button
-          onClick={() => setShowDialog(true)}
+          onClick={handleAddAgent}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover"
         >
           <Plus className="w-4 h-4" />
@@ -25,6 +42,7 @@ export function AgentsPage() {
       </div>
 
       <AddAgentDialog open={showDialog} onClose={() => setShowDialog(false)} />
+      <UpgradeDialog open={showUpgrade} onClose={() => setShowUpgrade(false)} resourceType="agents" />
 
       {/* Agent List */}
       {isLoading ? (
@@ -36,7 +54,7 @@ export function AgentsPage() {
           description="Pair an AI agent to allow it to access your connected apps securely."
           action={
             <button
-              onClick={() => setShowDialog(true)}
+              onClick={handleAddAgent}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover"
             >
               <Plus className="w-4 h-4" />

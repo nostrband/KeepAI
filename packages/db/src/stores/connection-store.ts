@@ -39,6 +39,11 @@ export class ConnectionStore {
     label?: string;
     metadata?: string;
   }): void {
+    // Remove any soft-deleted rows for the same service+account to avoid unique constraint conflicts
+    this.db
+      .prepare("DELETE FROM connections WHERE service = ? AND account_id = ? AND status = 'disconnected'")
+      .run(conn.service, conn.accountId);
+
     this.db
       .prepare(
         `INSERT INTO connections (id, service, account_id, status, label, metadata)
@@ -75,14 +80,22 @@ export class ConnectionStore {
 
   listByService(service: string): Connection[] {
     const rows = this.db
-      .prepare('SELECT * FROM connections WHERE service = ? ORDER BY created_at DESC')
+      .prepare("SELECT * FROM connections WHERE service = ? AND status != 'disconnected' ORDER BY created_at DESC")
       .all(service) as ConnectionRow[];
     return rows.map(rowToConnection);
   }
 
   listAll(): Connection[] {
     const rows = this.db
-      .prepare('SELECT * FROM connections ORDER BY created_at DESC')
+      .prepare("SELECT * FROM connections WHERE status != 'disconnected' ORDER BY created_at DESC")
+      .all() as ConnectionRow[];
+    return rows.map(rowToConnection);
+  }
+
+  /** List soft-deleted connections (for billing sync cleanup). */
+  listDisconnected(): Connection[] {
+    const rows = this.db
+      .prepare("SELECT * FROM connections WHERE status = 'disconnected' ORDER BY created_at DESC")
       .all() as ConnectionRow[];
     return rows.map(rowToConnection);
   }
@@ -107,7 +120,13 @@ export class ConnectionStore {
       .run(id);
   }
 
+  /** Soft-delete: mark as disconnected instead of removing the row. */
   delete(id: string): void {
+    this.db.prepare("UPDATE connections SET status = 'disconnected', credentials = NULL WHERE id = ?").run(id);
+  }
+
+  /** Permanently remove a row (used after billing sync confirms deletion). */
+  hardDelete(id: string): void {
     this.db.prepare('DELETE FROM connections WHERE id = ?').run(id);
   }
 

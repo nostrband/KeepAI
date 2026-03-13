@@ -135,6 +135,8 @@ export function AppDetailPage() {
       <div className="border border-border rounded-xl p-4 bg-card shadow-sm mb-6">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Details</h2>
         <dl className="grid grid-cols-2 gap-y-2 text-sm">
+          <dt className="text-muted-foreground">App ID</dt>
+          <dd className="font-mono text-xs">{connectionId}</dd>
           <dt className="text-muted-foreground">Service</dt>
           <dd>{serviceName(connection.service)}</dd>
           <dt className="text-muted-foreground">Account</dt>

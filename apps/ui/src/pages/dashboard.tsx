@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Plug, Bot, Plus, ShieldCheck, Loader2 } from 'lucide-react';
 import { useConnections } from '../hooks/use-connections';
 import { useAgents } from '../hooks/use-agents';
+import { useBilling } from '../hooks/use-billing';
 import { useQueue } from '../hooks/use-queue';
 import { ServiceIcon, serviceName } from '../components/service-icon';
 import { StatusBadge } from '../components/status-badge';
@@ -10,6 +11,7 @@ import { ApprovalCard } from '../components/approval-card';
 import { EmptyState } from '../components/empty-state';
 import { ConnectAppDialog } from '../components/connect-app-dialog';
 import { AddAgentDialog } from '../components/add-agent-dialog';
+import { UpgradeDialog } from '../components/upgrade-dialog';
 import { useApproveRequest, useDenyRequest } from '../hooks/use-queue';
 import { useOAuthFlow } from '../hooks/use-oauth-flow';
 
@@ -73,6 +75,7 @@ function WelcomeScreen({
 export function DashboardPage() {
   const { data: connections, isLoading: connectionsLoading } = useConnections();
   const { data: agents, isLoading: agentsLoading } = useAgents();
+  const { data: billing } = useBilling();
   const { data: queue } = useQueue();
   const approveMutation = useApproveRequest();
   const denyMutation = useDenyRequest();
@@ -84,6 +87,7 @@ export function DashboardPage() {
     closeDialog: closeConnectDialog,
   } = useOAuthFlow();
   const [showAgentDialog, setShowAgentDialog] = useState(false);
+  const [upgradeType, setUpgradeType] = useState<'agents' | 'apps' | null>(null);
 
   const pendingApprovals = queue ?? [];
   const isLoading = connectionsLoading || agentsLoading;
@@ -93,14 +97,38 @@ export function DashboardPage() {
     (!agents || agents.length === 0) &&
     pendingApprovals.length === 0;
 
+  const handleAddAgent = () => {
+    if (billing) {
+      const activeCount = (agents ?? []).filter(
+        (a: any) => a.status !== 'revoked'
+      ).length;
+      if (activeCount >= billing.plan.max_agents) {
+        setUpgradeType('agents');
+        return;
+      }
+    }
+    setShowAgentDialog(true);
+  };
+
+  const handleAddApp = () => {
+    if (billing) {
+      const activeCount = (connections ?? []).length;
+      if (activeCount >= billing.plan.max_apps) {
+        setUpgradeType('apps');
+        return;
+      }
+    }
+    openConnectDialog();
+  };
+
   const content = isLoading ? (
     <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
       <Loader2 className="w-8 h-8 animate-spin text-primary/40" />
     </div>
   ) : isEmpty ? (
     <WelcomeScreen
-      onConnectApp={() => openConnectDialog()}
-      onAddAgent={() => setShowAgentDialog(true)}
+      onConnectApp={handleAddApp}
+      onAddAgent={handleAddAgent}
     />
   ) : (
     <div className="space-y-8">
@@ -142,7 +170,7 @@ export function DashboardPage() {
             Apps
           </h2>
           <button
-            onClick={() => openConnectDialog()}
+            onClick={handleAddApp}
             className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -157,7 +185,7 @@ export function DashboardPage() {
             description="Connect your apps to get started."
             action={
               <button
-                onClick={() => openConnectDialog()}
+                onClick={handleAddApp}
                 className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover"
               >
                 <Plus className="w-4 h-4" />
@@ -193,7 +221,7 @@ export function DashboardPage() {
             Agents
           </h2>
           <button
-            onClick={() => setShowAgentDialog(true)}
+            onClick={handleAddAgent}
             className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -208,7 +236,7 @@ export function DashboardPage() {
             description="Pair an AI agent to allow it to access your apps."
             action={
               <button
-                onClick={() => setShowAgentDialog(true)}
+                onClick={handleAddAgent}
                 className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover"
               >
                 <Plus className="w-4 h-4" />
@@ -252,6 +280,13 @@ export function DashboardPage() {
         connectionFailure={connectionFailure}
       />
       <AddAgentDialog open={showAgentDialog} onClose={() => setShowAgentDialog(false)} />
+      {upgradeType && (
+        <UpgradeDialog
+          open={!!upgradeType}
+          onClose={() => setUpgradeType(null)}
+          resourceType={upgradeType}
+        />
+      )}
     </>
   );
 }

@@ -1,5 +1,7 @@
 # KeepAI
 
+## Local API hub for AI agents
+
 KeepAI is a desktop app that gives AI agents controlled access to your Gmail and other services — without sharing your passwords, OAuth tokens, keys or content with anyone.
 
 **Your credentials never leave your device.** All communication between your agent's device and your desktop device is **end-to-end encrypted**. Your OAuth credentials and encryption keys are stored locally on your devices, our servers cannot access your credentials or content. KeepAI acts as a secure gateway: agents send requests from agent's device, you set the rules for what's allowed, and KeepAI executes API calls on your behalf from your trusted device.

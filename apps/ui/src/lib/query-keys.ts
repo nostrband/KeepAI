@@ -13,4 +13,5 @@ export const qk = {
   logs: (params?: Record<string, string>) => ['logs', params] as const,
   config: () => ['config'] as const,
   status: () => ['status'] as const,
+  billing: () => ['billing'] as const,
 };

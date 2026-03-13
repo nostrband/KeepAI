@@ -61,6 +61,8 @@ import { registerQueueRoutes } from './routes/queue.js';
 import { registerLogRoutes } from './routes/logs.js';
 import { registerConfigRoutes } from './routes/config.js';
 import { registerEventsRoute } from './routes/events.js';
+import { registerBillingRoutes } from './routes/billing.js';
+import { BillingManager } from './managers/billing-manager.js';
 
 export interface ServerConfig {
   port?: number;
@@ -176,6 +178,9 @@ export async function createServer(config: ServerConfig = {}) {
   // 12. Initialize AuditLogger
   const auditLogger = new AuditLogger(db, sse);
 
+  // 12a. Initialize BillingManager
+  const billingManager = new BillingManager(db, sse);
+
   // 13. Initialize RPC Router
   const rpcRouter = new RPCRouter({
     agentManager,
@@ -185,6 +190,7 @@ export async function createServer(config: ServerConfig = {}) {
     connectorExecutor,
     connectionManager,
     sse,
+    billingManager,
   });
 
   // 14. Initialize RPC Handler (nostr)
@@ -228,13 +234,14 @@ export async function createServer(config: ServerConfig = {}) {
   });
 
   // Register routes
-  await registerConnectionRoutes(app, connectionManager, () => `http://${host}:${port}`, connectorExecutor, sse, agentManager, policyEngine, healthTracker);
-  await registerAgentRoutes(app, agentManager, policyEngine, updateSubscription, sse);
+  await registerConnectionRoutes(app, connectionManager, () => `http://${host}:${port}`, connectorExecutor, sse, agentManager, policyEngine, healthTracker, billingManager);
+  await registerAgentRoutes(app, agentManager, policyEngine, updateSubscription, sse, billingManager);
   await registerPolicyRoutes(app, agentManager, policyEngine, connectionManager);
   await registerQueueRoutes(app, approvalQueue);
   await registerLogRoutes(app, auditLogger);
   await registerConfigRoutes(app, db, sse, () => port);
   await registerEventsRoute(app, sse);
+  await registerBillingRoutes(app, billingManager, agentManager, connectionManager);
 
   // Serve static files (UI)
   if (serveStaticFiles && fs.existsSync(staticFilesRoot)) {
@@ -337,6 +344,23 @@ export async function createServer(config: ServerConfig = {}) {
   // Run health checks on startup (after reconciliation) and periodically
   runHealthChecks();
   const healthCheckInterval = setInterval(runHealthChecks, HEALTH_CHECK_INTERVAL);
+
+  // 19. Billing: refresh token and full sync (non-blocking)
+  (async () => {
+    try {
+      await billingManager.refreshTokenIfNeeded();
+      const agents = agentManager.listAgents().filter(
+        (a) => a.status === 'paired' || a.status === 'paused'
+      );
+      const apps = await connectionManager.listConnections();
+      await billingManager.fullSync(
+        agents.map((a) => ({ agent_pubkey: a.agentPubkey, name: a.name })),
+        apps.map((c) => ({ id: c.id, service: c.service, label: c.label }))
+      );
+    } catch (err) {
+      log('billing startup sync error: %O', err);
+    }
+  })();
 
   return {
     app,

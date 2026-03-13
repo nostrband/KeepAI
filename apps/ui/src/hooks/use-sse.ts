@@ -101,6 +101,10 @@ export function useSSE() {
       queryClient.invalidateQueries({ queryKey: qk.connections() });
     });
 
+    source.addEventListener('billing_updated', () => {
+      queryClient.invalidateQueries({ queryKey: qk.billing() });
+    });
+
     source.onerror = () => {
       // EventSource auto-reconnects on error
     };

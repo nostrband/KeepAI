@@ -154,7 +154,7 @@ export interface PendingPairing {
   createdAt: number;
 }
 
-export type ConnectionStatus = 'connected' | 'paused' | 'expired' | 'error';
+export type ConnectionStatus = 'connected' | 'paused' | 'expired' | 'error' | 'disconnected';
 
 export interface Connection {
   id: string;
@@ -236,4 +236,5 @@ export type SSEEventType =
   | 'agent_disconnected'
   | 'request_completed'
   | 'connection_updated'
-  | 'connection_health';
+  | 'connection_health'
+  | 'billing_updated';

@@ -1,25 +1,41 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plug, Plus, Trash2, RefreshCw } from 'lucide-react';
 import { useConnections, useDisconnectService, useCheckConnection } from '../hooks/use-connections';
+import { useBilling } from '../hooks/use-billing';
 import { ServiceIcon, serviceName } from '../components/service-icon';
 import { StatusBadge } from '../components/status-badge';
 import { EmptyState } from '../components/empty-state';
 import { PageTitle } from '../components/page-title';
 import { ConnectAppDialog } from '../components/connect-app-dialog';
+import { UpgradeDialog } from '../components/upgrade-dialog';
 import { useOAuthFlow } from '../hooks/use-oauth-flow';
 
 export function ConnectionsPage() {
   const { data: connections, isLoading } = useConnections();
+  const { data: billing } = useBilling();
   const disconnectMutation = useDisconnectService();
   const checkMutation = useCheckConnection();
   const { showDialog, connectedService, connectionFailure, openDialog, closeDialog } = useOAuthFlow();
+  const [showUpgrade, setShowUpgrade] = useState(false);
+
+  const handleAddApp = () => {
+    if (billing) {
+      const activeCount = (connections ?? []).length;
+      if (activeCount >= billing.plan.max_apps) {
+        setShowUpgrade(true);
+        return;
+      }
+    }
+    openDialog();
+  };
 
   return (
     <div>
       <div className="flex items-center justify-between">
         <PageTitle>Apps</PageTitle>
         <button
-          onClick={openDialog}
+          onClick={handleAddApp}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover"
         >
           <Plus className="w-4 h-4" />
@@ -33,6 +49,7 @@ export function ConnectionsPage() {
         connectedService={connectedService}
         connectionFailure={connectionFailure}
       />
+      <UpgradeDialog open={showUpgrade} onClose={() => setShowUpgrade(false)} resourceType="apps" />
 
       {/* Connection List */}
       {isLoading ? (
@@ -44,7 +61,7 @@ export function ConnectionsPage() {
           description="Connect your apps to allow AI agents to access them."
           action={
             <button
-              onClick={openDialog}
+              onClick={handleAddApp}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover"
             >
               <Plus className="w-4 h-4" />

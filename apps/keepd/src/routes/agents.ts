@@ -12,13 +12,15 @@ import type { FastifyInstance } from 'fastify';
 import type { AgentManager } from '../managers/agent-manager.js';
 import type { PolicyEngine } from '../managers/policy-engine.js';
 import type { SSEBroadcaster } from '../sse.js';
+import type { BillingManager } from '../managers/billing-manager.js';
 
 export async function registerAgentRoutes(
   app: FastifyInstance,
   agentManager: AgentManager,
   policyEngine: PolicyEngine,
   onSubscriptionChange: () => void,
-  sse?: SSEBroadcaster
+  sse?: SSEBroadcaster,
+  billingManager?: BillingManager
 ): Promise<void> {
   // List agents
   app.get('/api/agents', async () => {
@@ -161,6 +163,9 @@ export async function registerAgentRoutes(
 
       // Update nostr subscription
       onSubscriptionChange();
+
+      // Sync with billing (best-effort, non-blocking)
+      billingManager?.unregisterAgent(agent.agentPubkey).catch(() => {});
 
       return { success: true };
     }

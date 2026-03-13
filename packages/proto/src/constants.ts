@@ -56,6 +56,18 @@ export const DEFAULT_POLICY: Policy = {
 export const DEFAULT_PORT = 28417;
 export const DEFAULT_DATA_DIR = '~/.keepai';
 
+// --- Billing ---
+
+export const BILLING_API_URL = 'https://dashboard.getkeep.ai';
+
+export const FREE_PLAN = {
+  plan_id: null as string | null,
+  plan_name: 'Free',
+  status: null as string | null,
+  max_agents: 1,
+  max_apps: 1,
+} as const;
+
 // --- CLI Exit Codes ---
 
 export const EXIT_CODES = {
