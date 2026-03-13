@@ -1,6 +1,6 @@
 {
   "name": "keepai-monorepo",
-  "version": "0.3.10",
+  "version": "0.4.0",
   "private": true,
   "description": "Safe gate for AI agents to access apps via E2EE RPC to your trusted device",
   "workspaces": [
