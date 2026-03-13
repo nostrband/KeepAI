@@ -54,7 +54,7 @@ export async function registerBillingRoutes(
           );
           const apps = await connectionManager.listConnections();
           billingManager.fullSync(
-            agents.map((a) => ({ agent_pubkey: a.agentPubkey, name: a.name })),
+            agents.map((a) => ({ agent_pubkey: a.agentPubkey, name: a.name, type: a.type })),
             apps.map((c) => ({ id: c.id, service: c.service, label: c.label }))
           ).catch(() => {});
         }

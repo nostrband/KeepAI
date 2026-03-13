@@ -37,6 +37,7 @@ export interface BillingStatus {
 interface BillingAgent {
   agent_pubkey: string;
   name: string;
+  type: string;
 }
 
 interface BillingApp {
@@ -324,6 +325,7 @@ export class BillingManager {
             const res = await this.apiCall('POST', '/api/agents', {
               pubkey: agent.agent_pubkey,
               name: agent.name,
+              type: agent.type,
             });
             if (!res.ok && res.status !== 409) {
               const text = await res.text();
@@ -409,6 +411,7 @@ export class BillingManager {
       const res = await this.apiCall('POST', '/api/agents', {
         pubkey: agent.agent_pubkey,
         name: agent.name,
+        type: agent.type,
       });
       if (!res.ok && res.status !== 409) {
         const text = await res.text();

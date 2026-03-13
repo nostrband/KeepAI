@@ -124,7 +124,7 @@ export function AgentDetailPage() {
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Details</h2>
         <dl className="grid grid-cols-2 gap-y-2 text-sm">
           <dt className="text-muted-foreground">Type</dt>
-          <dd className="capitalize">{agent.type || 'Other'}</dd>
+          <dd>{agent.type || 'Other'}</dd>
           <dt className="text-muted-foreground">Agent ID</dt>
           <dd className="font-mono text-xs">{agent.id}</dd>
           <dt className="text-muted-foreground">Public Key</dt>

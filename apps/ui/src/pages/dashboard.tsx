@@ -257,7 +257,7 @@ export function DashboardPage() {
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate">{agent.name || 'Unnamed'}</div>
                   <div className="text-xs text-muted-foreground">
-                    {agent.type && <span className="capitalize">{agent.type} · </span>}
+                    {agent.type && <span>{agent.type} · </span>}
                     {agent.lastSeenAt ? `Last seen ${new Date(agent.lastSeenAt).toLocaleString()}` : 'Never connected'}
                   </div>
                 </div>

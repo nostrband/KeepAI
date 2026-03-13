@@ -96,6 +96,28 @@ export interface TokenAuthConfig {
   authorizeParams?: Record<string, string>;
 }
 
+export interface ManualTokenField {
+  /** Field key used in the credentials object. */
+  key: string;
+  /** Label shown to user. */
+  label: string;
+  /** Help text / placeholder. */
+  placeholder?: string;
+  /** If true, render as password input. */
+  secret?: boolean;
+}
+
+export interface ManualTokenAuthConfig {
+  /** Instructions shown to user on how to get credentials. */
+  instructions: string;
+  /** URL to create/manage API keys. */
+  consoleUrl: string;
+  /** Fields the user needs to fill in. */
+  fields: ManualTokenField[];
+  /** Validate credentials and return account info. */
+  validateCredentials: (creds: Record<string, string>) => Promise<{ accountId: string; displayName?: string }>;
+}
+
 export interface ServiceDefinition {
   id: string;
   name: string;
@@ -118,6 +140,8 @@ export interface ServiceDefinition {
   }>;
   /** Token-based auth (e.g. Trello). Token is returned in the URL fragment. */
   tokenAuth?: TokenAuthConfig;
+  /** Manual token/credential entry (e.g. X). User pastes credentials directly. */
+  manualTokenAuth?: ManualTokenAuthConfig;
 }
 
 export interface TokenResponse {

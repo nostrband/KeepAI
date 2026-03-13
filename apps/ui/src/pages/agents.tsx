@@ -75,7 +75,7 @@ export function AgentsPage() {
               <div className="flex-1 min-w-0">
                 <div className="font-medium">{agent.name || 'Unnamed'}</div>
                 <div className="text-sm text-muted-foreground">
-                  {agent.type && <span className="capitalize">{agent.type} · </span>}
+                  {agent.type && <span>{agent.type} · </span>}
                   Paired {new Date(agent.pairedAt).toLocaleDateString()}
                   {agent.lastSeenAt && ` — last seen ${new Date(agent.lastSeenAt).toLocaleString()}`}
                 </div>

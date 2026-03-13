@@ -34,6 +34,7 @@ import {
   gmailConnector,
   airtableConnector,
   trelloConnector,
+  xConnector,
   McpConnector,
   notionMcpConfig,
   githubMcpConfig,
@@ -42,6 +43,7 @@ import {
   githubService,
   airtableService,
   trelloService,
+  xService,
   createConnectionDbAdapter,
 } from '@keepai/connectors';
 import { RPCHandler } from '@keepai/nostr-rpc';
@@ -115,6 +117,7 @@ export async function createServer(config: ServerConfig = {}) {
   connectionManager.registerService(githubService);
   connectionManager.registerService(airtableService);
   connectionManager.registerService(trelloService);
+  connectionManager.registerService(xService);
 
   // 6. Migrate any legacy file-based credentials into the database
   const credentialStore = new CredentialStore(dataDir);
@@ -125,6 +128,7 @@ export async function createServer(config: ServerConfig = {}) {
   connectorExecutor.register(gmailConnector);
   connectorExecutor.register(airtableConnector);
   connectorExecutor.register(trelloConnector);
+  connectorExecutor.register(xConnector);
 
   // MCP connectors
   const notionMcp = new McpConnector(notionMcpConfig);
@@ -361,7 +365,7 @@ export async function createServer(config: ServerConfig = {}) {
       );
       const apps = await connectionManager.listConnections();
       await billingManager.fullSync(
-        agents.map((a) => ({ agent_pubkey: a.agentPubkey, name: a.name })),
+        agents.map((a) => ({ agent_pubkey: a.agentPubkey, name: a.name, type: a.type })),
         apps.map((c) => ({ id: c.id, service: c.service, label: c.label }))
       );
     } catch (err) {

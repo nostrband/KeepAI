@@ -12,7 +12,7 @@ export function AddAgentDialog({ open, onClose }: AddAgentDialogProps) {
   const createMutation = useCreateAgent();
   const cancelMutation = useCancelPairing();
   const [agentName, setAgentName] = useState('');
-  const [agentType, setAgentType] = useState('openclaw');
+  const [agentType, setAgentType] = useState('OpenClaw');
   const [pairingCode, setPairingCode] = useState<string | null>(null);
   const [pairingId, setPairingId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -56,7 +56,7 @@ export function AddAgentDialog({ open, onClose }: AddAgentDialogProps) {
 
   const handleClose = () => {
     setAgentName('');
-    setAgentType('openclaw');
+    setAgentType('OpenClaw');
     setPairingCode(null);
     setPairingId(null);
     setCopied(false);
@@ -78,10 +78,10 @@ export function AddAgentDialog({ open, onClose }: AddAgentDialogProps) {
               onChange={(e) => setAgentType(e.target.value)}
               className="w-full px-4 py-3 border border-input rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-ring/10 focus:border-foreground bg-transparent mb-3"
             >
-              <option value="openclaw">OpenClaw</option>
-              <option value="codex">Codex</option>
-              <option value="claude">Claude</option>
-              <option value="nanoclaw">NanoClaw</option>
+              <option value="OpenClaw">OpenClaw</option>
+              <option value="Codex">Codex</option>
+              <option value="Claude">Claude</option>
+              <option value="NanoClaw">NanoClaw</option>
               <option value="other">Other</option>
             </select>
             <label className="block text-sm font-medium mb-1">Agent name</label>

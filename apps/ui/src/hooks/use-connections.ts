@@ -28,6 +28,19 @@ export function useConnectService() {
   });
 }
 
+export function useConnectManualToken() {
+  const queryClient = useQueryClient();
+  const posthog = usePostHog();
+  return useMutation({
+    mutationFn: ({ service, credentials }: { service: string; credentials: Record<string, string> }) =>
+      api.connectManualToken(service, credentials),
+    onSuccess: (_data, { service }) => {
+      queryClient.invalidateQueries({ queryKey: qk.connections() });
+      posthog?.capture('app_connect_manual', { service });
+    },
+  });
+}
+
 export function useDisconnectService() {
   const queryClient = useQueryClient();
   const posthog = usePostHog();

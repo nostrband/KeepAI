@@ -1,16 +1,35 @@
 import { useState, useEffect } from 'react';
-import { X, Loader2, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
-import { useConnectService } from '../hooks/use-connections';
+import { X, Loader2, CheckCircle2, AlertTriangle, XCircle, ExternalLink, Eye, EyeOff } from 'lucide-react';
+import { useConnectService, useConnectManualToken } from '../hooks/use-connections';
 import { ServiceIcon, serviceName } from './service-icon';
 import type { ConnectionFailure } from '../hooks/use-oauth-flow';
 
-const AVAILABLE_SERVICES = ['gmail', 'notion', 'github', 'airtable', 'trello'];
+const AVAILABLE_SERVICES = ['gmail', 'notion', 'github', 'airtable', 'trello', 'x'];
 
 const BETA_SERVICES: Record<string, string> = {
   gmail: 'Gmail integration is in beta and has not yet been verified by Google LLC. You may see warning screens during authorization. Proceed with caution.',
+  x: 'X.com connection is in beta, only set it up if you know what you\'re doing.',
 };
 
-type Step = 'select' | 'warning' | 'redirecting' | 'waiting' | 'connected' | 'failed';
+/** Services that use manual credential entry instead of OAuth redirect. */
+const MANUAL_TOKEN_SERVICES: Record<string, {
+  instructions: string;
+  consoleUrl: string;
+  fields: Array<{ key: string; label: string; placeholder?: string; secret?: boolean }>;
+}> = {
+  x: {
+    instructions: 'Create an API project at console.x.com, then go to Keys and Tokens to generate all 4 values below.',
+    consoleUrl: 'https://console.x.com/',
+    fields: [
+      { key: 'apiKey', label: 'API Key', placeholder: 'Consumer Key' },
+      { key: 'apiSecret', label: 'API Key Secret', placeholder: 'Consumer Secret', secret: true },
+      { key: 'accessToken', label: 'Access Token', placeholder: 'User access token' },
+      { key: 'accessTokenSecret', label: 'Access Token Secret', placeholder: 'User access token secret', secret: true },
+    ],
+  },
+};
+
+type Step = 'select' | 'warning' | 'manual' | 'redirecting' | 'waiting' | 'connected' | 'failed';
 
 interface ConnectAppDialogProps {
   open: boolean;
@@ -28,9 +47,12 @@ export function ConnectAppDialog({
   connectionFailure,
 }: ConnectAppDialogProps) {
   const connectMutation = useConnectService();
+  const manualTokenMutation = useConnectManualToken();
   const [step, setStep] = useState<Step>('select');
   const [activeService, setActiveService] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [manualFields, setManualFields] = useState<Record<string, string>>({});
+  const [visibleSecrets, setVisibleSecrets] = useState<Record<string, boolean>>({});
 
   // When connectedService is set externally, override whatever state
   // the dialog is in to show the 'connected' screen for that service.
@@ -58,6 +80,8 @@ export function ConnectAppDialog({
       setStep('select');
       setActiveService(null);
       setErrorMessage(null);
+      setManualFields({});
+      setVisibleSecrets({});
     }
   }, [open]);
 
@@ -89,9 +113,46 @@ export function ConnectAppDialog({
     if (BETA_SERVICES[service]) {
       setActiveService(service);
       setStep('warning');
+    } else if (MANUAL_TOKEN_SERVICES[service]) {
+      setActiveService(service);
+      setManualFields({});
+      setVisibleSecrets({});
+      setErrorMessage(null);
+      setStep('manual');
     } else {
       startConnect(service);
     }
+  };
+
+  const submitManualToken = async () => {
+    if (!activeService) return;
+
+    const config = MANUAL_TOKEN_SERVICES[activeService];
+    if (!config) return;
+
+    // Validate all fields are filled
+    const missing = config.fields.find((f) => !manualFields[f.key]?.trim());
+    if (missing) {
+      setErrorMessage(`Please fill in ${missing.label}`);
+      return;
+    }
+
+    setErrorMessage(null);
+
+    try {
+      await manualTokenMutation.mutateAsync({
+        service: activeService,
+        credentials: manualFields,
+      });
+      setStep('connected');
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Connection failed');
+      setStep('failed');
+    }
+  };
+
+  const toggleSecret = (key: string) => {
+    setVisibleSecrets((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   const name = activeService ? serviceName(activeService) : '';
@@ -151,10 +212,97 @@ export function ConnectAppDialog({
                 Cancel
               </button>
               <button
-                onClick={() => startConnect(activeService)}
+                onClick={() => {
+                  if (MANUAL_TOKEN_SERVICES[activeService]) {
+                    setManualFields({});
+                    setVisibleSecrets({});
+                    setErrorMessage(null);
+                    setStep('manual');
+                  } else {
+                    startConnect(activeService);
+                  }
+                }}
                 className="px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover"
               >
                 Continue
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 'manual' && activeService && MANUAL_TOKEN_SERVICES[activeService] && (
+          <div className="py-2">
+            <div className="flex items-center gap-3 mb-4">
+              <ServiceIcon service={activeService} className="w-8 h-8" />
+              <h2 className="text-lg font-semibold">Connect {name}</h2>
+            </div>
+            <p className="text-sm text-muted-foreground mb-1">
+              {MANUAL_TOKEN_SERVICES[activeService].instructions}
+            </p>
+            <a
+              href={MANUAL_TOKEN_SERVICES[activeService].consoleUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => {
+                if ((window as any).electronAPI?.openExternal) {
+                  e.preventDefault();
+                  (window as any).electronAPI.openExternal(MANUAL_TOKEN_SERVICES[activeService].consoleUrl);
+                }
+              }}
+              className="inline-flex items-center gap-1 text-sm text-primary hover:underline mb-4"
+            >
+              Open {name} Developer Console
+              <ExternalLink className="w-3 h-3" />
+            </a>
+            <div className="space-y-3">
+              {MANUAL_TOKEN_SERVICES[activeService].fields.map((field) => (
+                <div key={field.key}>
+                  <label className="block text-sm font-medium mb-1">{field.label}</label>
+                  <div className="relative">
+                    <input
+                      type={field.secret && !visibleSecrets[field.key] ? 'password' : 'text'}
+                      placeholder={field.placeholder}
+                      value={manualFields[field.key] || ''}
+                      onChange={(e) =>
+                        setManualFields((prev) => ({ ...prev, [field.key]: e.target.value }))
+                      }
+                      className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary pr-9"
+                    />
+                    {field.secret && (
+                      <button
+                        type="button"
+                        onClick={() => toggleSecret(field.key)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
+                      >
+                        {visibleSecrets[field.key]
+                          ? <EyeOff className="w-4 h-4" />
+                          : <Eye className="w-4 h-4" />
+                        }
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {errorMessage && (
+              <p className="text-sm text-destructive mt-3">{errorMessage}</p>
+            )}
+            <div className="flex justify-end gap-3 mt-5">
+              <button
+                onClick={() => { setStep('select'); setActiveService(null); }}
+                className="px-3 py-1.5 text-sm font-medium rounded-lg border border-border hover:bg-accent"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitManualToken}
+                disabled={manualTokenMutation.isPending}
+                className="px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover disabled:opacity-50 flex items-center gap-2"
+              >
+                {manualTokenMutation.isPending && (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                )}
+                Connect
               </button>
             </div>
           </div>
@@ -221,7 +369,7 @@ export function ConnectAppDialog({
                 Close
               </button>
               <button
-                onClick={() => startConnect(activeService)}
+                onClick={() => handleConnect(activeService)}
                 className="px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover"
               >
                 Try again

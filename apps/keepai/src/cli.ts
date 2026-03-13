@@ -49,7 +49,7 @@ program
       }
 
       console.log(`\nConfig saved to ${configDir}/`);
-      console.log('Run "keepai help" to see available services.');
+      console.log('Run "npx keepai help" to see available services.');
     } catch (err) {
       handleError(err);
     }

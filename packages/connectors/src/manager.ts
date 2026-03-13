@@ -384,6 +384,68 @@ export class ConnectionManager {
     }
   }
 
+  /**
+   * Connect a service using manually-entered credentials (e.g. X OAuth 1.0a keys).
+   * Validates credentials via the service's manualTokenAuth config, then stores them.
+   */
+  async connectManualToken(
+    serviceId: string,
+    credentials: Record<string, string>
+  ): Promise<OAuthCallbackResult> {
+    const service = this.services.get(serviceId);
+    if (!service) {
+      return { success: false, error: `Unknown service: ${serviceId}` };
+    }
+
+    if (!service.manualTokenAuth) {
+      return { success: false, error: `Service ${serviceId} does not support manual token auth` };
+    }
+
+    // Validate all required fields are present
+    for (const field of service.manualTokenAuth.fields) {
+      if (!credentials[field.key]) {
+        return { success: false, error: `Missing required field: ${field.label}` };
+      }
+    }
+
+    try {
+      const { accountId, displayName } = await service.manualTokenAuth.validateCredentials(credentials);
+
+      // Store credentials: accessToken is the main token, rest go in metadata
+      const oauthCreds: OAuthCredentials = {
+        accessToken: credentials.accessToken,
+        metadata: {
+          ...credentials,
+          displayName,
+        },
+      };
+      // Remove accessToken from metadata to avoid duplication
+      delete (oauthCreds.metadata as Record<string, unknown>).accessToken;
+
+      const existing = await this.db.getConnectionByServiceAccount(serviceId, accountId);
+      const now = Date.now();
+      const connection: Connection = {
+        id: existing?.id ?? randomUUID(),
+        service: serviceId,
+        accountId,
+        status: 'connected',
+        label: existing?.label ?? displayName,
+        error: undefined,
+        createdAt: existing?.createdAt ?? now,
+        lastUsedAt: existing?.lastUsedAt,
+        metadata: { displayName },
+      };
+
+      await this.db.upsertConnection(connection);
+      await this.db.saveCredentials(serviceId, accountId, oauthCreds);
+
+      return { success: true, connection };
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      return { success: false, error: `Credential validation failed: ${detail}` };
+    }
+  }
+
   async listConnections(): Promise<Connection[]> {
     return this.db.listConnections();
   }

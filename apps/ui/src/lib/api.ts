@@ -61,6 +61,12 @@ export const api = {
   connectService: (service: string) =>
     request<{ authUrl: string }>(`/connections/${service}/connect`, { method: 'POST' }),
 
+  connectManualToken: (service: string, credentials: Record<string, string>) =>
+    request<{ connection: any }>('/connections/manual-token', {
+      method: 'POST',
+      body: JSON.stringify({ service, credentials }),
+    }),
+
   disconnectService: (connectionId: string) =>
     request<void>(`/connections/${connectionId}`, { method: 'DELETE' }),
 

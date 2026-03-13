@@ -326,6 +326,7 @@ export class RPCRouter {
       this.billingManager?.registerAgent({
         agent_pubkey: agent.agentPubkey,
         name: agent.name,
+        type: agent.type,
       }).catch(() => {});
 
       return {

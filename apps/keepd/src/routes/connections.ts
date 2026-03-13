@@ -26,6 +26,7 @@ export const HEALTH_CHECK_METHODS: Record<string, { method: string; params: Reco
   github: { method: 'get_me', params: {} },
   airtable: { method: 'whoami', params: {} },
   trello: { method: 'members.me', params: {} },
+  x: { method: 'users.getMe', params: {} },
 };
 
 export type HealthCheckResult =
@@ -91,14 +92,66 @@ export async function registerConnectionRoutes(
     return { connections: enriched };
   });
 
-  // List available services
+  // List available services (includes manual token auth info)
   app.get('/api/connections/services', async () => {
     const services = connectionManager.getServices().map((s) => ({
       id: s.id,
       name: s.name,
       supportsRefresh: s.supportsRefresh,
+      manualTokenAuth: s.manualTokenAuth
+        ? {
+            instructions: s.manualTokenAuth.instructions,
+            consoleUrl: s.manualTokenAuth.consoleUrl,
+            fields: s.manualTokenAuth.fields,
+          }
+        : undefined,
     }));
     return { services };
+  });
+
+  // Connect via manual token/credential entry (e.g. X)
+  app.post<{
+    Body: { service: string; credentials: Record<string, string> };
+  }>('/api/connections/manual-token', async (request, reply) => {
+    const { service, credentials } = request.body as {
+      service: string;
+      credentials: Record<string, string>;
+    };
+
+    if (!service || !credentials) {
+      reply.status(400);
+      return { error: 'Missing service or credentials' };
+    }
+
+    const result = await connectionManager.connectManualToken(service, credentials);
+
+    if (result.success) {
+      const serviceDef = connectionManager.getService(service);
+      const serviceName = serviceDef?.name ?? service;
+
+      // Auto-create default policies for all paired agents
+      if (agentManager && policyEngine && result.connection?.accountId) {
+        const agents = agentManager.listAgents().filter((a) => a.status === 'paired');
+        const agentIds = agents.map((a) => a.id);
+        policyEngine.createDefaultsForConnection(service, result.connection.accountId, agentIds);
+      }
+
+      sse?.broadcast('connection_updated', { service, serviceName, action: 'connected' });
+
+      // Sync with billing (best-effort)
+      if (billingManager && result.connection) {
+        billingManager.registerApp({
+          id: result.connection.id,
+          service: result.connection.service,
+          label: result.connection.label,
+        }).catch(() => {});
+      }
+
+      return { connection: result.connection };
+    } else {
+      reply.status(400);
+      return { error: result.error };
+    }
   });
 
   // Start OAuth flow
