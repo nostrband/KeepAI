@@ -210,7 +210,7 @@ export function DashboardPage() {
               >
                 <ServiceIcon service={conn.service} />
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{conn.accountId}</div>
+                  <div className="text-sm font-medium truncate">{conn.label || conn.accountId}</div>
                   <div className="text-xs text-muted-foreground">{serviceName(conn.service)}</div>
                 </div>
                 <AppActivityBadge activity={appActivities.get(`${conn.service}:${conn.accountId}`)} />

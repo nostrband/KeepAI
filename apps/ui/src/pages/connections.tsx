@@ -82,7 +82,7 @@ export function ConnectionsPage() {
             >
               <ServiceIcon service={conn.service} className="w-6 h-6" />
               <div className="flex-1 min-w-0">
-                <div className="font-medium">{conn.accountId}</div>
+                <div className="font-medium">{conn.label || conn.accountId}</div>
                 <div className="text-sm text-muted-foreground">
                   {serviceName(conn.service)}
                   {conn.lastUsedAt && ` — last used ${new Date(conn.lastUsedAt).toLocaleString()}`}
@@ -102,7 +102,7 @@ export function ConnectionsPage() {
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  if (confirm(`Disconnect ${conn.accountId}?`)) {
+                  if (confirm(`Disconnect ${conn.label || conn.accountId}?`)) {
                     disconnectMutation.mutate({ connectionId: conn.id, service: conn.service });
                   }
                 }}

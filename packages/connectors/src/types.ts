@@ -105,6 +105,8 @@ export interface ManualTokenField {
   placeholder?: string;
   /** If true, render as password input. */
   secret?: boolean;
+  /** If false, field is optional. Defaults to true. */
+  required?: boolean;
 }
 
 export interface ManualTokenAuthConfig {

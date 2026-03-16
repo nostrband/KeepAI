@@ -51,12 +51,14 @@ export {
   type TrelloProfile,
 } from './services/trello.js';
 export { xService } from './services/x.js';
+export { stripeService } from './services/stripe.js';
 
 // Connectors (method registries + execution)
 export { gmailConnector } from './connectors/gmail.js';
 export { airtableConnector } from './connectors/airtable.js';
 export { trelloConnector } from './connectors/trello.js';
 export { xConnector } from './connectors/x.js';
+export { stripeConnector } from './connectors/stripe.js';
 
 // MCP Connector
 export { McpConnector } from './mcp-connector.js';

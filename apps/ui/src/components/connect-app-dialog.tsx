@@ -4,7 +4,7 @@ import { useConnectService, useConnectManualToken } from '../hooks/use-connectio
 import { ServiceIcon, serviceName } from './service-icon';
 import type { ConnectionFailure } from '../hooks/use-oauth-flow';
 
-const AVAILABLE_SERVICES = ['gmail', 'notion', 'github', 'airtable', 'trello', 'x'];
+const AVAILABLE_SERVICES = ['gmail', 'notion', 'github', 'airtable', 'trello', 'x', 'stripe'];
 
 const BETA_SERVICES: Record<string, string> = {
   gmail: 'Gmail integration is in beta and has not yet been verified by Google LLC. You may see warning screens during authorization. Proceed with caution.',
@@ -15,7 +15,7 @@ const BETA_SERVICES: Record<string, string> = {
 const MANUAL_TOKEN_SERVICES: Record<string, {
   instructions: string;
   consoleUrl: string;
-  fields: Array<{ key: string; label: string; placeholder?: string; secret?: boolean }>;
+  fields: Array<{ key: string; label: string; placeholder?: string; secret?: boolean; required?: boolean }>;
 }> = {
   x: {
     instructions: 'Create an API project at console.x.com, then go to Keys and Tokens to generate all 4 values below.',
@@ -25,6 +25,14 @@ const MANUAL_TOKEN_SERVICES: Record<string, {
       { key: 'apiSecret', label: 'API Key Secret', placeholder: 'Consumer Secret', secret: true },
       { key: 'accessToken', label: 'Access Token', placeholder: 'User access token' },
       { key: 'accessTokenSecret', label: 'Access Token Secret', placeholder: 'User access token secret', secret: true },
+    ],
+  },
+  stripe: {
+    instructions: 'Go to your Stripe Dashboard → Developers → API keys, then copy your Secret key below.',
+    consoleUrl: 'https://dashboard.stripe.com/apikeys',
+    fields: [
+      { key: 'apiKey', label: 'Secret Key', placeholder: 'sk_live_... or sk_test_...', secret: true },
+      { key: 'accountId', label: 'Connected Account ID (optional)', placeholder: 'acct_... (for Connect platforms)', required: false },
     ],
   },
 };
@@ -130,8 +138,8 @@ export function ConnectAppDialog({
     const config = MANUAL_TOKEN_SERVICES[activeService];
     if (!config) return;
 
-    // Validate all fields are filled
-    const missing = config.fields.find((f) => !manualFields[f.key]?.trim());
+    // Validate required fields are filled (default: required unless explicitly optional)
+    const missing = config.fields.find((f) => (f.required !== false) && !manualFields[f.key]?.trim());
     if (missing) {
       setErrorMessage(`Please fill in ${missing.label}`);
       return;

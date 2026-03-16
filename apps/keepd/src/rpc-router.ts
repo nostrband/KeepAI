@@ -405,12 +405,16 @@ export class RPCRouter {
     await this.enrichHelpWithAccounts([svcHelp]);
 
     if (!method) {
-      // Level 2: service methods
+      // Level 2: service methods (or group summaries if connector uses two-level help)
       return { result: { text: renderServiceMethods(svcHelp) } };
     }
 
-    // Validate method exists
+    // If connector resolved this as a group (returned multiple methods but method isn't a real method name),
+    // render as a method list.
     const methodDef = connector.methods.find((m) => m.name === method);
+    if (!methodDef && svcHelp.methods.length > 0) {
+      return { result: { text: renderServiceMethods(svcHelp) } };
+    }
 
     if (!methodDef) {
       // Check if it's a method group prefix (e.g. "pages" matches "pages.create", "pages.update")

@@ -90,12 +90,19 @@ export interface ConnectorMethod {
   notes?: string[];
 }
 
+export interface ServiceHelpGroup {
+  name: string;
+  description: string;
+  methodCount: number;
+}
+
 export interface ServiceHelp {
   service: string;
   name: string;
   summary?: string;
   methods: ConnectorMethod[];
   accounts?: Array<{ id: string; label?: string }>;
+  groups?: ServiceHelpGroup[];
 }
 
 export interface OAuthCredentials {

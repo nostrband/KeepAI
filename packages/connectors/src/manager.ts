@@ -403,7 +403,7 @@ export class ConnectionManager {
 
     // Validate all required fields are present
     for (const field of service.manualTokenAuth.fields) {
-      if (!credentials[field.key]) {
+      if (field.required !== false && !credentials[field.key]) {
         return { success: false, error: `Missing required field: ${field.label}` };
       }
     }

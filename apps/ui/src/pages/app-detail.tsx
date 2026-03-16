@@ -44,7 +44,7 @@ export function AppDetailPage() {
   if (!connection) return <div className="text-sm text-muted-foreground">App not found.</div>;
 
   const handleDisconnect = async () => {
-    if (!confirm(`Disconnect ${connection.accountId}?`)) return;
+    if (!confirm(`Disconnect ${connection.label || connection.accountId}?`)) return;
     try {
       await disconnectMutation.mutateAsync({ connectionId: connectionId!, service: connection.service });
       navigate('/apps');
@@ -82,7 +82,7 @@ export function AppDetailPage() {
         <div className="flex items-center gap-3">
           <ServiceIcon service={connection.service} className="w-12 h-12" />
           <div>
-            <div className="font-medium">{connection.accountId}</div>
+            <div className="font-medium">{connection.label || connection.accountId}</div>
             <StatusBadge status={connection.status === 'connected' && connection.offline ? 'offline' : connection.status === 'connected' ? 'active' : connection.status === 'paused' ? 'paused' : 'error'} />
           </div>
         </div>
@@ -140,7 +140,7 @@ export function AppDetailPage() {
           <dt className="text-muted-foreground">Service</dt>
           <dd>{serviceName(connection.service)}</dd>
           <dt className="text-muted-foreground">Account</dt>
-          <dd className="font-mono text-xs">{connection.accountId}</dd>
+          <dd className="font-mono text-xs">{connection.label || connection.accountId}</dd>
           <dt className="text-muted-foreground">Status</dt>
           <dd>{connection.status}</dd>
           <dt className="text-muted-foreground">Connected</dt>
