@@ -411,9 +411,13 @@ export class ConnectionManager {
     try {
       const { accountId, displayName } = await service.manualTokenAuth.validateCredentials(credentials);
 
-      // Store credentials: accessToken is the main token, rest go in metadata
+      // Store credentials: accessToken is the main token, rest go in metadata.
+      // If the service doesn't have a field named "accessToken", use the first
+      // field's value as the primary token (e.g. Stripe's "apiKey").
+      const primaryField = service.manualTokenAuth.fields[0].key;
+      const accessToken = credentials.accessToken ?? credentials[primaryField];
       const oauthCreds: OAuthCredentials = {
-        accessToken: credentials.accessToken,
+        accessToken,
         metadata: {
           ...credentials,
           displayName,
@@ -421,6 +425,9 @@ export class ConnectionManager {
       };
       // Remove accessToken from metadata to avoid duplication
       delete (oauthCreds.metadata as Record<string, unknown>).accessToken;
+      if (primaryField !== 'accessToken') {
+        delete (oauthCreds.metadata as Record<string, unknown>)[primaryField];
+      }
 
       const existing = await this.db.getConnectionByServiceAccount(serviceId, accountId);
       const now = Date.now();

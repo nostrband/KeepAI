@@ -22,7 +22,7 @@ import type {
 
 function getClient(credentials: OAuthCredentials): Stripe {
   const meta = ((credentials as any).metadata ?? {}) as Record<string, string>;
-  return new Stripe(credentials.accessToken, {
+  return new Stripe(credentials.accessToken || meta.apiKey, {
     ...(meta?.accountId ? { stripeAccount: meta.accountId } : {}),
   });
 }
