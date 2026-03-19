@@ -14,6 +14,14 @@ function StripeIcon({ className }: { className?: string }) {
   );
 }
 
+function HetznerIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3.2 4h2.6v6.4h12.4V4H20.8v16h-2.6v-7.2H5.8V20H3.2V4z" />
+    </svg>
+  );
+}
+
 export function ServiceIcon({ service, className }: ServiceIconProps) {
   const iconClass = cn('w-5 h-5', className);
 
@@ -32,6 +40,8 @@ export function ServiceIcon({ service, className }: ServiceIconProps) {
       return <Twitter className={cn(iconClass, 'text-gray-800')} />;
     case 'stripe':
       return <StripeIcon className={cn(iconClass, 'text-[#635bff]')} />;
+    case 'hetzner':
+      return <HetznerIcon className={cn(iconClass, 'text-[#d50c2d]')} />;
     default:
       return <Globe className={cn(iconClass, 'text-gray-500')} />;
   }
@@ -46,6 +56,7 @@ export function serviceName(service: string): string {
     case 'trello': return 'Trello';
     case 'x': return 'X';
     case 'stripe': return 'Stripe';
+    case 'hetzner': return 'Hetzner Cloud';
     default: return service;
   }
 }

@@ -36,6 +36,7 @@ import {
   trelloConnector,
   xConnector,
   stripeConnector,
+  hetznerConnector,
   McpConnector,
   notionMcpConfig,
   githubMcpConfig,
@@ -46,6 +47,7 @@ import {
   trelloService,
   xService,
   stripeService,
+  hetznerService,
   createConnectionDbAdapter,
 } from '@keepai/connectors';
 import { RPCHandler } from '@keepai/nostr-rpc';
@@ -121,6 +123,7 @@ export async function createServer(config: ServerConfig = {}) {
   connectionManager.registerService(trelloService);
   connectionManager.registerService(xService);
   connectionManager.registerService(stripeService);
+  connectionManager.registerService(hetznerService);
 
   // 6. Migrate any legacy file-based credentials into the database
   const credentialStore = new CredentialStore(dataDir);
@@ -133,6 +136,7 @@ export async function createServer(config: ServerConfig = {}) {
   connectorExecutor.register(trelloConnector);
   connectorExecutor.register(xConnector);
   connectorExecutor.register(stripeConnector);
+  connectorExecutor.register(hetznerConnector);
 
   // MCP connectors
   const notionMcp = new McpConnector(notionMcpConfig);

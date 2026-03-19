@@ -4,7 +4,7 @@ import { useConnectService, useConnectManualToken } from '../hooks/use-connectio
 import { ServiceIcon, serviceName } from './service-icon';
 import type { ConnectionFailure } from '../hooks/use-oauth-flow';
 
-const AVAILABLE_SERVICES = ['gmail', 'notion', 'github', 'airtable', 'trello', 'x', 'stripe'];
+const AVAILABLE_SERVICES = ['gmail', 'notion', 'github', 'airtable', 'trello', 'x', 'stripe', 'hetzner'];
 
 const BETA_SERVICES: Record<string, string> = {
   gmail: 'Gmail integration is in beta and has not yet been verified by Google LLC. You may see warning screens during authorization. Proceed with caution.',
@@ -33,6 +33,13 @@ const MANUAL_TOKEN_SERVICES: Record<string, {
     fields: [
       { key: 'apiKey', label: 'Secret Key', placeholder: 'sk_live_... or sk_test_...', secret: true },
       { key: 'accountId', label: 'Connected Account ID (optional)', placeholder: 'acct_... (for Connect platforms)', required: false },
+    ],
+  },
+  hetzner: {
+    instructions: 'Go to your Hetzner Cloud Console → your project → Security → API Tokens, then generate a Read & Write token.',
+    consoleUrl: 'https://console.hetzner.cloud',
+    fields: [
+      { key: 'apiToken', label: 'API Token', placeholder: 'Paste your API token here', secret: true },
     ],
   },
 };
