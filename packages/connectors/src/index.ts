@@ -53,6 +53,7 @@ export {
 export { xService } from './services/x.js';
 export { stripeService } from './services/stripe.js';
 export { hetznerService } from './services/hetzner.js';
+export { agentmailService } from './services/agentmail.js';
 
 // Connectors (method registries + execution)
 export { gmailConnector } from './connectors/gmail.js';
@@ -61,6 +62,7 @@ export { trelloConnector } from './connectors/trello.js';
 export { xConnector } from './connectors/x.js';
 export { stripeConnector } from './connectors/stripe.js';
 export { hetznerConnector } from './connectors/hetzner.js';
+export { agentmailConnector } from './connectors/agentmail.js';
 
 // MCP Connector
 export { McpConnector } from './mcp-connector.js';

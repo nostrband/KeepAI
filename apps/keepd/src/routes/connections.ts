@@ -28,6 +28,7 @@ export const HEALTH_CHECK_METHODS: Record<string, { method: string; params: Reco
   trello: { method: 'members.me', params: {} },
   x: { method: 'users.getMe', params: {} },
   stripe: { method: 'accounts.retrieveCurrent', params: {} },
+  agentmail: { method: 'organization.get', params: {} },
 };
 
 export type HealthCheckResult =

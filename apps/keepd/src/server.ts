@@ -37,6 +37,7 @@ import {
   xConnector,
   stripeConnector,
   hetznerConnector,
+  agentmailConnector,
   McpConnector,
   notionMcpConfig,
   githubMcpConfig,
@@ -48,6 +49,7 @@ import {
   xService,
   stripeService,
   hetznerService,
+  agentmailService,
   createConnectionDbAdapter,
 } from '@keepai/connectors';
 import { RPCHandler } from '@keepai/nostr-rpc';
@@ -124,6 +126,7 @@ export async function createServer(config: ServerConfig = {}) {
   connectionManager.registerService(xService);
   connectionManager.registerService(stripeService);
   connectionManager.registerService(hetznerService);
+  connectionManager.registerService(agentmailService);
 
   // 6. Migrate any legacy file-based credentials into the database
   const credentialStore = new CredentialStore(dataDir);
@@ -137,6 +140,7 @@ export async function createServer(config: ServerConfig = {}) {
   connectorExecutor.register(xConnector);
   connectorExecutor.register(stripeConnector);
   connectorExecutor.register(hetznerConnector);
+  connectorExecutor.register(agentmailConnector);
 
   // MCP connectors
   const notionMcp = new McpConnector(notionMcpConfig);

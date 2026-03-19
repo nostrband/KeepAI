@@ -42,6 +42,8 @@ export function ServiceIcon({ service, className }: ServiceIconProps) {
       return <StripeIcon className={cn(iconClass, 'text-[#635bff]')} />;
     case 'hetzner':
       return <HetznerIcon className={cn(iconClass, 'text-[#d50c2d]')} />;
+    case 'agentmail':
+      return <img src="/agentmail.png" alt="AgentMail" className={iconClass} />;
     default:
       return <Globe className={cn(iconClass, 'text-gray-500')} />;
   }
@@ -57,6 +59,7 @@ export function serviceName(service: string): string {
     case 'x': return 'X';
     case 'stripe': return 'Stripe';
     case 'hetzner': return 'Hetzner Cloud';
+    case 'agentmail': return 'AgentMail';
     default: return service;
   }
 }

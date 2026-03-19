@@ -4,7 +4,7 @@ import { useConnectService, useConnectManualToken } from '../hooks/use-connectio
 import { ServiceIcon, serviceName } from './service-icon';
 import type { ConnectionFailure } from '../hooks/use-oauth-flow';
 
-const AVAILABLE_SERVICES = ['gmail', 'notion', 'github', 'airtable', 'trello', 'x', 'stripe', 'hetzner'];
+const AVAILABLE_SERVICES = ['gmail', 'notion', 'github', 'airtable', 'trello', 'x', 'stripe', 'hetzner', 'agentmail'];
 
 const BETA_SERVICES: Record<string, string> = {
   gmail: 'Gmail integration is in beta and has not yet been verified by Google LLC. You may see warning screens during authorization. Proceed with caution.',
@@ -40,6 +40,13 @@ const MANUAL_TOKEN_SERVICES: Record<string, {
     consoleUrl: 'https://console.hetzner.cloud',
     fields: [
       { key: 'apiToken', label: 'API Token', placeholder: 'Paste your API token here', secret: true },
+    ],
+  },
+  agentmail: {
+    instructions: 'Go to your AgentMail dashboard → API Keys, then create a new key.',
+    consoleUrl: 'https://app.agentmail.to',
+    fields: [
+      { key: 'apiKey', label: 'API Key', placeholder: 'Paste your API key here', secret: true },
     ],
   },
 };
