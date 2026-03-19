@@ -12,7 +12,6 @@ import type {
   ConnectorMethod,
   PermissionMetadata,
   ServiceHelp,
-  ServiceHelpGroup,
   OAuthCredentials,
 } from '@keepai/proto';
 
@@ -604,17 +603,6 @@ const allMethods: ConnectorMethod[] = [
   ...infrastructureMethods,
 ];
 
-const METHOD_GROUPS: Map<string, { description: string; methods: ConnectorMethod[] }> = new Map([
-  ['compute', { description: 'Servers, server types, images, ISOs, placement groups', methods: computeMethods }],
-  ['networking', { description: 'Networks, floating IPs, primary IPs, load balancers, LB types, firewalls', methods: networkingMethods }],
-  ['storage', { description: 'Volumes — block storage', methods: storageMethods }],
-  ['security', { description: 'SSH keys, TLS certificates', methods: securityMethods }],
-  ['infrastructure', { description: 'Datacenters, locations, pricing, actions (read-only)', methods: infrastructureMethods }],
-]);
-
-const HELP_GROUPS: ServiceHelpGroup[] = Array.from(METHOD_GROUPS.entries()).map(
-  ([name, { description, methods: m }]) => ({ name, description, methodCount: m.length }),
-);
 
 // ---------------------------------------------------------------------------
 // Human-readable request descriptions
@@ -803,6 +791,26 @@ async function executeHetzner(
 
 export const hetznerConnector: Connector = {
   service: 'hetzner',
+  groupDescriptions: {
+    servers: 'Virtual machines — create, manage, power, resize, snapshots',
+    serverTypes: 'Available server type specs and pricing',
+    images: 'System, snapshot, and backup images',
+    isos: 'Mountable ISO images',
+    placementGroups: 'Server anti-affinity groups',
+    networks: 'Private networks and subnets',
+    floatingIps: 'Reassignable public IPv4/IPv6 addresses',
+    primaryIps: 'Primary IP addresses for servers',
+    loadBalancers: 'Load balancers — services, targets, health checks',
+    loadBalancerTypes: 'Available load balancer type specs',
+    firewalls: 'Firewall rules and assignments',
+    volumes: 'Block storage volumes — attach, detach, resize',
+    sshKeys: 'SSH public key management',
+    certificates: 'TLS/SSL certificates',
+    datacenters: 'Available datacenter locations',
+    locations: 'Physical datacenter locations',
+    pricing: 'Current pricing for all resources',
+    actions: 'Long-running action status',
+  },
   name: 'Hetzner Cloud',
   methods: allMethods,
 
@@ -832,25 +840,15 @@ export const hetznerConnector: Connector = {
   },
 
   help(method?: string): ServiceHelp {
-    // No argument: return group summaries (two-level help)
-    if (!method) {
-      return {
-        service: 'hetzner',
-        name: 'Hetzner Cloud',
-        summary: 'Cloud infrastructure — servers, networks, load balancers, volumes, firewalls, IPs, and more',
-        methods: [],
-        groups: HELP_GROUPS,
-      };
+    if (method) {
+      const m = allMethods.find((md) => md.name === method);
+      return { service: 'hetzner', name: 'Hetzner Cloud', methods: m ? [m] : [] };
     }
-
-    // If argument matches a group name, return all methods in that group
-    const group = METHOD_GROUPS.get(method);
-    if (group) {
-      return { service: 'hetzner', name: 'Hetzner Cloud', methods: group.methods };
-    }
-
-    // Otherwise, return single method help
-    const m = allMethods.find((md) => md.name === method);
-    return { service: 'hetzner', name: 'Hetzner Cloud', methods: m ? [m] : [] };
+    return {
+      service: 'hetzner',
+      name: 'Hetzner Cloud',
+      summary: 'Cloud infrastructure — servers, networks, load balancers, volumes, firewalls, IPs, and more',
+      methods: allMethods,
+    };
   },
 };

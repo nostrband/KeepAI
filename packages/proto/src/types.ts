@@ -90,19 +90,14 @@ export interface ConnectorMethod {
   notes?: string[];
 }
 
-export interface ServiceHelpGroup {
-  name: string;
-  description: string;
-  methodCount: number;
-}
-
 export interface ServiceHelp {
   service: string;
   name: string;
   summary?: string;
   methods: ConnectorMethod[];
   accounts?: Array<{ id: string; label?: string }>;
-  groups?: ServiceHelpGroup[];
+  /** Descriptions for method prefix groups (e.g. { messages: 'Send, receive ...' }) */
+  groupDescriptions?: Record<string, string>;
 }
 
 export interface OAuthCredentials {
@@ -133,6 +128,9 @@ export interface Connector {
   ): Promise<unknown>;
 
   help(method?: string): ServiceHelp;
+
+  /** Optional descriptions for method prefix groups (e.g. { messages: 'Send, receive, reply ...' }) */
+  groupDescriptions?: Record<string, string>;
 }
 
 // --- Database Row Types ---

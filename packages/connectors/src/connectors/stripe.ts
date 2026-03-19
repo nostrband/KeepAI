@@ -12,7 +12,6 @@ import type {
   ConnectorMethod,
   PermissionMetadata,
   ServiceHelp,
-  ServiceHelpGroup,
   OAuthCredentials,
 } from '@keepai/proto';
 
@@ -1110,20 +1109,6 @@ const allMethods: ConnectorMethod[] = [
   ...otherMethods,
 ];
 
-const METHOD_GROUPS: Map<string, { description: string; methods: ConnectorMethod[] }> = new Map([
-  ['core', { description: 'Payment intents, charges, refunds, disputes, payment methods, setup intents, tokens, sources', methods: coreMethods }],
-  ['customers', { description: 'Customers, products, prices, plans, coupons, promotion codes, shipping rates, tax codes/rates/IDs', methods: customerMethods }],
-  ['billing', { description: 'Invoices, subscriptions, quotes, credit notes, billing meters, billing portal', methods: billingMethods }],
-  ['connect', { description: 'Accounts, transfers, payouts, top-ups, application fees, balance, country specs', methods: connectMethods }],
-  ['checkout', { description: 'Checkout sessions, payment links', methods: checkoutMethods }],
-  ['issuing', { description: 'Card issuing — cards, cardholders, authorizations, disputes, transactions', methods: issuingMethods }],
-  ['treasury', { description: 'Treasury — financial accounts, inbound/outbound transfers, reversals', methods: treasuryMethods }],
-  ['other', { description: 'Terminal, identity, financial connections, tax, radar, reporting, sigma, events, files, webhooks', methods: otherMethods }],
-]);
-
-const HELP_GROUPS: ServiceHelpGroup[] = Array.from(METHOD_GROUPS.entries()).map(
-  ([name, { description, methods: m }]) => ({ name, description, methodCount: m.length }),
-);
 
 // ---------------------------------------------------------------------------
 // Human-readable request descriptions
@@ -1287,6 +1272,48 @@ export const stripeConnector: Connector = {
   service: 'stripe',
   name: 'Stripe',
   methods: allMethods,
+  groupDescriptions: {
+    paymentIntents: 'Create and manage payment intents',
+    charges: 'Create and capture charges',
+    refunds: 'Create and manage refunds',
+    disputes: 'Retrieve, update, and close disputes',
+    paymentMethods: 'Create, list, attach, detach payment methods',
+    setupIntents: 'Set up payment methods for future use',
+    tokens: 'Create single-use tokens',
+    sources: 'Legacy payment sources',
+    customers: 'Customer management and sub-resources',
+    products: 'Product catalog',
+    prices: 'Pricing for products',
+    invoices: 'Invoice creation and management',
+    invoiceItems: 'Individual invoice line items',
+    creditNotes: 'Credit notes against invoices',
+    subscriptions: 'Recurring billing subscriptions',
+    subscriptionItems: 'Items within a subscription',
+    subscriptionSchedules: 'Scheduled subscription changes',
+    quotes: 'Price quotes for customers',
+    billing: 'Billing meters, alerts, and credit grants',
+    billingPortal: 'Customer self-service billing portal',
+    accounts: 'Connected accounts (Stripe Connect)',
+    transfers: 'Transfer funds to connected accounts',
+    payouts: 'Pay out to bank accounts or cards',
+    topups: 'Add funds to Stripe balance',
+    applicationFees: 'Platform fees on Connect payments',
+    balance: 'Account balance',
+    balanceTransactions: 'Balance transaction history',
+    checkout: 'Checkout sessions',
+    paymentLinks: 'No-code payment links',
+    issuing: 'Card issuing — cards, cardholders, authorizations',
+    treasury: 'Treasury — financial accounts, transfers, reversals',
+    terminal: 'In-person payments — readers, locations, configurations',
+    identity: 'Identity verification sessions and reports',
+    financialConnections: 'Bank account linking and data access',
+    tax: 'Tax calculations, registrations, transactions',
+    radar: 'Fraud detection — rules, value lists',
+    reporting: 'Report runs and report types',
+    events: 'Webhook event log',
+    files: 'File uploads for disputes and identity',
+    webhookEndpoints: 'Webhook endpoint management',
+  },
 
   extractPermMetadata(
     method: string,
@@ -1308,25 +1335,15 @@ export const stripeConnector: Connector = {
   execute,
 
   help(method?: string): ServiceHelp {
-    // No argument: return group summaries (two-level help)
-    if (!method) {
-      return {
-        service: 'stripe',
-        name: 'Stripe',
-        summary: 'Payment processing — charges, subscriptions, invoices, connect, issuing, treasury, and more',
-        methods: [],
-        groups: HELP_GROUPS,
-      };
+    if (method) {
+      const m = allMethods.find((md) => md.name === method);
+      return { service: 'stripe', name: 'Stripe', methods: m ? [m] : [] };
     }
-
-    // If argument matches a group name, return all methods in that group
-    const group = METHOD_GROUPS.get(method);
-    if (group) {
-      return { service: 'stripe', name: 'Stripe', methods: group.methods };
-    }
-
-    // Otherwise, return single method help
-    const m = allMethods.find((md) => md.name === method);
-    return { service: 'stripe', name: 'Stripe', methods: m ? [m] : [] };
+    return {
+      service: 'stripe',
+      name: 'Stripe',
+      summary: 'Payment processing — charges, subscriptions, invoices, connect, issuing, treasury, and more',
+      methods: allMethods,
+    };
   },
 };

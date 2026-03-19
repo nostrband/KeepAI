@@ -20,6 +20,7 @@ import {
   renderUnknownService,
   renderUnknownMethod,
   renderMissingParams,
+  renderInvalidParam,
   renderMultipleAccounts,
 } from './error-help.js';
 
@@ -191,6 +192,50 @@ export class RPCRouter {
       return {
         error: { code: 'invalid_request', message: `Missing required parameters: ${missingParams.join(', ')}`, text },
       };
+    }
+
+    // Auto-wrap single values for array-typed params
+    for (const p of methodDef.params) {
+      if (p.type === 'array' && p.name in params && typeof params[p.name] === 'string') {
+        params[p.name] = [params[p.name]];
+      }
+    }
+
+    // Validate param types and coerce where possible
+    for (const p of methodDef.params) {
+      if (!(p.name in params)) continue;
+      const val = params[p.name];
+      const actual = Array.isArray(val) ? 'array' : typeof val;
+
+      if (p.type === 'array' && actual !== 'array') {
+        const text = renderInvalidParam(service, method, p.name, p.type, val);
+        return {
+          error: { code: 'invalid_request', message: `Parameter '${p.name}' must be ${p.type}`, text },
+        };
+      }
+
+      if (p.type === 'number' && actual !== 'number') {
+        const n = Number(val);
+        if (!isNaN(n) && typeof val === 'string' && val.trim() !== '') {
+          params[p.name] = n;
+        } else {
+          const text = renderInvalidParam(service, method, p.name, p.type, val);
+          return {
+            error: { code: 'invalid_request', message: `Parameter '${p.name}' must be ${p.type}`, text },
+          };
+        }
+      }
+
+      if (p.type === 'boolean' && actual !== 'boolean') {
+        if (val === 'true') params[p.name] = true;
+        else if (val === 'false') params[p.name] = false;
+        else {
+          const text = renderInvalidParam(service, method, p.name, p.type, val);
+          return {
+            error: { code: 'invalid_request', message: `Parameter '${p.name}' must be ${p.type}`, text },
+          };
+        }
+      }
     }
 
     // Validate account is connected
@@ -401,41 +446,36 @@ export class RPCRouter {
       }
     }
 
-    const svcHelp = connector.help(method);
-    await this.enrichHelpWithAccounts([svcHelp]);
-
     if (!method) {
-      // Level 2: service methods (or group summaries if connector uses two-level help)
+      // Level 2: service overview — full method list or group summaries (auto-derived from prefixes)
+      const svcHelp = connector.help();
+      if (connector.groupDescriptions) svcHelp.groupDescriptions = connector.groupDescriptions;
+      await this.enrichHelpWithAccounts([svcHelp]);
       return { result: { text: renderServiceMethods(svcHelp) } };
     }
 
-    // If connector resolved this as a group (returned multiple methods but method isn't a real method name),
-    // render as a method list.
+    // 1. Exact method match → render method detail
     const methodDef = connector.methods.find((m) => m.name === method);
-    if (!methodDef && svcHelp.methods.length > 0) {
-      return { result: { text: renderServiceMethods(svcHelp) } };
+    if (methodDef) {
+      const fullHelp = connector.help();
+      await this.enrichHelpWithAccounts([fullHelp]);
+      return { result: { text: renderMethodDetail(fullHelp, method) } };
     }
 
-    if (!methodDef) {
-      // Check if it's a method group prefix (e.g. "pages" matches "pages.create", "pages.update")
-      const groupMethods = connector.methods.filter((m) => m.name.startsWith(method + '.'));
-      if (groupMethods.length > 0) {
-        const fullHelp = connector.help();
-        fullHelp.methods = groupMethods;
-        await this.enrichHelpWithAccounts([fullHelp]);
-        return { result: { text: renderServiceMethods(fullHelp) } };
-      }
-
-      const text = renderUnknownMethod(service, method, connector.methods);
-      return {
-        error: { code: 'not_found', message: `Unknown method: ${service}.${method}`, text },
-      };
+    // 2. Prefix match on method names (e.g. "messages" matches "messages.send")
+    const groupMethods = connector.methods.filter((m) => m.name.startsWith(method + '.'));
+    if (groupMethods.length > 0) {
+      const fullHelp = connector.help();
+      fullHelp.methods = groupMethods;
+      await this.enrichHelpWithAccounts([fullHelp]);
+      return { result: { text: renderServiceMethods(fullHelp) } };
     }
 
-    // Level 3: method detail — need full service help for rendering context
-    const fullHelp = connector.help();
-    await this.enrichHelpWithAccounts([fullHelp]);
-    return { result: { text: renderMethodDetail(fullHelp, method) } };
+    // 3. Unknown → fuzzy error
+    const text = renderUnknownMethod(service, method, connector.methods);
+    return {
+      error: { code: 'not_found', message: `Unknown method: ${service}.${method}`, text },
+    };
   }
 
   private async enrichHelpWithAccounts(

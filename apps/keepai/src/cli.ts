@@ -64,12 +64,13 @@ program
   .option('--params <json>', 'Parameters as JSON')
   .option('--timeout <ms>', 'Request timeout in milliseconds')
   .option('--raw', 'Output raw JSON')
+  .option('--stdin', 'Read parameters as JSON from stdin')
   .allowUnknownOption(true)
   .action(
     async (
       service: string,
       method: string | undefined,
-      opts: { account?: string; params?: string; timeout?: string; raw?: boolean },
+      opts: { account?: string; params?: string; timeout?: string; raw?: boolean; stdin?: boolean },
       cmd: Command
     ) => {
       try {
@@ -108,24 +109,59 @@ program
           }
         }
 
+        // Read params from stdin (for programmatic/agent use — avoids shell escaping)
+        if (opts.stdin) {
+          if (process.stdin.isTTY) {
+            console.error('Error: --stdin specified but stdin is a terminal (nothing to read)');
+            process.exit(EXIT_CODES.GENERAL_ERROR);
+          }
+          try {
+            const chunks: Buffer[] = [];
+            for await (const chunk of process.stdin) {
+              chunks.push(chunk);
+            }
+            const stdinData = Buffer.concat(chunks).toString('utf-8').trim();
+            if (stdinData) {
+              const stdinParams = JSON.parse(stdinData);
+              if (typeof stdinParams === 'object' && stdinParams !== null && !Array.isArray(stdinParams)) {
+                params = { ...stdinParams, ...params }; // --params flags override stdin
+              } else {
+                console.error('Error: --stdin expects a JSON object');
+                process.exit(EXIT_CODES.GENERAL_ERROR);
+              }
+            }
+          } catch (err) {
+            if (err instanceof SyntaxError) {
+              console.error('Error: Invalid JSON on stdin');
+              process.exit(EXIT_CODES.GENERAL_ERROR);
+            }
+            throw err;
+          }
+        }
+
         // Parse remaining flags as params (skip service and method in args)
+        // Supports both --key=value and --key value syntax
         const argStart = method ? 2 : 1;
         const args = cmd.args.slice(argStart);
-        for (const arg of args) {
-          if (arg.startsWith('--') && arg.includes('=')) {
+        for (let i = 0; i < args.length; i++) {
+          const arg = args[i];
+          if (!arg.startsWith('--')) continue;
+
+          if (arg.includes('=')) {
+            // --key=value
             const eqIdx = arg.indexOf('=');
             const key = arg.slice(2, eqIdx);
             const value = arg.slice(eqIdx + 1);
-            // Parse JSON objects/arrays/booleans/null, keep strings as-is
-            // (avoids precision loss for large numeric tokens like pageToken)
-            if (value.startsWith('{') || value.startsWith('[') || value === 'true' || value === 'false' || value === 'null') {
-              try {
-                params[key] = JSON.parse(value);
-              } catch {
-                params[key] = value;
-              }
+            params[key] = parseValue(value);
+          } else {
+            // --key value (space-separated) or bare --flag
+            const key = arg.slice(2);
+            const next = args[i + 1];
+            if (next !== undefined && !next.startsWith('--')) {
+              params[key] = parseValue(next);
+              i++; // skip consumed value
             } else {
-              params[key] = value;
+              params[key] = true; // bare --flag → boolean true
             }
           }
         }
@@ -225,6 +261,18 @@ program
   });
 
 // --- helpers ---
+
+/** Parse a CLI value string: JSON objects/arrays/booleans/null are parsed, strings kept as-is. */
+function parseValue(value: string): unknown {
+  if (value.startsWith('{') || value.startsWith('[') || value === 'true' || value === 'false' || value === 'null') {
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
+    }
+  }
+  return value;
+}
 
 function handleError(err: unknown): never {
   if (err instanceof KeepAIError) {

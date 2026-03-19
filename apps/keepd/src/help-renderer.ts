@@ -35,11 +35,11 @@ export function renderServiceList(services: ServiceHelp[]): string {
 }
 
 /**
- * Level 2: all methods for one service, grouped by resource.
+ * Level 2: all methods for one service, grouped by resource prefix.
  *
- * If the ServiceHelp contains `groups` (two-level help), render group
- * summaries instead of a flat method list.  The user can then drill
- * into a group with `help <service> <group>`.
+ * When there are many prefix groups (>10), render a compact group summary
+ * so the user can drill in with `help <service> <group>`.  Otherwise,
+ * show the full method list grouped by prefix.
  */
 export function renderServiceMethods(service: ServiceHelp): string {
   const lines: string[] = [];
@@ -49,27 +49,6 @@ export function renderServiceMethods(service: ServiceHelp): string {
   lines.push(`${service.name} — ${accounts}`);
   if (service.summary) lines.push(service.summary);
   lines.push('');
-
-  // Two-level help: render group summaries
-  if (service.groups && service.groups.length > 0) {
-    lines.push('Method groups:');
-    lines.push('');
-
-    const maxName = Math.max(...service.groups.map(g => g.name.length));
-    for (const g of service.groups) {
-      const padded = g.name.padEnd(maxName + 4);
-      lines.push(`  ${padded}${g.description}  (${g.methodCount} methods)`);
-    }
-    lines.push('');
-
-    lines.push(`Run 'npx keepai help ${service.service} <group>' to see methods in a group.`);
-    lines.push(`Run 'npx keepai help ${service.service} <method>' for parameters and examples.`);
-    lines.push(`Example: npx keepai help ${service.service} ${service.groups[0].name}`);
-
-    return lines.join('\n');
-  }
-
-  // Flat method list (existing behavior)
 
   // Group methods by prefix (before first dot); ungrouped methods have no dot
   const groups = groupMethods(service.methods);
@@ -84,6 +63,47 @@ export function renderServiceMethods(service: ServiceHelp): string {
     } else {
       realGroups.push([group, methods]);
     }
+  }
+
+  // Sort groups alphabetically
+  realGroups.sort((a, b) => a[0].localeCompare(b[0]));
+
+  // Many groups → show compact group summary
+  if (realGroups.length > 10) {
+    // Render ungrouped methods first (if any)
+    if (ungrouped.length > 0) {
+      const maxName = Math.max(...ungrouped.map(m => m.name.length));
+      for (const m of ungrouped) {
+        const padded = m.name.padEnd(maxName + 4);
+        lines.push(`  ${padded}${m.description}`);
+      }
+      lines.push('');
+    }
+
+    lines.push('Method groups:');
+    lines.push('');
+
+    const maxName = Math.max(...realGroups.map(([g]) => g.length));
+    const descs = service.groupDescriptions;
+    for (const [group, methods] of realGroups) {
+      const padded = group.padEnd(maxName + 4);
+      const count = `(${methods.length} ${methods.length === 1 ? 'method' : 'methods'})`;
+      const desc = descs?.[group];
+      if (desc) {
+        lines.push(`  ${padded}${desc}  ${count}`);
+      } else {
+        lines.push(`  ${padded}${count}`);
+      }
+    }
+    lines.push('');
+
+    lines.push(`Run 'npx keepai help ${service.service} <group>' to see methods in a group.`);
+    lines.push(`Run 'npx keepai help ${service.service} <group.method>' for parameters and examples.`);
+    if (realGroups.length > 0) {
+      lines.push(`Example: npx keepai help ${service.service} ${realGroups[0][0]}`);
+    }
+
+    return lines.join('\n');
   }
 
   // Render ungrouped methods first (flat, no group header)
@@ -176,11 +196,13 @@ export function renderMethodDetail(service: ServiceHelp, methodName: string): st
     lines.push('');
   }
 
-  // Examples
+  // Examples — safest format first to guide AI agents toward reliable patterns
   if (method.example) {
+    const json = JSON.stringify(method.example.params);
     lines.push('Examples:');
-    lines.push(`  ${buildFlagExample(service.service, method.name, method.example.params)}`);
+    lines.push(`  echo '${json}' | npx keepai run ${service.service} ${method.name} --stdin`);
     lines.push(`  ${buildJsonExample(service.service, method.name, method.example.params)}`);
+    lines.push(`  ${buildFlagExample(service.service, method.name, method.example.params)}`);
     lines.push('');
   }
 
@@ -277,3 +299,4 @@ function buildJsonExample(service: string, method: string, params: Record<string
   const json = JSON.stringify(params);
   return `npx keepai run ${service} ${method} --params '${json}'`;
 }
+

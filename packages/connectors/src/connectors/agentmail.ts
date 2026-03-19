@@ -8,7 +8,6 @@ import type {
   ConnectorMethod,
   PermissionMetadata,
   ServiceHelp,
-  ServiceHelpGroup,
   OAuthCredentials,
 } from '@keepai/proto';
 
@@ -773,15 +772,6 @@ const allMethods: ConnectorMethod[] = [
   ...adminMethods,
 ];
 
-const METHOD_GROUPS = new Map<string, { description: string; methods: ConnectorMethod[] }>([
-  ['messaging', { description: 'Send, receive, reply, forward messages; manage threads', methods: messagingMethods }],
-  ['inboxes', { description: 'Create and manage inboxes; create, edit, and send drafts', methods: inboxesMethods }],
-  ['admin', { description: 'Domains, pods, webhooks, allowlists/blocklists, API keys, metrics, organization', methods: adminMethods }],
-]);
-
-const HELP_GROUPS: ServiceHelpGroup[] = Array.from(METHOD_GROUPS.entries()).map(
-  ([name, { description, methods: m }]) => ({ name, description, methodCount: m.length }),
-);
 
 // ---------------------------------------------------------------------------
 // Resource type
@@ -1074,6 +1064,19 @@ export const agentmailConnector: Connector = {
   service: 'agentmail',
   name: 'AgentMail',
   methods: allMethods,
+  groupDescriptions: {
+    messages: 'Send, receive, reply, forward messages',
+    threads: 'List, get, and delete threads',
+    inboxes: 'Create and manage inboxes',
+    drafts: 'Create, edit, and send drafts',
+    domains: 'Custom email domains — create, verify, DNS',
+    pods: 'Isolated inbox groups',
+    webhooks: 'Webhook endpoints for incoming mail events',
+    lists: 'Allowlists and blocklists',
+    apiKeys: 'API key management',
+    metrics: 'Usage metrics for org and inbox',
+    organization: 'Organization info and limits',
+  },
 
   extractPermMetadata(
     method: string,
@@ -1101,22 +1104,15 @@ export const agentmailConnector: Connector = {
   },
 
   help(method?: string): ServiceHelp {
-    if (!method) {
-      return {
-        service: 'agentmail',
-        name: 'AgentMail',
-        summary: 'Programmatic email for AI agents — inboxes, messages, threads, drafts, domains, and more',
-        methods: [],
-        groups: HELP_GROUPS,
-      };
+    if (method) {
+      const m = allMethods.find((md) => md.name === method);
+      return { service: 'agentmail', name: 'AgentMail', methods: m ? [m] : [] };
     }
-
-    const group = METHOD_GROUPS.get(method);
-    if (group) {
-      return { service: 'agentmail', name: 'AgentMail', methods: group.methods };
-    }
-
-    const m = allMethods.find((md) => md.name === method);
-    return { service: 'agentmail', name: 'AgentMail', methods: m ? [m] : [] };
+    return {
+      service: 'agentmail',
+      name: 'AgentMail',
+      summary: 'Programmatic email for AI agents — inboxes, messages, threads, drafts, domains, and more',
+      methods: allMethods,
+    };
   },
 };
