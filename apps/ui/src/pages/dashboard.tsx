@@ -169,58 +169,6 @@ export function DashboardPage() {
         </section>
       )}
 
-      {/* Apps */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <Plug className="w-5 h-5" />
-            Apps
-          </h2>
-          <button
-            onClick={handleAddApp}
-            className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Add
-          </button>
-        </div>
-        {connectionsLoading ? (
-          <div className="text-sm text-muted-foreground">Loading...</div>
-        ) : !connections || connections.length === 0 ? (
-          <EmptyState
-            title="No apps connected"
-            description="Connect your apps to get started."
-            action={
-              <button
-                onClick={handleAddApp}
-                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover"
-              >
-                <Plus className="w-4 h-4" />
-                Connect an app
-              </button>
-            }
-          />
-        ) : (
-          <div className="space-y-2">
-            {connections.map((conn: any) => (
-              <Link
-                key={conn.id}
-                to={`/apps/${conn.id}`}
-                className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card shadow-sm hover:shadow-md hover:border-[#D1CBC4] transition-all"
-              >
-                <ServiceIcon service={conn.service} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{conn.label || conn.accountId}</div>
-                  <div className="text-xs text-muted-foreground">{serviceName(conn.service)}</div>
-                </div>
-                <AppActivityBadge activity={appActivities.get(`${conn.service}:${conn.accountId}`)} />
-                <StatusBadge status={conn.status === 'connected' ? 'active' : conn.status === 'paused' ? 'paused' : 'error'} />
-              </Link>
-            ))}
-          </div>
-        )}
-      </section>
-
       {/* Agents */}
       <section>
         <div className="flex items-center justify-between mb-3">
@@ -271,6 +219,58 @@ export function DashboardPage() {
                 </div>
                 <AgentActivityBadge activity={agentActivities.get(agent.id)} />
                 <StatusBadge status={agent.status === 'revoked' ? 'revoked' : agent.status === 'paused' ? 'paused' : 'active'} />
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Apps */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Plug className="w-5 h-5" />
+            Apps
+          </h2>
+          <button
+            onClick={handleAddApp}
+            className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add
+          </button>
+        </div>
+        {connectionsLoading ? (
+          <div className="text-sm text-muted-foreground">Loading...</div>
+        ) : !connections || connections.length === 0 ? (
+          <EmptyState
+            title="No apps connected"
+            description="Connect your apps to get started."
+            action={
+              <button
+                onClick={handleAddApp}
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-brand-hover"
+              >
+                <Plus className="w-4 h-4" />
+                Connect an app
+              </button>
+            }
+          />
+        ) : (
+          <div className="space-y-2">
+            {connections.map((conn: any) => (
+              <Link
+                key={conn.id}
+                to={`/apps/${conn.id}`}
+                className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card shadow-sm hover:shadow-md hover:border-[#D1CBC4] transition-all"
+              >
+                <ServiceIcon service={conn.service} />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate">{conn.label || conn.accountId}</div>
+                  <div className="text-xs text-muted-foreground">{serviceName(conn.service)}</div>
+                </div>
+                <AppActivityBadge activity={appActivities.get(`${conn.service}:${conn.accountId}`)} />
+                <StatusBadge status={conn.status === 'connected' ? 'active' : conn.status === 'paused' ? 'paused' : 'error'} />
               </Link>
             ))}
           </div>
