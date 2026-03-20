@@ -4,7 +4,7 @@ import { useConnectService, useConnectManualToken } from '../hooks/use-connectio
 import { ServiceIcon, serviceName } from './service-icon';
 import type { ConnectionFailure } from '../hooks/use-oauth-flow';
 
-const AVAILABLE_SERVICES = ['gmail', 'notion', 'github', 'airtable', 'trello', 'x', 'stripe', 'hetzner', 'agentmail'];
+const AVAILABLE_SERVICES = ['gmail', 'notion', 'github', 'airtable', 'trello', 'x', 'stripe', 'hetzner', 'agentmail', 'cloudflare'];
 
 const BETA_SERVICES: Record<string, string> = {
   gmail: 'Gmail integration is in beta and has not yet been verified by Google LLC. You may see warning screens during authorization. Proceed with caution.',
@@ -40,6 +40,7 @@ const MANUAL_TOKEN_SERVICES: Record<string, {
     consoleUrl: 'https://console.hetzner.cloud',
     fields: [
       { key: 'apiToken', label: 'API Token', placeholder: 'Paste your API token here', secret: true },
+      { key: 'projectName', label: 'Project Name', placeholder: 'e.g. my-production-cluster', required: false },
     ],
   },
   agentmail: {
@@ -47,6 +48,13 @@ const MANUAL_TOKEN_SERVICES: Record<string, {
     consoleUrl: 'https://app.agentmail.to',
     fields: [
       { key: 'apiKey', label: 'API Key', placeholder: 'Paste your API key here', secret: true },
+    ],
+  },
+  cloudflare: {
+    instructions: 'Go to your Cloudflare Dashboard → My Profile → API Tokens, then create a token with the permissions you need.',
+    consoleUrl: 'https://dash.cloudflare.com/profile/api-tokens',
+    fields: [
+      { key: 'apiToken', label: 'API Token', placeholder: 'Paste your API token here', secret: true },
     ],
   },
 };

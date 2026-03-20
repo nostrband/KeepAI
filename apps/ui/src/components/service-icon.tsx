@@ -14,6 +14,14 @@ function StripeIcon({ className }: { className?: string }) {
   );
 }
 
+function CloudflareIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <path d="M16.509 16.516c.149-.084.264-.224.322-.399l.683-2.371c.039-.132.048-.272.023-.406a.645.645 0 00-.181-.361.603.603 0 00-.357-.171.618.618 0 00-.395.072l-3.158 1.729a1.74 1.74 0 00-.493-.226H6.39c-.07 0-.138.011-.203.032l.267-.922c.101-.345.088-.714-.032-1.05a1.599 1.599 0 00-.702-.844l-1.372-.86a.126.126 0 01-.059-.08.126.126 0 01.009-.099c.023-.041.06-.07.104-.081l.56-.156c.539-.15.987-.52 1.237-1.02.249-.498.282-1.077.09-1.6l-.903-2.5a.133.133 0 01.004-.101.133.133 0 01.075-.068l.114-.032a5.918 5.918 0 014.034.534 5.89 5.89 0 012.791 3.092c.34-.119.709-.09 1.025.08a1.26 1.26 0 01.617.791 3.193 3.193 0 012.455 1.455 3.17 3.17 0 01.407 2.809l-.372 1.29a.133.133 0 01-.065.079.129.129 0 01-.1.008l-.197-.068c-.061.209-.166.403-.31.561zM3.201 16.516a.874.874 0 00.625-.26.874.874 0 00.26-.625.874.874 0 00-.26-.625.874.874 0 00-.625-.26.874.874 0 00-.625.26.874.874 0 00-.26.625c0 .237.093.46.26.625.168.168.39.26.625.26z" />
+    </svg>
+  );
+}
+
 function HetznerIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
@@ -44,6 +52,8 @@ export function ServiceIcon({ service, className }: ServiceIconProps) {
       return <HetznerIcon className={cn(iconClass, 'text-[#d50c2d]')} />;
     case 'agentmail':
       return <img src="/agentmail.png" alt="AgentMail" className={iconClass} />;
+    case 'cloudflare':
+      return <CloudflareIcon className={cn(iconClass, 'text-[#f48120]')} />;
     default:
       return <Globe className={cn(iconClass, 'text-gray-500')} />;
   }
@@ -60,6 +70,7 @@ export function serviceName(service: string): string {
     case 'stripe': return 'Stripe';
     case 'hetzner': return 'Hetzner Cloud';
     case 'agentmail': return 'AgentMail';
+    case 'cloudflare': return 'Cloudflare';
     default: return service;
   }
 }

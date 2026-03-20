@@ -30,6 +30,13 @@ export const hetznerService: ServiceDefinition = {
         placeholder: 'Paste your API token here',
         secret: true,
       },
+      {
+        key: 'projectName',
+        label: 'Project Name',
+        placeholder: 'e.g. my-production-cluster',
+        secret: false,
+        required: false,
+      },
     ],
     validateCredentials: async (creds) => {
       const res = await fetch(`${HETZNER_API}/servers?per_page=1`, {
@@ -38,9 +45,12 @@ export const hetznerService: ServiceDefinition = {
       if (!res.ok) {
         throw new Error(`Invalid token: ${res.status} ${res.statusText}`);
       }
+      const projectName = creds.projectName?.trim();
       return {
-        accountId: 'hetzner-project',
-        displayName: 'Hetzner Cloud Project',
+        accountId: projectName
+          ? projectName.toLowerCase().replace(/\s+/g, '-')
+          : 'hetzner-project',
+        displayName: projectName || 'Hetzner Cloud Project',
       };
     },
   },

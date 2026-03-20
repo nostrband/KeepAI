@@ -1,0 +1,313 @@
+import type { ConnectorMethod } from '@keepai/proto';
+import { ACCOUNT_ID_PARAM, LIST_PARAMS } from './params.js';
+
+// ===== AI & ML =====
+export const aiMethods: ConnectorMethod[] = [
+  // AI
+  {
+    name: 'ai.run',
+    description: 'Run specific AI models on-demand.',
+    operationType: 'write',
+    params: [ACCOUNT_ID_PARAM, { name: 'model_name', type: 'string', required: true, description: 'Model name (e.g. @cf/meta/llama-3-8b-instruct)' }],
+    returns: 'AI model output',
+  },
+  {
+    name: 'ai.models.list',
+    description: 'List available AI models.',
+    operationType: 'read',
+    params: [ACCOUNT_ID_PARAM, ...LIST_PARAMS],
+    returns: 'List of AI models',
+  },
+  {
+    name: 'ai.finetunes.create',
+    description: 'Create a fine-tuning job.',
+    operationType: 'write',
+    params: [ACCOUNT_ID_PARAM],
+    returns: 'Fine-tune job object',
+  },
+  {
+    name: 'ai.finetunes.list',
+    description: 'List fine-tuning jobs.',
+    operationType: 'read',
+    params: [ACCOUNT_ID_PARAM, ...LIST_PARAMS],
+    returns: 'List of fine-tune jobs',
+  },
+  {
+    name: 'ai.authors.list',
+    description: 'List model authors.',
+    operationType: 'read',
+    params: [ACCOUNT_ID_PARAM, ...LIST_PARAMS],
+    returns: 'List of model authors',
+  },
+  {
+    name: 'ai.tasks.list',
+    description: 'List AI task types.',
+    operationType: 'read',
+    params: [ACCOUNT_ID_PARAM, ...LIST_PARAMS],
+    returns: 'List of AI task types',
+  },
+
+  // AI Gateway
+  {
+    name: 'aiGateway.create',
+    description: 'Create a new Gateway',
+    operationType: 'write',
+    params: [ACCOUNT_ID_PARAM],
+    returns: 'AI Gateway object',
+  },
+  {
+    name: 'aiGateway.update',
+    description: 'Update a Gateway',
+    operationType: 'write',
+    params: [ACCOUNT_ID_PARAM, { name: 'id', type: 'string', required: true, description: 'Gateway ID' }],
+    returns: 'Updated AI Gateway object',
+  },
+  {
+    name: 'aiGateway.list',
+    description: 'List Gateways',
+    operationType: 'read',
+    params: [ACCOUNT_ID_PARAM, ...LIST_PARAMS],
+    returns: 'List of AI Gateways',
+  },
+  {
+    name: 'aiGateway.delete',
+    description: 'Delete a Gateway',
+    operationType: 'delete',
+    params: [ACCOUNT_ID_PARAM, { name: 'id', type: 'string', required: true, description: 'Gateway ID' }],
+    returns: 'Deleted AI Gateway confirmation',
+  },
+  {
+    name: 'aiGateway.get',
+    description: 'Fetch a Gateway',
+    operationType: 'read',
+    params: [ACCOUNT_ID_PARAM, { name: 'id', type: 'string', required: true, description: 'Gateway ID' }],
+    returns: 'AI Gateway object',
+  },
+
+  // AI Gateway Logs
+  {
+    name: 'aiGateway.logs.list',
+    description: 'List Gateway Logs',
+    operationType: 'read',
+    params: [ACCOUNT_ID_PARAM, { name: 'id', type: 'string', required: true, description: 'Gateway ID' }, ...LIST_PARAMS],
+    returns: 'List of gateway logs',
+  },
+  {
+    name: 'aiGateway.logs.delete',
+    description: 'Delete Gateway Logs',
+    operationType: 'delete',
+    params: [ACCOUNT_ID_PARAM, { name: 'id', type: 'string', required: true, description: 'Gateway ID' }],
+    returns: 'Deleted logs confirmation',
+  },
+  {
+    name: 'aiGateway.logs.edit',
+    description: 'Patch Gateway Log',
+    operationType: 'write',
+    params: [ACCOUNT_ID_PARAM, { name: 'id', type: 'string', required: true, description: 'Gateway ID' }, { name: 'log_id', type: 'string', required: true, description: 'Log ID' }],
+    returns: 'Updated log object',
+  },
+  {
+    name: 'aiGateway.logs.get',
+    description: 'Get Gateway Log Detail',
+    operationType: 'read',
+    params: [ACCOUNT_ID_PARAM, { name: 'id', type: 'string', required: true, description: 'Gateway ID' }, { name: 'log_id', type: 'string', required: true, description: 'Log ID' }],
+    returns: 'Gateway log object',
+  },
+  {
+    name: 'aiGateway.logs.request',
+    description: 'Get Gateway Log Request',
+    operationType: 'read',
+    params: [ACCOUNT_ID_PARAM, { name: 'id', type: 'string', required: true, description: 'Gateway ID' }, { name: 'log_id', type: 'string', required: true, description: 'Log ID' }],
+    returns: 'Gateway log request object',
+  },
+  {
+    name: 'aiGateway.logs.response',
+    description: 'Get Gateway Log Response',
+    operationType: 'read',
+    params: [ACCOUNT_ID_PARAM, { name: 'id', type: 'string', required: true, description: 'Gateway ID' }, { name: 'log_id', type: 'string', required: true, description: 'Log ID' }],
+    returns: 'Gateway log response object',
+  },
+
+  // AI Gateway Datasets
+  {
+    name: 'aiGateway.datasets.create',
+    description: 'Create a new Dataset',
+    operationType: 'write',
+    params: [ACCOUNT_ID_PARAM, { name: 'id', type: 'string', required: true, description: 'Gateway ID' }],
+    returns: 'Dataset object',
+  },
+  {
+    name: 'aiGateway.datasets.update',
+    description: 'Update a Dataset',
+    operationType: 'write',
+    params: [ACCOUNT_ID_PARAM, { name: 'id', type: 'string', required: true, description: 'Gateway ID' }, { name: 'dataset_id', type: 'string', required: true, description: 'Dataset ID' }],
+    returns: 'Updated dataset object',
+  },
+  {
+    name: 'aiGateway.datasets.list',
+    description: 'List Datasets',
+    operationType: 'read',
+    params: [ACCOUNT_ID_PARAM, { name: 'id', type: 'string', required: true, description: 'Gateway ID' }, ...LIST_PARAMS],
+    returns: 'List of datasets',
+  },
+  {
+    name: 'aiGateway.datasets.delete',
+    description: 'Delete a Dataset',
+    operationType: 'delete',
+    params: [ACCOUNT_ID_PARAM, { name: 'id', type: 'string', required: true, description: 'Gateway ID' }, { name: 'dataset_id', type: 'string', required: true, description: 'Dataset ID' }],
+    returns: 'Deleted dataset confirmation',
+  },
+  {
+    name: 'aiGateway.datasets.get',
+    description: 'Fetch a Dataset',
+    operationType: 'read',
+    params: [ACCOUNT_ID_PARAM, { name: 'id', type: 'string', required: true, description: 'Gateway ID' }, { name: 'dataset_id', type: 'string', required: true, description: 'Dataset ID' }],
+    returns: 'Dataset object',
+  },
+
+  // AI Gateway Evaluations
+  {
+    name: 'aiGateway.evaluations.create',
+    description: 'Create a new Evaluation',
+    operationType: 'write',
+    params: [ACCOUNT_ID_PARAM, { name: 'id', type: 'string', required: true, description: 'Gateway ID' }],
+    returns: 'Evaluation object',
+  },
+  {
+    name: 'aiGateway.evaluations.list',
+    description: 'List Evaluations',
+    operationType: 'read',
+    params: [ACCOUNT_ID_PARAM, { name: 'id', type: 'string', required: true, description: 'Gateway ID' }, ...LIST_PARAMS],
+    returns: 'List of evaluations',
+  },
+  {
+    name: 'aiGateway.evaluations.delete',
+    description: 'Delete a Evaluation',
+    operationType: 'delete',
+    params: [ACCOUNT_ID_PARAM, { name: 'id', type: 'string', required: true, description: 'Gateway ID' }, { name: 'evaluation_id', type: 'string', required: true, description: 'Evaluation ID' }],
+    returns: 'Deleted evaluation confirmation',
+  },
+  {
+    name: 'aiGateway.evaluations.get',
+    description: 'Fetch a Evaluation',
+    operationType: 'read',
+    params: [ACCOUNT_ID_PARAM, { name: 'id', type: 'string', required: true, description: 'Gateway ID' }, { name: 'evaluation_id', type: 'string', required: true, description: 'Evaluation ID' }],
+    returns: 'Evaluation object',
+  },
+
+  // Vectorize
+  {
+    name: 'vectorize.indexes.create',
+    description: 'Creates and returns a new Vectorize Index.',
+    operationType: 'write',
+    params: [ACCOUNT_ID_PARAM, { name: 'name', type: 'string', required: true, description: 'Index name' }],
+    returns: 'Vectorize index object',
+  },
+  {
+    name: 'vectorize.indexes.list',
+    description: 'Returns a list of Vectorize Indexes',
+    operationType: 'read',
+    params: [ACCOUNT_ID_PARAM, ...LIST_PARAMS],
+    returns: 'List of Vectorize indexes',
+  },
+  {
+    name: 'vectorize.indexes.delete',
+    description: 'Deletes the specified Vectorize Index.',
+    operationType: 'delete',
+    params: [ACCOUNT_ID_PARAM, { name: 'index_name', type: 'string', required: true, description: 'Index name' }],
+    returns: 'Deleted Vectorize index confirmation',
+  },
+  {
+    name: 'vectorize.indexes.get',
+    description: 'Returns the specified Vectorize Index.',
+    operationType: 'read',
+    params: [ACCOUNT_ID_PARAM, { name: 'index_name', type: 'string', required: true, description: 'Index name' }],
+    returns: 'Vectorize index object',
+  },
+  {
+    name: 'vectorize.indexes.info',
+    description: 'Get information about a vectorize index.',
+    operationType: 'read',
+    params: [ACCOUNT_ID_PARAM, { name: 'index_name', type: 'string', required: true, description: 'Index name' }],
+    returns: 'Vectorize index info',
+  },
+  {
+    name: 'vectorize.indexes.insert',
+    description: 'Inserts vectors into the specified index.',
+    operationType: 'write',
+    params: [ACCOUNT_ID_PARAM, { name: 'index_name', type: 'string', required: true, description: 'Index name' }],
+    returns: 'Insert result',
+  },
+  {
+    name: 'vectorize.indexes.upsert',
+    description: 'Upserts vectors into the specified index.',
+    operationType: 'write',
+    params: [ACCOUNT_ID_PARAM, { name: 'index_name', type: 'string', required: true, description: 'Index name' }],
+    returns: 'Upsert result',
+  },
+  {
+    name: 'vectorize.indexes.query',
+    description: 'Finds vectors closest to a given vector in an index.',
+    operationType: 'write',
+    params: [ACCOUNT_ID_PARAM, { name: 'index_name', type: 'string', required: true, description: 'Index name' }],
+    returns: 'Query result',
+  },
+  {
+    name: 'vectorize.indexes.getByIds',
+    description: 'Get a set of vectors from an index by their vector identifiers.',
+    operationType: 'read',
+    params: [ACCOUNT_ID_PARAM, { name: 'index_name', type: 'string', required: true, description: 'Index name' }],
+    returns: 'List of vectors',
+  },
+  {
+    name: 'vectorize.indexes.deleteByIds',
+    description: 'Delete a set of vectors from an index by their vector identifiers.',
+    operationType: 'delete',
+    params: [ACCOUNT_ID_PARAM, { name: 'index_name', type: 'string', required: true, description: 'Index name' }],
+    returns: 'Delete result',
+  },
+
+  // Browser Rendering
+  {
+    name: 'browserRendering.content.create',
+    description: 'Fetches rendered HTML content from provided URL or HTML.',
+    operationType: 'write',
+    params: [ACCOUNT_ID_PARAM],
+    returns: 'Rendered HTML content',
+  },
+  {
+    name: 'browserRendering.json.create',
+    description: 'Gets json from a webpage from a provided URL or HTML.',
+    operationType: 'write',
+    params: [ACCOUNT_ID_PARAM],
+    returns: 'JSON content',
+  },
+  {
+    name: 'browserRendering.links.create',
+    description: 'Get links from a web page.',
+    operationType: 'write',
+    params: [ACCOUNT_ID_PARAM],
+    returns: 'List of links',
+  },
+  {
+    name: 'browserRendering.markdown.create',
+    description: 'Gets markdown of a webpage from provided URL or HTML.',
+    operationType: 'write',
+    params: [ACCOUNT_ID_PARAM],
+    returns: 'Markdown content',
+  },
+  {
+    name: 'browserRendering.pdf.create',
+    description: 'Fetches rendered PDF from provided URL or HTML.',
+    operationType: 'write',
+    params: [ACCOUNT_ID_PARAM],
+    returns: 'PDF content',
+  },
+  {
+    name: 'browserRendering.screenshot.create',
+    description: 'Takes a screenshot of a webpage from provided URL or HTML.',
+    operationType: 'write',
+    params: [ACCOUNT_ID_PARAM],
+    returns: 'Screenshot image',
+  },
+];

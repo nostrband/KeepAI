@@ -22,8 +22,9 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@keepai/proto": "file:../proto",
     "@keepai/mcp-client": "file:../mcp-client",
+    "@keepai/proto": "file:../proto",
+    "cloudflare": "^5.2.0",
     "googleapis": "^140.0.1"
   },
   "devDependencies": {

@@ -1,5 +1,5 @@
 /**
- * Airtable connector — bases, tables, records, comments, and user info.
+ * Airtable connector — bases, tables, fields, records, comments, webhooks, and user info.
  */
 
 import type {
@@ -73,6 +73,28 @@ function describeAirtableRequest(method: string, params: Record<string, unknown>
       return `List comments on record ${params.recordId || '(unknown)'} in ${tableLabel(params)}`;
     case 'comments.create':
       return `Add comment to record ${params.recordId || '(unknown)'} in ${tableLabel(params)}`;
+    case 'comments.update':
+      return `Update comment ${params.commentId || '(unknown)'} on record ${params.recordId || '(unknown)'} in ${tableLabel(params)}`;
+    case 'comments.delete':
+      return `Delete comment ${params.commentId || '(unknown)'} from record ${params.recordId || '(unknown)'} in ${tableLabel(params)}`;
+    case 'table.create':
+      return `Create table "${params.name || '(unnamed)'}" in base ${params.baseId || '(unknown)'}`;
+    case 'table.update':
+      return `Update table ${params.tableId || '(unknown)'} in base ${params.baseId || '(unknown)'}`;
+    case 'field.create':
+      return `Create field "${params.name || '(unnamed)'}" in table ${params.tableId || '(unknown)'}`;
+    case 'field.update':
+      return `Update field ${params.fieldId || '(unknown)'} in table ${params.tableId || '(unknown)'}`;
+    case 'webhooks.list':
+      return `List webhooks for base ${params.baseId || '(unknown)'}`;
+    case 'webhook.create':
+      return `Create webhook for base ${params.baseId || '(unknown)'}`;
+    case 'webhook.delete':
+      return `Delete webhook ${params.webhookId || '(unknown)'} from base ${params.baseId || '(unknown)'}`;
+    case 'webhook.payloads':
+      return `Get payloads for webhook ${params.webhookId || '(unknown)'} in base ${params.baseId || '(unknown)'}`;
+    case 'webhook.refresh':
+      return `Refresh webhook ${params.webhookId || '(unknown)'} in base ${params.baseId || '(unknown)'}`;
     case 'whoami':
       return 'Get current user info';
     default:
@@ -282,6 +304,195 @@ const methods: ConnectorMethod[] = [
     seeAlso: ['comments.list'],
   },
   {
+    name: 'comments.update',
+    description: 'Update a comment on a record',
+    operationType: 'write',
+    params: [
+      { name: 'baseId', type: 'string', required: true, description: 'Base ID' },
+      { name: 'tableIdOrName', type: 'string', required: true, description: 'Table ID or name' },
+      { name: 'recordId', type: 'string', required: true, description: 'Record ID' },
+      { name: 'commentId', type: 'string', required: true, description: 'Comment ID' },
+      { name: 'text', type: 'string', required: true, description: 'Updated comment text' },
+    ],
+    returns: 'Updated comment object',
+    seeAlso: ['comments.list', 'comments.create', 'comments.delete'],
+  },
+  {
+    name: 'comments.delete',
+    description: 'Delete a comment from a record',
+    operationType: 'delete',
+    params: [
+      { name: 'baseId', type: 'string', required: true, description: 'Base ID' },
+      { name: 'tableIdOrName', type: 'string', required: true, description: 'Table ID or name' },
+      { name: 'recordId', type: 'string', required: true, description: 'Record ID' },
+      { name: 'commentId', type: 'string', required: true, description: 'Comment ID' },
+    ],
+    returns: 'Deleted comment object with id and deleted flag',
+    responseExample: { id: 'comXXX', deleted: true },
+    seeAlso: ['comments.list', 'comments.create'],
+  },
+  {
+    name: 'table.create',
+    description: 'Create a new table in a base',
+    operationType: 'write',
+    params: [
+      { name: 'baseId', type: 'string', required: true, description: 'Base ID' },
+      { name: 'name', type: 'string', required: true, description: 'Table name' },
+      { name: 'description', type: 'string', required: false, description: 'Table description' },
+      { name: 'fields', type: 'array', required: true, description: 'Array of field definitions — each must have name and type (e.g., singleLineText, number, singleSelect)' },
+    ],
+    returns: 'Created table object with id, name, fields',
+    example: {
+      params: {
+        baseId: 'appXXX',
+        name: 'Projects',
+        fields: [
+          { name: 'Name', type: 'singleLineText' },
+          { name: 'Status', type: 'singleSelect', options: { choices: [{ name: 'Todo' }, { name: 'Done' }] } },
+        ],
+      },
+      description: 'Create a Projects table with Name and Status fields',
+    },
+    notes: ['At least one field is required', 'Field types: singleLineText, multilineText, number, percent, currency, singleSelect, multipleSelects, date, dateTime, checkbox, email, url, phoneNumber, richText, etc.'],
+    seeAlso: ['base.tables', 'table.update', 'field.create'],
+  },
+  {
+    name: 'table.update',
+    description: 'Update a table name or description',
+    operationType: 'write',
+    params: [
+      { name: 'baseId', type: 'string', required: true, description: 'Base ID' },
+      { name: 'tableId', type: 'string', required: true, description: 'Table ID' },
+      { name: 'name', type: 'string', required: false, description: 'New table name' },
+      { name: 'description', type: 'string', required: false, description: 'New table description' },
+    ],
+    returns: 'Updated table object',
+    notes: ['At least one of name or description must be provided'],
+    seeAlso: ['base.tables', 'table.create'],
+  },
+  {
+    name: 'field.create',
+    description: 'Create a new field in a table',
+    operationType: 'write',
+    params: [
+      { name: 'baseId', type: 'string', required: true, description: 'Base ID' },
+      { name: 'tableId', type: 'string', required: true, description: 'Table ID' },
+      { name: 'name', type: 'string', required: true, description: 'Field name' },
+      { name: 'type', type: 'string', required: true, description: 'Field type (e.g., singleLineText, number, singleSelect)' },
+      { name: 'description', type: 'string', required: false, description: 'Field description' },
+      { name: 'options', type: 'object', required: false, description: 'Type-specific options (e.g., choices for singleSelect)' },
+    ],
+    returns: 'Created field object with id, name, type',
+    example: {
+      params: {
+        baseId: 'appXXX',
+        tableId: 'tblXXX',
+        name: 'Priority',
+        type: 'singleSelect',
+        options: { choices: [{ name: 'High' }, { name: 'Medium' }, { name: 'Low' }] },
+      },
+      description: 'Add a Priority select field',
+    },
+    seeAlso: ['base.tables', 'field.update', 'table.create'],
+  },
+  {
+    name: 'field.update',
+    description: 'Update a field name, description, or options',
+    operationType: 'write',
+    params: [
+      { name: 'baseId', type: 'string', required: true, description: 'Base ID' },
+      { name: 'tableId', type: 'string', required: true, description: 'Table ID' },
+      { name: 'fieldId', type: 'string', required: true, description: 'Field ID' },
+      { name: 'name', type: 'string', required: false, description: 'New field name' },
+      { name: 'description', type: 'string', required: false, description: 'New field description' },
+      { name: 'options', type: 'object', required: false, description: 'Updated type-specific options' },
+    ],
+    returns: 'Updated field object',
+    notes: ['Cannot change field type — only name, description, and options'],
+    seeAlso: ['base.tables', 'field.create'],
+  },
+  {
+    name: 'webhooks.list',
+    description: 'List webhooks for a base',
+    operationType: 'read',
+    params: [
+      { name: 'baseId', type: 'string', required: true, description: 'Base ID' },
+    ],
+    returns: 'List of webhook objects with id, type, notificationUrl, specification',
+    responseExample: {
+      webhooks: [
+        { id: 'ach00000000000001', type: 'client', notificationUrl: 'https://example.com/hook', isHookEnabled: true },
+      ],
+    },
+    seeAlso: ['webhook.create', 'webhook.delete', 'webhook.payloads'],
+  },
+  {
+    name: 'webhook.create',
+    description: 'Create a webhook to receive notifications for changes in a base',
+    operationType: 'write',
+    params: [
+      { name: 'baseId', type: 'string', required: true, description: 'Base ID' },
+      { name: 'notificationUrl', type: 'string', required: false, description: 'URL to receive POST notifications (optional — if omitted, use webhook.payloads to poll)' },
+      { name: 'specification', type: 'object', required: true, description: 'Webhook specification with options.filters defining what changes to watch' },
+    ],
+    returns: 'Created webhook object with id, macSecretBase64, expirationTime',
+    example: {
+      params: {
+        baseId: 'appXXX',
+        specification: {
+          options: {
+            filters: {
+              dataTypes: ['tableData'],
+              recordChangeScope: 'tblXXX',
+            },
+          },
+        },
+      },
+      description: 'Watch for record changes in a specific table',
+    },
+    notes: [
+      'Webhooks expire after 7 days — use webhook.refresh to extend',
+      'macSecretBase64 is only returned on creation — store it to verify notification signatures',
+    ],
+    seeAlso: ['webhooks.list', 'webhook.delete', 'webhook.payloads', 'webhook.refresh'],
+  },
+  {
+    name: 'webhook.delete',
+    description: 'Delete a webhook',
+    operationType: 'delete',
+    params: [
+      { name: 'baseId', type: 'string', required: true, description: 'Base ID' },
+      { name: 'webhookId', type: 'string', required: true, description: 'Webhook ID' },
+    ],
+    returns: 'Empty response on success',
+    seeAlso: ['webhooks.list', 'webhook.create'],
+  },
+  {
+    name: 'webhook.payloads',
+    description: 'Get payloads (change events) for a webhook',
+    operationType: 'read',
+    params: [
+      { name: 'baseId', type: 'string', required: true, description: 'Base ID' },
+      { name: 'webhookId', type: 'string', required: true, description: 'Webhook ID' },
+      { name: 'cursor', type: 'number', required: false, description: 'Cursor to fetch payloads after (from previous response)' },
+    ],
+    returns: 'List of payload objects with timestamp, baseTransactionNumber, actionMetadata, and changedTablesById',
+    notes: ['Payloads are retained for 7 days', 'Use cursor from previous response to paginate'],
+    seeAlso: ['webhooks.list', 'webhook.create'],
+  },
+  {
+    name: 'webhook.refresh',
+    description: 'Extend a webhook expiration time',
+    operationType: 'write',
+    params: [
+      { name: 'baseId', type: 'string', required: true, description: 'Base ID' },
+      { name: 'webhookId', type: 'string', required: true, description: 'Webhook ID' },
+    ],
+    returns: 'Object with new expirationTime',
+    notes: ['Extends expiration by 7 days from now'],
+    seeAlso: ['webhooks.list', 'webhook.create'],
+  },
+  {
     name: 'whoami',
     description: 'Get current user info (user ID and granted scopes)',
     operationType: 'read',
@@ -394,6 +605,107 @@ async function executeAirtable(
         }
       );
 
+    case 'comments.update':
+      return airtableFetch(
+        `/${params.baseId}/${params.tableIdOrName}/${params.recordId}/comments/${params.commentId}`,
+        credentials,
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ text: params.text }),
+        }
+      );
+
+    case 'comments.delete':
+      return airtableFetch(
+        `/${params.baseId}/${params.tableIdOrName}/${params.recordId}/comments/${params.commentId}`,
+        credentials,
+        { method: 'DELETE' }
+      );
+
+    case 'table.create': {
+      const body: Record<string, unknown> = {
+        name: params.name,
+        fields: params.fields,
+      };
+      if (params.description) body.description = params.description;
+      return airtableFetch(`/meta/bases/${params.baseId}/tables`, credentials, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+    }
+
+    case 'table.update': {
+      const body: Record<string, unknown> = {};
+      if (params.name !== undefined) body.name = params.name;
+      if (params.description !== undefined) body.description = params.description;
+      return airtableFetch(`/meta/bases/${params.baseId}/tables/${params.tableId}`, credentials, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      });
+    }
+
+    case 'field.create': {
+      const body: Record<string, unknown> = {
+        name: params.name,
+        type: params.type,
+      };
+      if (params.description) body.description = params.description;
+      if (params.options) body.options = params.options;
+      return airtableFetch(`/meta/bases/${params.baseId}/tables/${params.tableId}/fields`, credentials, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+    }
+
+    case 'field.update': {
+      const body: Record<string, unknown> = {};
+      if (params.name !== undefined) body.name = params.name;
+      if (params.description !== undefined) body.description = params.description;
+      if (params.options !== undefined) body.options = params.options;
+      return airtableFetch(
+        `/meta/bases/${params.baseId}/tables/${params.tableId}/fields/${params.fieldId}`,
+        credentials,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(body),
+        }
+      );
+    }
+
+    case 'webhooks.list':
+      return airtableFetch(`/bases/${params.baseId}/webhooks`, credentials);
+
+    case 'webhook.create': {
+      const body: Record<string, unknown> = {
+        specification: params.specification,
+      };
+      if (params.notificationUrl) body.notificationUrl = params.notificationUrl;
+      return airtableFetch(`/bases/${params.baseId}/webhooks`, credentials, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+    }
+
+    case 'webhook.delete':
+      return airtableFetch(`/bases/${params.baseId}/webhooks/${params.webhookId}`, credentials, {
+        method: 'DELETE',
+      });
+
+    case 'webhook.payloads': {
+      const query = new URLSearchParams();
+      if (params.cursor) query.set('cursor', String(params.cursor));
+      const qs = query.toString();
+      return airtableFetch(
+        `/bases/${params.baseId}/webhooks/${params.webhookId}/payloads${qs ? `?${qs}` : ''}`,
+        credentials
+      );
+    }
+
+    case 'webhook.refresh':
+      return airtableFetch(`/bases/${params.baseId}/webhooks/${params.webhookId}/refresh`, credentials, {
+        method: 'POST',
+      });
+
     case 'whoami':
       return airtableFetch('/meta/whoami', credentials);
 
@@ -407,8 +719,12 @@ function getResourceType(method: string): string | undefined {
   switch (resource) {
     case 'bases':
     case 'base': return 'base';
+    case 'table': return 'table';
+    case 'field': return 'field';
     case 'records': return 'record';
     case 'comments': return 'comment';
+    case 'webhooks':
+    case 'webhook': return 'webhook';
     case 'whoami': return 'user';
     default: return undefined;
   }
@@ -452,14 +768,14 @@ export const airtableConnector: Connector = {
       return {
         service: 'airtable',
         name: 'Airtable',
-        summary: 'Bases, tables, records, and comments',
+        summary: 'Bases, tables, fields, records, comments, and webhooks',
         methods: m ? [m] : [],
       };
     }
     return {
       service: 'airtable',
       name: 'Airtable',
-      summary: 'Bases, tables, records, and comments',
+      summary: 'Bases, tables, fields, records, comments, and webhooks',
       methods,
     };
   },
