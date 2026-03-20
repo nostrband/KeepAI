@@ -57,6 +57,7 @@ mac:
   hardenedRuntime: true
   gatekeeperAssess: false
   notarize: true
+  x64ArchFiles: "Contents/Resources/app.asar.unpacked/node_modules/better-sqlite3/build/Release/*.node"
 
 linux:
   target:
