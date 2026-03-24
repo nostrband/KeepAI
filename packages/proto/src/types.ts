@@ -63,6 +63,34 @@ export interface Policy {
   rules: PolicyRule[];
 }
 
+// --- Policy V2 (granular per-method/group) ---
+
+export type CategoryAction = PolicyDecision | 'custom';
+
+export interface MethodPolicy {
+  action: PolicyDecision;
+}
+
+export interface GroupPolicy {
+  action: CategoryAction;
+  methods?: Record<string, MethodPolicy>;
+}
+
+export interface CategoryPolicy {
+  action: CategoryAction;
+  groups?: Record<string, GroupPolicy>;
+}
+
+export interface PolicyV2 {
+  version: 2;
+  default: PolicyDecision;
+  categories: {
+    read: CategoryPolicy;
+    write: CategoryPolicy;
+    delete: CategoryPolicy;
+  };
+}
+
 // --- Connector Interfaces ---
 
 export interface ParamSchema {

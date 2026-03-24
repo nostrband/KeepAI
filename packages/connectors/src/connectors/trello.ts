@@ -1213,6 +1213,19 @@ export const trelloConnector: Connector = {
   service: 'trello',
   name: 'Trello',
   methods,
+  groupDescriptions: {
+    members: 'Get current user profile',
+    search: 'Search across boards, cards, and members',
+    boards: 'List, get, create, update, delete boards and their members',
+    lists: 'Get, create, update, archive, and unarchive lists',
+    cards: 'List, get, create, update, delete cards and manage members and labels',
+    comments: 'List, create, update, and delete card comments',
+    labels: 'List, create, update, and delete board labels',
+    checklists: 'Get, create, and delete checklists',
+    checkItems: 'Create, update, and delete check items in checklists',
+    attachments: 'List, add, and delete card attachments',
+    webhooks: 'Create, get, and delete webhooks',
+  },
 
   extractPermMetadata(
     method: string,

@@ -1,21 +1,21 @@
 /**
  * PolicyEngine — evaluates agent requests against per-agent per-service per-account policies.
  *
- * Policies are stored in SQLite keyed by (service, accountId, agentId).
- * Evaluation: first matching rule wins, fallback to default action.
+ * Supports both V1 (flat rules) and V2 (granular category→group→method) policies.
+ * V1 policies are auto-migrated to V2 on read.
  */
 
 import type {
   Policy,
-  PolicyRule,
+  PolicyV2,
   PolicyDecision,
   PermissionMetadata,
 } from '@keepai/proto';
-import { DEFAULT_POLICY } from '@keepai/proto';
+import { DEFAULT_POLICY, DEFAULT_POLICY_V2, migratePolicy, getMethodGroup } from '@keepai/proto';
 import type { KeepDBApi, PolicyEntry } from '@keepai/db';
 
 interface CachedPolicy {
-  policy: Policy;
+  policy: PolicyV2;
   updatedAt: number;
 }
 
@@ -28,19 +28,29 @@ export class PolicyEngine {
    * Evaluate a request against the agent's policy for the given service+account.
    */
   evaluate(agentId: string, metadata: PermissionMetadata): PolicyDecision {
-    const policy = this.getPolicy(metadata.service, metadata.accountId, agentId);
+    const policy = this.getPolicyV2(metadata.service, metadata.accountId, agentId);
     return this.match(policy, metadata);
   }
 
   /**
    * Get policy for a specific (service, accountId, agentId) tuple.
+   * Returns the raw stored policy (V1 or V2) for API responses.
    */
-  getPolicy(service: string, accountId: string, agentId: string): Policy {
+  getPolicy(service: string, accountId: string, agentId: string): Policy | PolicyV2 {
+    const entry = this.db.policies.get(service, accountId, agentId);
+    if (!entry) return DEFAULT_POLICY_V2;
+    return entry.policy;
+  }
+
+  /**
+   * Get policy as V2, auto-migrating V1 if needed.
+   */
+  private getPolicyV2(service: string, accountId: string, agentId: string): PolicyV2 {
     const cacheKey = `${service}:${accountId}:${agentId}`;
     const entry = this.db.policies.get(service, accountId, agentId);
 
     if (!entry) {
-      return DEFAULT_POLICY;
+      return DEFAULT_POLICY_V2;
     }
 
     const cached = this.cache.get(cacheKey);
@@ -48,14 +58,15 @@ export class PolicyEngine {
       return cached.policy;
     }
 
-    this.cache.set(cacheKey, { policy: entry.policy, updatedAt: entry.updatedAt });
-    return entry.policy;
+    const migrated = migratePolicy(entry.policy);
+    this.cache.set(cacheKey, { policy: migrated, updatedAt: entry.updatedAt });
+    return migrated;
   }
 
   /**
-   * Save (upsert) a policy.
+   * Save (upsert) a policy. Accepts V1 or V2.
    */
-  savePolicy(service: string, accountId: string, agentId: string, policy: Policy): void {
+  savePolicy(service: string, accountId: string, agentId: string, policy: Policy | PolicyV2): void {
     this.db.policies.upsert({ service, accountId, agentId, policy });
     this.cache.delete(`${service}:${accountId}:${agentId}`);
   }
@@ -71,7 +82,7 @@ export class PolicyEngine {
           service: conn.service,
           accountId: conn.accountId,
           agentId,
-          policy: DEFAULT_POLICY,
+          policy: DEFAULT_POLICY_V2,
         });
       }
     }
@@ -88,7 +99,7 @@ export class PolicyEngine {
           service,
           accountId,
           agentId,
-          policy: DEFAULT_POLICY,
+          policy: DEFAULT_POLICY_V2,
         });
       }
     }
@@ -134,31 +145,23 @@ export class PolicyEngine {
   }
 
   /**
-   * Match request against policy rules. First match wins.
+   * Evaluate V2 policy: category → group → method → default.
    */
-  private match(policy: Policy, metadata: PermissionMetadata): PolicyDecision {
-    for (const rule of policy.rules) {
-      if (this.ruleMatches(rule, metadata)) {
-        return rule.action;
-      }
-    }
-    return policy.default;
-  }
-
-  /**
-   * Check if a single rule matches the request.
-   */
-  private ruleMatches(rule: PolicyRule, metadata: PermissionMetadata): boolean {
-    if (!rule.operations.includes(metadata.operationType)) {
-      return false;
+  private match(policy: PolicyV2, metadata: PermissionMetadata): PolicyDecision {
+    const category = policy.categories[metadata.operationType];
+    if (!category || category.action !== 'custom') {
+      return (category?.action as PolicyDecision) ?? policy.default;
     }
 
-    if (rule.methods && rule.methods.length > 0) {
-      if (!rule.methods.includes(metadata.method)) {
-        return false;
-      }
-    }
+    // Category is custom — check group
+    const group = getMethodGroup(metadata.method);
+    const groupPolicy = category.groups?.[group];
+    if (!groupPolicy) return policy.default;
+    if (groupPolicy.action !== 'custom') return groupPolicy.action as PolicyDecision;
 
-    return true;
+    // Group is custom — check method
+    const methodPolicy = groupPolicy.methods?.[metadata.method];
+    if (!methodPolicy) return policy.default;
+    return methodPolicy.action;
   }
 }

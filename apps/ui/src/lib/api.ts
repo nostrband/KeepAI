@@ -120,6 +120,9 @@ export const api = {
   listConnectionPolicies: (connectionId: string) =>
     request<{ policies: any[] }>(`/connections/${connectionId}/policies`).then((r) => r.policies),
 
+  getServiceMethods: (service: string) =>
+    request<{ service: string; groups: Record<string, { description?: string; methods: Array<{ name: string; description: string; operationType: string }> }> }>(`/services/${service}/methods`),
+
   // Approval Queue
   listQueue: () =>
     request<{ pending: any[] }>('/queue').then((r) => r.pending),

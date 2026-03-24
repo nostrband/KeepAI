@@ -1346,6 +1346,19 @@ export const xConnector: Connector = {
   service: 'x',
   name: 'X',
   methods,
+  groupDescriptions: {
+    posts: 'Create, get, search, delete posts and manage replies',
+    users: 'Get user profiles, followers, timelines, likes, bookmarks, and blocks',
+    dm: 'Send and receive direct messages',
+    lists: 'Get, create, update, delete lists and manage members',
+    spaces: 'Get and search spaces',
+    communities: 'Get and search communities',
+    communityNotes: 'Create, evaluate, search, and delete community notes',
+    trends: 'Get trending topics by location or personalized',
+    news: 'Search and get news stories',
+    media: 'Upload media and check upload status',
+    usage: 'Get API usage statistics',
+  },
 
   extractPermMetadata(
     method: string,

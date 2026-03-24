@@ -41,7 +41,7 @@ export const TIMEOUTS = {
 
 // --- Default Policy ---
 
-import type { Policy } from './types.js';
+import type { Policy, PolicyV2, PolicyDecision, OperationType } from './types.js';
 
 export const DEFAULT_POLICY: Policy = {
   default: 'ask',
@@ -50,6 +50,50 @@ export const DEFAULT_POLICY: Policy = {
     { operations: ['write', 'delete'], action: 'ask' },
   ],
 };
+
+/** Default policy action per operation category */
+export const DEFAULT_CATEGORY_ACTIONS: Record<OperationType, PolicyDecision> = {
+  read: 'allow',
+  write: 'ask',
+  delete: 'ask',
+};
+
+export const DEFAULT_POLICY_V2: PolicyV2 = {
+  version: 2,
+  default: 'ask',
+  categories: {
+    read: { action: 'allow' },
+    write: { action: 'ask' },
+    delete: { action: 'ask' },
+  },
+};
+
+/** Extract method group prefix (e.g. "messages" from "messages.send") */
+export function getMethodGroup(method: string): string {
+  const dot = method.indexOf('.');
+  return dot === -1 ? method : method.slice(0, dot);
+}
+
+/** Migrate a V1 policy to V2 format. V2 policies pass through unchanged. */
+export function migratePolicy(policy: Policy | PolicyV2): PolicyV2 {
+  if ('version' in policy && policy.version === 2) return policy as PolicyV2;
+  const v1 = policy as Policy;
+  const actions: Record<string, PolicyDecision> = { read: 'allow', write: 'ask', delete: 'ask' };
+  for (const rule of v1.rules ?? []) {
+    for (const op of rule.operations ?? []) {
+      actions[op] = rule.action;
+    }
+  }
+  return {
+    version: 2,
+    default: v1.default ?? 'ask',
+    categories: {
+      read: { action: actions.read as PolicyDecision },
+      write: { action: actions.write as PolicyDecision },
+      delete: { action: actions.delete as PolicyDecision },
+    },
+  };
+}
 
 // --- Server Config ---
 

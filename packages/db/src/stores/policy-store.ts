@@ -1,5 +1,5 @@
 import type Database from 'better-sqlite3';
-import type { Policy } from '@keepai/proto/types.js';
+import type { Policy, PolicyV2 } from '@keepai/proto/types.js';
 
 interface PolicyRow {
   service: string;
@@ -14,7 +14,7 @@ export interface PolicyEntry {
   service: string;
   accountId: string;
   agentId: string;
-  policy: Policy;
+  policy: Policy | PolicyV2;
   createdAt: number;
   updatedAt: number;
 }
@@ -37,7 +37,7 @@ export class PolicyStore {
     service: string;
     accountId: string;
     agentId: string;
-    policy: Policy;
+    policy: Policy | PolicyV2;
   }): void {
     this.db
       .prepare(

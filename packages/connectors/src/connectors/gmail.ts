@@ -891,6 +891,14 @@ export const gmailConnector: Connector = {
   service: 'gmail',
   name: 'Gmail',
   methods,
+  groupDescriptions: {
+    messages: 'Search, read, send, trash, and delete emails',
+    attachments: 'Download email attachments',
+    drafts: 'Create, list, update, send, and delete drafts',
+    labels: 'List, create, update, and delete email labels',
+    threads: 'List, read, modify, trash, and delete email threads',
+    profile: 'Get email account profile info',
+  },
 
   extractPermMetadata(
     method: string,

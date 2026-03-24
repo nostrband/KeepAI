@@ -734,6 +734,16 @@ export const airtableConnector: Connector = {
   service: 'airtable',
   name: 'Airtable',
   methods,
+  groupDescriptions: {
+    bases: 'List accessible bases',
+    base: 'List tables and fields in a base',
+    records: 'List, get, create, update, upsert, and delete records',
+    comments: 'List, create, update, and delete record comments',
+    table: 'Create and update tables',
+    field: 'Create and update fields',
+    webhooks: 'List webhooks for a base',
+    webhook: 'Create, delete, poll, and refresh webhooks',
+  },
 
   extractPermMetadata(
     method: string,

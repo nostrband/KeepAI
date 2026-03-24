@@ -28,6 +28,15 @@ export function useConnectionPolicies(connectionId: string) {
   });
 }
 
+export function useServiceMethods(service: string) {
+  return useQuery({
+    queryKey: qk.serviceMethods(service),
+    queryFn: () => api.getServiceMethods(service),
+    enabled: !!service,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useSavePolicy() {
   const queryClient = useQueryClient();
   const posthog = usePostHog();
