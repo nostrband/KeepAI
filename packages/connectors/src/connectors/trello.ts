@@ -14,6 +14,7 @@ import type {
   OAuthCredentials,
 } from '@keepai/proto';
 import { getTrelloCredentials } from '../credentials.js';
+import { classifyFetchError } from '../classify-fetch-error.js';
 
 const TRELLO_API = 'https://api.trello.com/1';
 
@@ -46,7 +47,7 @@ async function trelloFetch(
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Trello API error ${response.status}: ${text}`);
+    throw classifyFetchError(response.status, `Trello API error ${response.status}: ${text}`, 'trello');
   }
 
   if (response.status === 204 || response.headers.get('content-length') === '0') {

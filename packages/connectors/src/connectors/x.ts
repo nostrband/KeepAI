@@ -3,7 +3,7 @@
  * spaces, communities, community notes, trends, news, media, and usage.
  */
 
-import { Client, OAuth1 } from '@xdevplatform/xdk';
+import { Client, OAuth1, ApiError as XApiError } from '@xdevplatform/xdk';
 import type {
   Connector,
   ConnectorMethod,
@@ -11,6 +11,7 @@ import type {
   ServiceHelp,
   OAuthCredentials,
 } from '@keepai/proto';
+import { AuthError, NetworkError, PermissionError, LogicError } from '@keepai/proto';
 
 // ---------------------------------------------------------------------------
 // SDK client helper
@@ -1384,7 +1385,11 @@ export const xConnector: Connector = {
     params: Record<string, unknown>,
     credentials: OAuthCredentials
   ): Promise<unknown> {
-    return executeX(method, params, credentials);
+    try {
+      return await executeX(method, params, credentials);
+    } catch (err) {
+      throw classifyXError(err);
+    }
   },
 
   help(method?: string): ServiceHelp {
@@ -1405,3 +1410,22 @@ export const xConnector: Connector = {
     };
   },
 };
+
+function classifyXError(err: unknown): Error {
+  if (err instanceof XApiError) {
+    const status = err.status;
+    if (status === 401) {
+      return new AuthError('X token is invalid or expired', {
+        cause: err, source: 'x', serviceId: 'x', accountId: '',
+      });
+    }
+    if (status === 403) {
+      return new PermissionError(err.message, { cause: err, source: 'x' });
+    }
+    if (status === 429 || status === 408 || status >= 500) {
+      return new NetworkError(err.message, { cause: err, source: 'x', statusCode: status });
+    }
+    return new LogicError(err.message, { cause: err, source: 'x' });
+  }
+  return err instanceof Error ? err : new Error(String(err));
+}

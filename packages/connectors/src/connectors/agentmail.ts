@@ -10,6 +10,7 @@ import type {
   ServiceHelp,
   OAuthCredentials,
 } from '@keepai/proto';
+import { classifyFetchError } from '../classify-fetch-error.js';
 
 const AGENTMAIL_API = 'https://api.agentmail.to/v0';
 
@@ -34,10 +35,7 @@ async function agentmailFetch(
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     const msg = (body as any)?.message || `AgentMail API error: ${res.status}`;
-    throw Object.assign(new Error(msg), {
-      status: res.status,
-      name: (body as any)?.name,
-    });
+    throw classifyFetchError(res.status, msg, 'agentmail');
   }
 
   if (res.status === 204) return {};

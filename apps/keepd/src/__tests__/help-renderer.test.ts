@@ -316,14 +316,13 @@ describe('renderMethodDetail with real connectors', () => {
     }
   });
 
-  it('works with notion MCP connector help output', async () => {
-    const { McpConnector, notionMcpConfig } = await import('@keepai/connectors');
-    const notionMcp = new McpConnector(notionMcpConfig);
-    // Without MCP server, methods are empty — test help structure
-    const help = notionMcp.help();
+  it('works with notion connector help output', async () => {
+    const { notionConnector } = await import('@keepai/connectors');
+    const help = notionConnector.help();
     help.accounts = [{ id: 'ws-123', label: 'My Workspace' }];
     expect(help.service).toBe('notion');
     expect(help.name).toBe('Notion');
+    expect(help.methods.length).toBeGreaterThan(0);
   });
 
   it('renders service methods list for real gmail connector', async () => {

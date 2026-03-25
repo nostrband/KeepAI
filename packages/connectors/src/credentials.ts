@@ -26,6 +26,13 @@ export function getAirtableCredentials(): OAuthAppCredentials {
   };
 }
 
+export function getNotionCredentials(): OAuthAppCredentials {
+  return {
+    clientId: process.env.NOTION_CLIENT_ID || '',
+    clientSecret: process.env.NOTION_CLIENT_SECRET || '',
+  };
+}
+
 export function getTrelloCredentials(): OAuthAppCredentials {
   return {
     clientId: process.env.TRELLO_API_KEY || '',
@@ -39,6 +46,8 @@ export function getCredentialsForService(service: string): OAuthAppCredentials {
       return getGoogleCredentials();
     case 'github':
       return getGitHubCredentials();
+    case 'notion':
+      return getNotionCredentials();
     case 'airtable':
       return getAirtableCredentials();
     case 'trello':

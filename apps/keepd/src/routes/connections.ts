@@ -22,7 +22,7 @@ import type { BillingManager } from '../managers/billing-manager.js';
 
 export const HEALTH_CHECK_METHODS: Record<string, { method: string; params: Record<string, unknown> }> = {
   gmail: { method: 'profile.get', params: {} },
-  notion: { method: 'users.list', params: { user_id: 'self' } },
+  notion: { method: 'users.me', params: {} },
   github: { method: 'get_me', params: {} },
   airtable: { method: 'whoami', params: {} },
   trello: { method: 'members.me', params: {} },
@@ -161,7 +161,11 @@ export async function registerConnectionRoutes(
     '/api/connections/:service/connect',
     async (request, reply) => {
       const { service } = request.params;
-      const baseUrl = getServerBaseUrl();
+      let baseUrl = getServerBaseUrl();
+      // Notion requires 'localhost' in redirect URIs, rejects 127.0.0.1
+      if (service === 'notion') {
+        baseUrl = baseUrl.replace('://127.0.0.1', '://localhost');
+      }
       const redirectUri = `${baseUrl}/api/connections/${service}/callback`;
 
       try {

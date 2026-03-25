@@ -9,6 +9,7 @@ import type {
   ServiceHelp,
   OAuthCredentials,
 } from '@keepai/proto';
+import { classifyFetchError } from '../classify-fetch-error.js';
 
 const AIRTABLE_API = 'https://api.airtable.com/v0';
 
@@ -29,7 +30,7 @@ async function airtableFetch(
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Airtable API error ${response.status}: ${text}`);
+    throw classifyFetchError(response.status, `Airtable API error ${response.status}: ${text}`, 'airtable');
   }
 
   if (response.status === 204 || response.headers.get('content-length') === '0') {

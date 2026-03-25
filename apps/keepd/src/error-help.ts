@@ -16,6 +16,8 @@ import type { ConnectorMethod, ParamSchema } from '@keepai/proto';
  *   Usage: npx keepai run gmail drafts.create --to=<string> --subject=<string> --body=<string>
  *
  *   Run 'npx keepai help gmail drafts.create' for full details.
+ *
+ * When complex types (object/array) are involved, also shows --stdin and --params hints.
  */
 export function renderMissingParams(
   service: string,
@@ -31,6 +33,14 @@ export function renderMissingParams(
   const required = allParams.filter(p => p.required);
   const flags = required.map(p => `--${p.name}=<${p.type}>`).join(' ');
   lines.push(`Usage: npx keepai run ${service} ${method} ${flags}`);
+
+  if (hasComplexParams(allParams)) {
+    lines.push('');
+    lines.push('Tip: for object/array parameters, pass JSON via stdin or --params:');
+    lines.push(`  echo '{ ... }' | npx keepai run ${service} ${method} --stdin`);
+    lines.push(`  npx keepai run ${service} ${method} --params '{ ... }'`);
+  }
+
   lines.push('');
   lines.push(`Run 'npx keepai help ${service} ${method}' for full details.`);
 
@@ -131,6 +141,14 @@ export function renderInvalidParam(
   const lines: string[] = [];
   const display = typeof actualValue === 'string' ? `'${actualValue}'` : String(actualValue);
   lines.push(`Error: '${paramName}' must be a ${expectedType}, got ${display}`);
+
+  if (expectedType === 'object' || expectedType === 'array') {
+    lines.push('');
+    lines.push('Tip: for object/array parameters, pass JSON via stdin or --params:');
+    lines.push(`  echo '{ ... }' | npx keepai run ${service} ${method} --stdin`);
+    lines.push(`  npx keepai run ${service} ${method} --params '{ ... }'`);
+  }
+
   lines.push('');
   lines.push(`Run 'npx keepai help ${service} ${method}' for parameter details.`);
 
@@ -166,6 +184,10 @@ export function renderMultipleAccounts(
   lines.push(`Example: npx keepai run ${service} ${method} --account=${accounts[0]?.id ?? 'ACCOUNT_ID'}`);
 
   return lines.join('\n');
+}
+
+function hasComplexParams(params: ParamSchema[]): boolean {
+  return params.some(p => p.type === 'object' || p.type === 'array');
 }
 
 // --- Fuzzy matching ---

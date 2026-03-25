@@ -1,61 +1,77 @@
+/**
+ * Notion service definition — OAuth2 with basic auth for token exchange.
+ *
+ * Auth flow: user authorizes via Notion's OAuth page, which redirects back
+ * to KeepAI with an authorization code. Token exchange uses basic auth
+ * (client_id:client_secret) per Notion's requirements.
+ */
+
 import type { ServiceDefinition, TokenResponse } from '../types.js';
-import type { McpSession } from '@keepai/mcp-client';
+
+export interface NotionProfile {
+  id: string;
+  name: string;
+  type: string;
+  avatar_url?: string;
+  bot?: {
+    owner?: {
+      type: string;
+      user?: { name?: string; person?: { email?: string } };
+    };
+    workspace_name?: string;
+  };
+}
+
+export async function fetchNotionProfile(
+  accessToken: string
+): Promise<NotionProfile> {
+  const response = await fetch('https://api.notion.com/v1/users/me', {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Notion-Version': '2022-06-28',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch Notion profile: ${response.status}`);
+  }
+
+  return response.json();
+}
 
 export const notionService: ServiceDefinition = {
   id: 'notion',
   name: 'Notion',
   icon: 'book-open',
-  mcpOAuth: {
-    serverUrl: 'https://mcp.notion.com',
-    clientName: 'KeepAI',
-  },
-  // Placeholder — MCP OAuth flow uses McpOAuthClient, not OAuthHandler
   oauthConfig: {
-    authUrl: '',
-    tokenUrl: '',
+    authUrl: 'https://api.notion.com/v1/oauth/authorize',
+    tokenUrl: 'https://api.notion.com/v1/oauth/token',
     scopes: [],
+    useBasicAuth: true,
+    revokeUrl: 'https://api.notion.com/v1/oauth/revoke',
+    extraAuthParams: { owner: 'user' },
   },
   supportsRefresh: true,
+  fetchProfile: fetchNotionProfile,
+
   async extractAccountId(tokenResponse: TokenResponse): Promise<string> {
-    // For MCP OAuth, account ID is extracted via mcpExtractAccountId instead
-    return tokenResponse.workspace_id as string ?? 'default';
+    // Use workspace_id (stable UUID) — workspace names can be renamed
+    return (tokenResponse.workspace_id as string) ?? 'default';
   },
-  extractDisplayName(tokenResponse: TokenResponse): string | undefined {
-    return (tokenResponse.workspace_name as string) || (tokenResponse.workspace_id as string);
-  },
-  async mcpExtractAccountId(session: unknown): Promise<{
-    accountId: string;
-    displayName?: string;
-  }> {
-    const mcpSession = session as McpSession;
-    try {
-      const result = await mcpSession.callTool('notion-get-users', { user_id: 'self' });
-      const text = result.content
-        .filter((c) => c.type === 'text' && c.text)
-        .map((c) => c.text!)
-        .join('\n');
-      const parsed = JSON.parse(text);
 
-      // Response is { results: [{ type, id, name, email }], has_more }
-      const user = parsed?.results?.[0];
-      if (user) {
-        // Use email as account ID (stable, human-readable), fall back to user ID
-        const accountId = user.email || user.id;
-        const displayName = user.name || user.email || user.id;
-        return { accountId: String(accountId), displayName: String(displayName) };
-      }
+  extractDisplayName(
+    tokenResponse: TokenResponse,
+    profile?: unknown,
+  ): string | undefined {
+    const p = profile as NotionProfile | undefined;
+    const workspaceName = (tokenResponse.workspace_name as string)
+      || p?.bot?.workspace_name;
+    const ownerName = p?.bot?.owner?.user?.name;
+    const ownerEmail = p?.bot?.owner?.user?.person?.email;
 
-      // Fallback: top-level fields
-      if (parsed?.id) {
-        return {
-          accountId: String(parsed.id),
-          displayName: String(parsed.name || parsed.id),
-        };
-      }
-
-      return { accountId: 'default', displayName: 'Notion Workspace' };
-    } catch {
-      return { accountId: 'default', displayName: 'Notion Workspace' };
-    }
+    if (workspaceName && ownerEmail) return `${workspaceName} (${ownerEmail})`;
+    if (workspaceName && ownerName) return `${workspaceName} (${ownerName})`;
+    if (workspaceName) return workspaceName;
+    return (tokenResponse.workspace_id as string);
   },
 };

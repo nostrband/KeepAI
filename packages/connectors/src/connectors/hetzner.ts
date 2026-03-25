@@ -14,6 +14,7 @@ import type {
   ServiceHelp,
   OAuthCredentials,
 } from '@keepai/proto';
+import { classifyFetchError } from '../classify-fetch-error.js';
 
 // ---------------------------------------------------------------------------
 // HTTP client helper
@@ -38,10 +39,7 @@ async function hetznerFetch(
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     const error = (body as any)?.error;
-    throw Object.assign(
-      new Error(error?.message || `Hetzner API error: ${res.status}`),
-      { status: res.status, code: error?.code, retryAfter: res.headers.get('retry-after') },
-    );
+    throw classifyFetchError(res.status, error?.message || `Hetzner API error: ${res.status}`, 'hetzner');
   }
 
   if (res.status === 204) return {};

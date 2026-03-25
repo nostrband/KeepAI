@@ -11,8 +11,7 @@ import {
   gmailService,
   notionService,
   gmailConnector,
-  McpConnector,
-  notionMcpConfig,
+  notionConnector,
   ConnectorExecutor,
 } from '../index.js';
 
@@ -58,13 +57,11 @@ describe('OAuthHandler', () => {
     expect(url).toContain('prompt=consent');
   });
 
-  it('Notion MCP config should have correct settings', () => {
-    expect(notionMcpConfig.service).toBe('notion');
-    expect(notionMcpConfig.name).toBe('Notion');
-    expect(notionMcpConfig.serverUrl).toBe('https://mcp.notion.com');
-    expect(notionMcpConfig.mcpEndpoint).toBe('/mcp');
-    expect(notionMcpConfig.methodNames).toBeDefined();
-    expect(notionMcpConfig.toolTypes).toBeDefined();
+  it('Notion OAuth config should have correct settings', () => {
+    expect(notionService.oauthConfig.authUrl).toBe('https://api.notion.com/v1/oauth/authorize');
+    expect(notionService.oauthConfig.tokenUrl).toBe('https://api.notion.com/v1/oauth/token');
+    expect(notionService.oauthConfig.useBasicAuth).toBe(true);
+    expect(notionService.oauthConfig.revokeUrl).toBe('https://api.notion.com/v1/oauth/revoke');
   });
 
   it('should work without state parameter', () => {
@@ -213,13 +210,12 @@ describe('Service definitions', () => {
     expect(gmailService.oauthConfig.scopes.length).toBeGreaterThan(0);
   });
 
-  it('Notion service should have MCP OAuth config', () => {
+  it('Notion service should have OAuth2 config', () => {
     expect(notionService.id).toBe('notion');
     expect(notionService.name).toBe('Notion');
     expect(notionService.supportsRefresh).toBe(true);
-    expect(notionService.mcpOAuth).toBeDefined();
-    expect(notionService.mcpOAuth!.serverUrl).toBe('https://mcp.notion.com');
-    expect(notionService.mcpOAuth!.clientName).toBe('KeepAI');
+    expect(notionService.oauthConfig.authUrl).toContain('notion.com');
+    expect(notionService.oauthConfig.useBasicAuth).toBe(true);
   });
 
   it('Gmail should extract account ID from profile', async () => {
@@ -283,40 +279,61 @@ describe('Gmail connector', () => {
   });
 });
 
-describe('Notion MCP connector', () => {
-  let notionMcp: McpConnector;
-
-  beforeEach(() => {
-    notionMcp = new McpConnector(notionMcpConfig);
-    // Not calling initialize() — methods will be empty without a live MCP server
-  });
-
+describe('Notion connector', () => {
   it('should have correct service identity', () => {
-    expect(notionMcp.service).toBe('notion');
-    expect(notionMcp.name).toBe('Notion');
+    expect(notionConnector.service).toBe('notion');
+    expect(notionConnector.name).toBe('Notion');
   });
 
-  it('should start with empty methods before initialization', () => {
-    expect(notionMcp.methods.length).toBe(0);
+  it('should have methods', () => {
+    expect(notionConnector.methods.length).toBeGreaterThan(0);
   });
 
-  it('should provide help even with empty methods', () => {
-    const help = notionMcp.help();
+  it('should extract permission metadata for pages.create', () => {
+    const meta = notionConnector.extractPermMetadata('pages.create', { parent: { page_id: 'abc' } }, 'ws-123');
+    expect(meta.service).toBe('notion');
+    expect(meta.accountId).toBe('ws-123');
+    expect(meta.method).toBe('pages.create');
+    expect(meta.operationType).toBe('write');
+    expect(meta.resourceType).toBe('pages');
+  });
+
+  it('should extract permission metadata for blocks.delete', () => {
+    const meta = notionConnector.extractPermMetadata('blocks.delete', { block_id: 'blk-1' }, 'ws-123');
+    expect(meta.operationType).toBe('delete');
+    expect(meta.description).toContain('blk-1');
+  });
+
+  it('should extract permission metadata for search', () => {
+    const meta = notionConnector.extractPermMetadata('search', { query: 'test' }, 'ws-123');
+    expect(meta.operationType).toBe('read');
+    expect(meta.description).toContain('test');
+  });
+
+  it('should throw on unknown method', () => {
+    expect(() => notionConnector.extractPermMetadata('unknown.method', {}, 'x')).toThrow('Unknown Notion method');
+  });
+
+  it('should provide help for all methods', () => {
+    const help = notionConnector.help();
     expect(help.service).toBe('notion');
-    expect(help.name).toBe('Notion');
-    expect(help.methods).toEqual([]);
+    expect(help.methods.length).toBeGreaterThan(0);
+  });
+
+  it('should provide help for a specific method', () => {
+    const help = notionConnector.help('pages.create');
+    expect(help.methods.length).toBe(1);
+    expect(help.methods[0].name).toBe('pages.create');
   });
 });
 
 describe('ConnectorExecutor', () => {
   let executor: ConnectorExecutor;
-  let notionMcp: McpConnector;
 
   beforeEach(() => {
     executor = new ConnectorExecutor();
     executor.register(gmailConnector);
-    notionMcp = new McpConnector(notionMcpConfig);
-    executor.register(notionMcp);
+    executor.register(notionConnector);
   });
 
   it('should list registered services', () => {

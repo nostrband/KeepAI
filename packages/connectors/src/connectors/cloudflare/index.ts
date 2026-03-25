@@ -8,6 +8,17 @@
  * Uses the official `cloudflare` npm package. Auth is via API token.
  */
 
+import {
+  AuthenticationError as CfAuthError,
+  PermissionDeniedError as CfPermError,
+  RateLimitError as CfRateError,
+  InternalServerError as CfServerError,
+  APIConnectionError as CfConnError,
+  APIConnectionTimeoutError as CfTimeoutError,
+  APIError as CfAPIError,
+} from 'cloudflare';
+import { AuthError, NetworkError, PermissionError, LogicError } from '@keepai/proto';
+
 import Cloudflare from 'cloudflare';
 import type {
   Connector,
@@ -174,7 +185,37 @@ async function execute(
   if (typeof fn !== 'function') throw new Error(`Unknown Cloudflare method: ${method}`);
 
   // CF SDK takes a single params object for most methods
-  return fn.call(target, params);
+  try {
+    return await fn.call(target, params);
+  } catch (err) {
+    throw classifyCloudflareError(err);
+  }
+}
+
+function classifyCloudflareError(err: unknown): Error {
+  if (err instanceof CfTimeoutError || err instanceof CfConnError) {
+    return new NetworkError((err as Error).message, { cause: err as Error, source: 'cloudflare' });
+  }
+  if (err instanceof CfAuthError) {
+    return new AuthError('Cloudflare token is invalid or expired', {
+      cause: err as Error, source: 'cloudflare', serviceId: 'cloudflare', accountId: '',
+    });
+  }
+  if (err instanceof CfPermError) {
+    return new PermissionError((err as Error).message, { cause: err as Error, source: 'cloudflare' });
+  }
+  if (err instanceof CfRateError) {
+    return new NetworkError((err as Error).message, { cause: err as Error, source: 'cloudflare', statusCode: 429 });
+  }
+  if (err instanceof CfServerError) {
+    const status = (err as any).status ?? 500;
+    return new NetworkError((err as Error).message, { cause: err as Error, source: 'cloudflare', statusCode: status });
+  }
+  if (err instanceof CfAPIError) {
+    const status = (err as any).status;
+    return new LogicError((err as Error).message, { cause: err as Error, source: 'cloudflare' });
+  }
+  return err instanceof Error ? err : new Error(String(err));
 }
 
 // ---------------------------------------------------------------------------

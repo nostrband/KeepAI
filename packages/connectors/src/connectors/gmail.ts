@@ -9,6 +9,7 @@ import type {
   ServiceHelp,
   OAuthCredentials,
 } from '@keepai/proto';
+import { classifyFetchError } from '../classify-fetch-error.js';
 
 const GMAIL_API = 'https://gmail.googleapis.com/gmail/v1/users/me';
 
@@ -29,7 +30,7 @@ async function gmailFetch(
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Gmail API error ${response.status}: ${text}`);
+    throw classifyFetchError(response.status, `Gmail API error ${response.status}: ${text}`, 'gmail');
   }
 
   if (response.status === 204 || response.headers.get('content-length') === '0') {

@@ -24,6 +24,7 @@
   "dependencies": {
     "@keepai/mcp-client": "file:../mcp-client",
     "@keepai/proto": "file:../proto",
+    "@notionhq/client": "^5.14.0",
     "cloudflare": "^5.2.0",
     "googleapis": "^140.0.1"
   },

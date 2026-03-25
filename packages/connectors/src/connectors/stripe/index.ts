@@ -7,6 +7,7 @@
  */
 
 import Stripe from 'stripe';
+import { AuthError, NetworkError, PermissionError, LogicError } from '@keepai/proto';
 import type {
   Connector,
   ConnectorMethod,
@@ -205,6 +206,47 @@ async function execute(
   return fn.call(resource);
 }
 
+async function executeWithClassification(
+  method: string,
+  params: Record<string, unknown>,
+  credentials: OAuthCredentials,
+): Promise<unknown> {
+  try {
+    return await execute(method, params, credentials);
+  } catch (err) {
+    throw classifyStripeError(err);
+  }
+}
+
+function classifyStripeError(err: unknown): Error {
+  if (err instanceof Stripe.errors.StripeAuthenticationError
+      || err instanceof Stripe.errors.StripeInvalidGrantError) {
+    return new AuthError('Stripe API key is invalid or expired', {
+      cause: err as Error, source: 'stripe', serviceId: 'stripe', accountId: '',
+    });
+  }
+  if (err instanceof Stripe.errors.StripePermissionError) {
+    return new PermissionError((err as Error).message, { cause: err as Error, source: 'stripe' });
+  }
+  if (err instanceof Stripe.errors.StripeRateLimitError) {
+    return new NetworkError((err as Error).message, { cause: err as Error, source: 'stripe', statusCode: 429 });
+  }
+  if (err instanceof Stripe.errors.StripeConnectionError) {
+    return new NetworkError((err as Error).message, { cause: err as Error, source: 'stripe' });
+  }
+  if (err instanceof Stripe.errors.StripeAPIError) {
+    const status = (err as any).statusCode;
+    if (status && status >= 500) {
+      return new NetworkError((err as Error).message, { cause: err as Error, source: 'stripe', statusCode: status });
+    }
+    return new LogicError((err as Error).message, { cause: err as Error, source: 'stripe' });
+  }
+  if (err instanceof Stripe.errors.StripeError) {
+    return new LogicError((err as Error).message, { cause: err as Error, source: 'stripe' });
+  }
+  return err instanceof Error ? err : new Error(String(err));
+}
+
 // ---------------------------------------------------------------------------
 // Connector export
 // ---------------------------------------------------------------------------
@@ -273,7 +315,7 @@ export const stripeConnector: Connector = {
     };
   },
 
-  execute,
+  execute: executeWithClassification,
 
   help(method?: string): ServiceHelp {
     if (method) {

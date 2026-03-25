@@ -360,7 +360,7 @@ export class ConnectionManager {
         service: serviceId,
         accountId,
         status: 'connected',
-        label: existing?.label,
+        label: existing?.label ?? (metadata.displayName as string | undefined),
         error: undefined,
         createdAt: existing?.createdAt ?? now,
         lastUsedAt: existing?.lastUsedAt,

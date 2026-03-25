@@ -12,6 +12,7 @@ export { CredentialStore } from './store.js';
 // Build-time credentials
 export {
   getGoogleCredentials,
+  getNotionCredentials,
   getGitHubCredentials,
   getAirtableCredentials,
   getTrelloCredentials,
@@ -58,6 +59,7 @@ export { cloudflareService } from './services/cloudflare.js';
 
 // Connectors (method registries + execution)
 export { gmailConnector } from './connectors/gmail.js';
+export { notionConnector } from './connectors/notion/index.js';
 export { airtableConnector } from './connectors/airtable.js';
 export { trelloConnector } from './connectors/trello.js';
 export { xConnector } from './connectors/x.js';
@@ -69,7 +71,6 @@ export { cloudflareConnector } from './connectors/cloudflare/index.js';
 // MCP Connector
 export { McpConnector } from './mcp-connector.js';
 export type { McpConnectorConfig } from './mcp-connector.js';
-export { notionMcpConfig } from './connectors/notion-mcp.js';
 export { githubMcpConfig } from './connectors/github-mcp.js';
 
 // Executor (registry + dispatcher)

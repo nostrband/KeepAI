@@ -32,6 +32,7 @@ import {
   CredentialStore,
   ConnectorExecutor,
   gmailConnector,
+  notionConnector,
   airtableConnector,
   trelloConnector,
   xConnector,
@@ -40,7 +41,6 @@ import {
   agentmailConnector,
   cloudflareConnector,
   McpConnector,
-  notionMcpConfig,
   githubMcpConfig,
   gmailService,
   notionService,
@@ -138,6 +138,7 @@ export async function createServer(config: ServerConfig = {}) {
   // 7. Initialize ConnectorExecutor
   const connectorExecutor = new ConnectorExecutor();
   connectorExecutor.register(gmailConnector);
+  connectorExecutor.register(notionConnector);
   connectorExecutor.register(airtableConnector);
   connectorExecutor.register(trelloConnector);
   connectorExecutor.register(xConnector);
@@ -147,16 +148,12 @@ export async function createServer(config: ServerConfig = {}) {
   connectorExecutor.register(cloudflareConnector);
 
   // MCP connectors
-  const notionMcp = new McpConnector(notionMcpConfig);
-  connectorExecutor.register(notionMcp);
-
   const githubMcp = new McpConnector(githubMcpConfig);
   connectorExecutor.register(githubMcp);
 
   // Seed MCP connectors with stored tokens in the background (non-blocking).
   // If it fails, ensureReady() will retry on first request.
   for (const { service, connector } of [
-    { service: 'notion', connector: notionMcp },
     { service: 'github', connector: githubMcp },
   ]) {
     const conns = await connectionManager.listConnectionsByService(service);

@@ -139,8 +139,10 @@ export function AppDetailPage() {
           <dd className="font-mono text-xs">{connectionId}</dd>
           <dt className="text-muted-foreground">Service</dt>
           <dd>{serviceName(connection.service)}</dd>
-          <dt className="text-muted-foreground">Account</dt>
+          <dt className="text-muted-foreground">Account Name</dt>
           <dd className="font-mono text-xs">{connection.label || connection.accountId}</dd>
+          <dt className="text-muted-foreground">Account ID</dt>
+          <dd className="font-mono text-xs">{connection.accountId}</dd>
           <dt className="text-muted-foreground">Status</dt>
           <dd>{connection.status}</dd>
           <dt className="text-muted-foreground">Connected</dt>
