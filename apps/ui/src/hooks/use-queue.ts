@@ -25,6 +25,14 @@ export function useQueue() {
   return query;
 }
 
+export function useResolvableTypes() {
+  return useQuery({
+    queryKey: qk.resolvableTypes(),
+    queryFn: api.getResolvableTypes,
+    staleTime: Infinity, // static data, only changes on redeploy
+  });
+}
+
 export function useApproveRequest() {
   const queryClient = useQueryClient();
   const posthog = usePostHog();

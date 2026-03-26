@@ -1,11 +1,12 @@
 import { ShieldCheck } from 'lucide-react';
-import { useQueue, useApproveRequest, useDenyRequest } from '../hooks/use-queue';
+import { useQueue, useApproveRequest, useDenyRequest, useResolvableTypes } from '../hooks/use-queue';
 import { ApprovalCard } from '../components/approval-card';
 import { EmptyState } from '../components/empty-state';
 import { PageTitle } from '../components/page-title';
 
 export function ApprovalsPage() {
   const { data: queue, isLoading } = useQueue();
+  const { data: allResolvableTypes } = useResolvableTypes();
   const approveMutation = useApproveRequest();
   const denyMutation = useDenyRequest();
 
@@ -29,6 +30,7 @@ export function ApprovalsPage() {
             <ApprovalCard
               key={item.id}
               item={item}
+              resolvableTypes={allResolvableTypes?.[item.service]}
               onApprove={(id) => approveMutation.mutate(id)}
               onDeny={(id) => denyMutation.mutate(id)}
               isApproving={approveMutation.isPending}

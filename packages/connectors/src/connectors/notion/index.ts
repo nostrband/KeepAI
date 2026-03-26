@@ -12,6 +12,8 @@ import type {
   PermissionMetadata,
   ServiceHelp,
   OAuthCredentials,
+  ResolveResult,
+  ResolvableType,
 } from '@keepai/proto';
 import { AuthError, NetworkError, PermissionError, LogicError } from '@keepai/proto';
 
@@ -53,34 +55,44 @@ const allMethods: ConnectorMethod[] = [
 // Human-readable request descriptions
 // ---------------------------------------------------------------------------
 
+/** Wrap an ID as a resolvable [type:id] reference, or return '(unknown)'. */
+function ref(type: string, id: unknown): string {
+  return id ? `[${type}:${id}]` : '(unknown)';
+}
+
 function describeNotionRequest(method: string, params: Record<string, unknown>): string {
   switch (method) {
-    case 'pages.create': return `Create page${params.parent ? ` in ${JSON.stringify(params.parent)}` : ''}`;
-    case 'pages.retrieve': return `Retrieve page ${params.page_id || '(unknown)'}`;
-    case 'pages.update': return `Update page ${params.page_id || '(unknown)'}`;
-    case 'pages.move': return `Move page ${params.page_id || '(unknown)'}`;
-    case 'pages.retrieveMarkdown': return `Retrieve page markdown ${params.page_id || '(unknown)'}`;
-    case 'pages.updateMarkdown': return `Update page markdown ${params.page_id || '(unknown)'}`;
-    case 'pages.properties.retrieve': return `Retrieve property ${params.property_id || '(unknown)'} of page ${params.page_id || '(unknown)'}`;
-    case 'blocks.retrieve': return `Retrieve block ${params.block_id || '(unknown)'}`;
-    case 'blocks.update': return `Update block ${params.block_id || '(unknown)'}`;
-    case 'blocks.delete': return `Delete block ${params.block_id || '(unknown)'}`;
-    case 'blocks.children.list': return `List children of block ${params.block_id || '(unknown)'}`;
-    case 'blocks.children.append': return `Append children to block ${params.block_id || '(unknown)'}`;
-    case 'databases.retrieve': return `Retrieve database ${params.database_id || '(unknown)'}`;
+    case 'pages.create': {
+      const parent = params.parent as Record<string, unknown> | undefined;
+      if (parent?.page_id) return `Create page in ${ref('page_id', parent.page_id)}`;
+      if (parent?.database_id) return `Create page in ${ref('database_id', parent.database_id)}`;
+      return 'Create page';
+    }
+    case 'pages.retrieve': return `Retrieve page ${ref('page_id', params.page_id)}`;
+    case 'pages.update': return `Update page ${ref('page_id', params.page_id)}`;
+    case 'pages.move': return `Move page ${ref('page_id', params.page_id)}`;
+    case 'pages.retrieveMarkdown': return `Retrieve markdown of ${ref('page_id', params.page_id)}`;
+    case 'pages.updateMarkdown': return `Update markdown of ${ref('page_id', params.page_id)}`;
+    case 'pages.properties.retrieve': return `Retrieve property of ${ref('page_id', params.page_id)}`;
+    case 'blocks.retrieve': return `Retrieve ${ref('block_id', params.block_id)}`;
+    case 'blocks.update': return `Update ${ref('block_id', params.block_id)}`;
+    case 'blocks.delete': return `Delete ${ref('block_id', params.block_id)}`;
+    case 'blocks.children.list': return `List children of ${ref('block_id', params.block_id)}`;
+    case 'blocks.children.append': return `Append children to ${ref('block_id', params.block_id)}`;
+    case 'databases.retrieve': return `Retrieve ${ref('database_id', params.database_id)}`;
     case 'databases.create': return 'Create database';
-    case 'databases.update': return `Update database ${params.database_id || '(unknown)'}`;
-    case 'dataSources.retrieve': return `Retrieve data source ${params.data_source_id || '(unknown)'}`;
-    case 'dataSources.query': return `Query data source ${params.data_source_id || '(unknown)'}`;
+    case 'databases.update': return `Update ${ref('database_id', params.database_id)}`;
+    case 'dataSources.retrieve': return `Retrieve ${ref('data_source_id', params.data_source_id)}`;
+    case 'dataSources.query': return `Query ${ref('data_source_id', params.data_source_id)}`;
     case 'dataSources.create': return 'Create data source';
-    case 'dataSources.update': return `Update data source ${params.data_source_id || '(unknown)'}`;
-    case 'dataSources.listTemplates': return `List templates for data source ${params.data_source_id || '(unknown)'}`;
-    case 'users.retrieve': return `Retrieve user ${params.user_id || '(unknown)'}`;
+    case 'dataSources.update': return `Update ${ref('data_source_id', params.data_source_id)}`;
+    case 'dataSources.listTemplates': return `List templates for ${ref('data_source_id', params.data_source_id)}`;
+    case 'users.retrieve': return `Retrieve ${ref('user_id', params.user_id)}`;
     case 'users.list': return 'List users';
     case 'users.me': return 'Get bot user info';
     case 'comments.create': return 'Create comment';
-    case 'comments.list': return `List comments for ${params.block_id || '(unknown)'}`;
-    case 'comments.retrieve': return `Retrieve comment ${params.comment_id || '(unknown)'}`;
+    case 'comments.list': return `List comments for ${ref('block_id', params.block_id)}`;
+    case 'comments.retrieve': return `Retrieve ${ref('comment_id', params.comment_id)}`;
     case 'search': return params.query ? `Search: "${params.query}"` : 'Search workspace';
     case 'views.create': return 'Create view';
     case 'views.retrieve': return `Retrieve view ${params.view_id || '(unknown)'}`;
@@ -193,10 +205,109 @@ function classifyNotionError(err: unknown): Error {
 // Connector export
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Resolvable ID types & resolver
+// ---------------------------------------------------------------------------
+
+const notionResolvableTypes: Record<string, ResolvableType> = {
+  page_id: { label: 'Page' },
+  database_id: { label: 'Database' },
+  block_id: { label: 'Block' },
+  user_id: { label: 'User' },
+  comment_id: { label: 'Comment' },
+  data_source_id: { label: 'Data Source' },
+};
+
+function extractPageTitle(page: any): string {
+  const props = page.properties || {};
+  for (const prop of Object.values(props) as any[]) {
+    if (prop.type === 'title' && prop.title?.length) {
+      return prop.title.map((t: any) => t.plain_text).join('');
+    }
+  }
+  return '';
+}
+
+function extractDbTitle(db: any): string {
+  return db.title?.map((t: any) => t.plain_text).join('') || '';
+}
+
+function notionUrl(id: string): string {
+  return `https://notion.so/${id.replace(/-/g, '')}`;
+}
+
+function truncateText(s: string, n: number): string {
+  return s.length > n ? s.slice(0, n) + '…' : s;
+}
+
+async function resolveNotionId(
+  type: string,
+  id: string,
+  credentials: OAuthCredentials,
+): Promise<ResolveResult | null> {
+  const client = getClient(credentials);
+  try {
+    switch (type) {
+      case 'page_id': {
+        const page = await client.pages.retrieve({ page_id: id });
+        return {
+          title: extractPageTitle(page) || 'Untitled',
+          url: notionUrl(id),
+        };
+      }
+      case 'database_id': {
+        const db = await client.databases.retrieve({ database_id: id });
+        return {
+          title: extractDbTitle(db) || 'Untitled database',
+          url: notionUrl(id),
+        };
+      }
+      case 'block_id': {
+        const block: any = await client.blocks.retrieve({ block_id: id });
+        const blockType = (block.type || 'unknown').replace(/_/g, ' ');
+        return {
+          title: `${blockType.charAt(0).toUpperCase()}${blockType.slice(1)} block`,
+          url: notionUrl(id),
+        };
+      }
+      case 'user_id': {
+        const user: any = await client.users.retrieve({ user_id: id });
+        return { title: user.name || 'Unknown user' };
+      }
+      case 'comment_id': {
+        const comment: any = await (client.comments as any).retrieve({ comment_id: id });
+        const text = comment.rich_text?.map((t: any) => t.plain_text).join('') || '';
+        return { title: text ? truncateText(text, 50) : 'Comment' };
+      }
+      case 'data_source_id': {
+        const ds: any = await (client as any).dataSources.retrieve({ data_source_id: id });
+        // title can be a rich text array like pages/databases
+        const title = Array.isArray(ds.title)
+          ? ds.title.map((t: any) => t.plain_text).join('')
+          : typeof ds.title === 'string' ? ds.title : '';
+        // data source ID != page/database ID — use the url field from the response
+        return {
+          title: title || ds.name || 'Data source',
+          url: ds.url || undefined,
+        };
+      }
+      default:
+        return null;
+    }
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Connector export
+// ---------------------------------------------------------------------------
+
 export const notionConnector: Connector = {
   service: 'notion',
   name: 'Notion',
   methods: allMethods,
+  resolvableTypes: notionResolvableTypes,
   groupDescriptions: {
     pages: 'Page management — create, retrieve, update, move, markdown read/write, properties',
     blocks: 'Block management — retrieve, update, delete, append/list children',
@@ -227,6 +338,7 @@ export const notionConnector: Connector = {
   },
 
   execute,
+  resolveId: resolveNotionId,
 
   help(method?: string): ServiceHelp {
     if (method) {

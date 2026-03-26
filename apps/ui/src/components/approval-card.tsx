@@ -2,7 +2,15 @@ import { useState, useEffect, useReducer } from 'react';
 import { ServiceIcon, serviceName } from './service-icon';
 import { ArrowRight, Check, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { AgentAvatar } from './agent-avatar';
+import { ResolvableId } from './resolvable-id';
+import { JsonViewer } from './json-viewer';
+import { parseDescription } from '../lib/parse-description';
 import { api } from '../lib/api';
+
+interface ResolvableTypeInfo {
+  label: string;
+  params?: Record<string, string>;
+}
 
 interface ApprovalCardProps {
   item: {
@@ -15,6 +23,7 @@ interface ApprovalCardProps {
     description?: string;
     createdAt: number;
   };
+  resolvableTypes?: Record<string, ResolvableTypeInfo>;
   onApprove: (id: string) => void;
   onDeny: (id: string) => void;
   isApproving?: boolean;
@@ -31,7 +40,40 @@ function timeAgo(ts: number): string {
   return `${hours}h ago`;
 }
 
-export function ApprovalCard({ item, onApprove, onDeny, isApproving, isDenying }: ApprovalCardProps) {
+function ParsedDescription({
+  description,
+  service,
+  accountId,
+  resolvableTypes,
+}: {
+  description: string;
+  service: string;
+  accountId: string;
+  resolvableTypes: Record<string, ResolvableTypeInfo>;
+}) {
+  const segments = parseDescription(description);
+  return (
+    <>
+      {segments.map((seg, i) => {
+        if (seg.type === 'text') return <span key={i}>{seg.value}</span>;
+        const typeInfo = resolvableTypes[seg.refType];
+        if (!typeInfo) return <span key={i}>{seg.id}</span>;
+        return (
+          <ResolvableId
+            key={i}
+            type={seg.refType}
+            id={seg.id}
+            label={typeInfo.label}
+            service={service}
+            accountId={accountId}
+          />
+        );
+      })}
+    </>
+  );
+}
+
+export function ApprovalCard({ item, resolvableTypes, onApprove, onDeny, isApproving, isDenying }: ApprovalCardProps) {
   const [, forceUpdate] = useReducer((x: number) => x + 1, 0);
   useEffect(() => {
     const id = setInterval(forceUpdate, 15_000);
@@ -60,6 +102,8 @@ export function ApprovalCard({ item, onApprove, onDeny, isApproving, isDenying }
     }
   };
 
+  const types = resolvableTypes ?? {};
+
   return (
     <div className="border border-border rounded-xl p-4 bg-card shadow-sm">
       <div className="flex items-start justify-between gap-3">
@@ -75,9 +119,16 @@ export function ApprovalCard({ item, onApprove, onDeny, isApproving, isDenying }
               <span className="text-sm text-muted-foreground">({item.accountId})</span>
             )}
           </div>
-          {/* Row 2: Human-readable description */}
+          {/* Row 2: Human-readable description with resolvable IDs */}
           {item.description && (
-            <p className="text-sm text-foreground mb-1">{item.description}</p>
+            <p className="text-sm text-foreground mb-1">
+              <ParsedDescription
+                description={item.description}
+                service={item.service}
+                accountId={item.accountId ?? ''}
+                resolvableTypes={types}
+              />
+            </p>
           )}
           {/* Row 3: Method + time + request details toggle in grey */}
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -115,20 +166,39 @@ export function ApprovalCard({ item, onApprove, onDeny, isApproving, isDenying }
       {/* Expandable request details */}
       {expanded && (
         <div className="mt-2 pt-2 border-t border-border/50">
-          <pre className="p-2 rounded bg-muted/50 text-xs font-mono whitespace-pre-wrap break-all max-h-64 overflow-y-auto">
-            {loading
-              ? 'Loading...'
-              : paramsData
-                ? <>
-                    {paramsData.params}
-                    {paramsData.truncated && (
-                      <span className="text-muted-foreground italic">
-                        {'\n'}...({paramsData.truncated.toLocaleString()} chars more)
-                      </span>
-                    )}
-                  </>
-                : 'null'}
-          </pre>
+          {loading
+            ? <pre className="p-2 rounded bg-muted/50 text-xs font-mono">Loading...</pre>
+            : paramsData
+              ? (() => {
+                  // Try to parse JSON for rich rendering with resolvable IDs
+                  try {
+                    const parsed = JSON.parse(paramsData.params);
+                    return (
+                      <JsonViewer
+                        data={parsed}
+                        service={item.service}
+                        accountId={item.accountId ?? ''}
+                        method={item.method}
+                        resolvableTypes={types}
+                        truncated={paramsData.truncated}
+                      />
+                    );
+                  } catch {
+                    // Fallback to raw text (e.g. truncated JSON that can't parse)
+                    return (
+                      <pre className="p-2 rounded bg-muted/50 text-xs font-mono whitespace-pre-wrap break-all max-h-64 overflow-y-auto scrollbar-thin">
+                        {paramsData.params}
+                        {paramsData.truncated != null && paramsData.truncated > 0 && (
+                          <span className="text-muted-foreground italic">
+                            {'\n'}...({paramsData.truncated.toLocaleString()} chars more)
+                          </span>
+                        )}
+                      </pre>
+                    );
+                  }
+                })()
+              : <pre className="p-2 rounded bg-muted/50 text-xs font-mono">null</pre>
+          }
         </div>
       )}
     </div>

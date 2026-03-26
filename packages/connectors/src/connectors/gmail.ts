@@ -8,6 +8,8 @@ import type {
   PermissionMetadata,
   ServiceHelp,
   OAuthCredentials,
+  ResolveResult,
+  ResolvableType,
 } from '@keepai/proto';
 import { classifyFetchError } from '../classify-fetch-error.js';
 
@@ -40,30 +42,34 @@ async function gmailFetch(
   return response.json();
 }
 
+function msgRef(id: unknown): string { return id ? `[message_id:${id}]` : '(unknown)'; }
+function threadRef(id: unknown): string { return id ? `[thread_id:${id}]` : '(unknown)'; }
+function draftRef(id: unknown): string { return id ? `[draft_id:${id}]` : '(unknown)'; }
+
 function describeGmailRequest(method: string, params: Record<string, unknown>): string {
   switch (method) {
     case 'messages.list':
       return params.q ? `Search emails: "${params.q}"` : 'List recent emails';
     case 'messages.get':
-      return `Read email ${params.id || '(unknown)'}`;
+      return `Read email ${msgRef(params.id)}`;
     case 'messages.send': {
       const attCount = Array.isArray(params.attachments) ? params.attachments.length : 0;
       return `Send email to ${params.to || 'recipient'}${attCount ? ` with ${attCount} attachment(s)` : ''}`;
     }
     case 'messages.trash':
-      return `Move email ${params.id || '(unknown)'} to trash`;
+      return `Move ${msgRef(params.id)} to trash`;
     case 'messages.modify':
-      return `Modify labels on email ${params.id || '(unknown)'}`;
+      return `Modify labels on ${msgRef(params.id)}`;
     case 'messages.untrash':
-      return `Restore email ${params.id || '(unknown)'} from trash`;
+      return `Restore ${msgRef(params.id)} from trash`;
     case 'messages.delete':
-      return `Permanently delete email ${params.id || '(unknown)'}`;
+      return `Permanently delete ${msgRef(params.id)}`;
     case 'messages.batchModify':
       return `Modify labels on ${Array.isArray(params.ids) ? params.ids.length : '?'} emails`;
     case 'messages.batchDelete':
       return `Permanently delete ${Array.isArray(params.ids) ? params.ids.length : '?'} emails`;
     case 'attachments.get':
-      return `Download attachment ${params.attachmentId || '(unknown)'} from email ${params.messageId || '(unknown)'}`;
+      return `Download attachment from ${msgRef(params.messageId)}`;
     case 'drafts.create': {
       const attCount = Array.isArray(params.attachments) ? params.attachments.length : 0;
       return `Create draft email${params.to ? ` to ${params.to}` : ''}${attCount ? ` with ${attCount} attachment(s)` : ''}`;
@@ -71,15 +77,15 @@ function describeGmailRequest(method: string, params: Record<string, unknown>): 
     case 'drafts.list':
       return 'List draft emails';
     case 'drafts.get':
-      return `Get draft ${params.id || '(unknown)'}`;
+      return `Get ${draftRef(params.id)}`;
     case 'drafts.send':
-      return `Send draft ${params.id || '(unknown)'}`;
+      return `Send ${draftRef(params.id)}`;
     case 'drafts.update': {
       const attCount = Array.isArray(params.attachments) ? params.attachments.length : 0;
-      return `Update draft ${params.id || '(unknown)'}${attCount ? ` with ${attCount} attachment(s)` : ''}`;
+      return `Update ${draftRef(params.id)}${attCount ? ` with ${attCount} attachment(s)` : ''}`;
     }
     case 'drafts.delete':
-      return `Delete draft ${params.id || '(unknown)'}`;
+      return `Delete ${draftRef(params.id)}`;
     case 'labels.list':
       return 'List email labels';
     case 'labels.get':
@@ -93,15 +99,15 @@ function describeGmailRequest(method: string, params: Record<string, unknown>): 
     case 'threads.list':
       return params.q ? `Search threads: "${params.q}"` : 'List email threads';
     case 'threads.get':
-      return `Get thread ${params.id || '(unknown)'}`;
+      return `Get ${threadRef(params.id)}`;
     case 'threads.modify':
-      return `Modify labels on thread ${params.id || '(unknown)'}`;
+      return `Modify labels on ${threadRef(params.id)}`;
     case 'threads.trash':
-      return `Move thread ${params.id || '(unknown)'} to trash`;
+      return `Move ${threadRef(params.id)} to trash`;
     case 'threads.untrash':
-      return `Restore thread ${params.id || '(unknown)'} from trash`;
+      return `Restore ${threadRef(params.id)} from trash`;
     case 'threads.delete':
-      return `Permanently delete thread ${params.id || '(unknown)'}`;
+      return `Permanently delete ${threadRef(params.id)}`;
     case 'profile.get':
       return 'Get email profile info';
     default:
@@ -888,10 +894,111 @@ function getResourceType(method: string): string | undefined {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Resolvable ID types & resolver
+// ---------------------------------------------------------------------------
+
+const gmailResolvableTypes: Record<string, ResolvableType> = {
+  message_id: {
+    label: 'Message',
+    params: {
+      'messages.get': 'id',
+      'messages.trash': 'id',
+      'messages.untrash': 'id',
+      'messages.delete': 'id',
+      'messages.modify': 'id',
+      'attachments.get': 'messageId',
+    },
+  },
+  thread_id: {
+    label: 'Thread',
+    params: {
+      'threads.get': 'id',
+      'threads.trash': 'id',
+      'threads.untrash': 'id',
+      'threads.delete': 'id',
+      'threads.modify': 'id',
+    },
+  },
+  draft_id: {
+    label: 'Draft',
+    params: {
+      'drafts.get': 'id',
+      'drafts.update': 'id',
+      'drafts.delete': 'id',
+      'drafts.send': 'id',
+    },
+  },
+};
+
+function getHeader(msg: any, name: string): string | undefined {
+  return msg?.payload?.headers?.find(
+    (h: any) => h.name.toLowerCase() === name.toLowerCase()
+  )?.value;
+}
+
+async function resolveGmailId(
+  type: string,
+  id: string,
+  credentials: OAuthCredentials,
+): Promise<ResolveResult | null> {
+  const headers = { Authorization: `Bearer ${credentials.accessToken}` };
+  try {
+    switch (type) {
+      case 'message_id': {
+        const res = await fetch(
+          `${GMAIL_API}/messages/${id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From`,
+          { headers },
+        );
+        if (!res.ok) return null;
+        const msg = await res.json();
+        const subject = getHeader(msg, 'Subject') || '(no subject)';
+        const from = getHeader(msg, 'From') || '';
+        return {
+          title: `${subject}${from ? ` — from ${from}` : ''}`,
+          url: `https://mail.google.com/mail/u/0/#inbox/${id}`,
+        };
+      }
+      case 'thread_id': {
+        const res = await fetch(
+          `${GMAIL_API}/threads/${id}?format=metadata&metadataHeaders=Subject`,
+          { headers },
+        );
+        if (!res.ok) return null;
+        const thread = await res.json();
+        const firstMsg = thread.messages?.[0];
+        const subject = firstMsg ? getHeader(firstMsg, 'Subject') : null;
+        return {
+          title: subject || '(no subject)',
+          url: `https://mail.google.com/mail/u/0/#inbox/${id}`,
+        };
+      }
+      case 'draft_id': {
+        const res = await fetch(
+          `${GMAIL_API}/drafts/${id}?format=metadata`,
+          { headers },
+        );
+        if (!res.ok) return null;
+        const draft = await res.json();
+        const subject = getHeader(draft.message, 'Subject') || '(no subject)';
+        return {
+          title: `Draft: ${subject}`,
+          url: `https://mail.google.com/mail/u/0/#drafts/${draft.message?.id || id}`,
+        };
+      }
+      default:
+        return null;
+    }
+  } catch {
+    return null;
+  }
+}
+
 export const gmailConnector: Connector = {
   service: 'gmail',
   name: 'Gmail',
   methods,
+  resolvableTypes: gmailResolvableTypes,
   groupDescriptions: {
     messages: 'Search, read, send, trash, and delete emails',
     attachments: 'Download email attachments',
@@ -927,6 +1034,8 @@ export const gmailConnector: Connector = {
   ): Promise<unknown> {
     return executeGmail(method, params, credentials);
   },
+
+  resolveId: resolveGmailId,
 
   help(method?: string): ServiceHelp {
     if (method) {

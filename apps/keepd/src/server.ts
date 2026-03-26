@@ -73,6 +73,7 @@ import { registerLogRoutes } from './routes/logs.js';
 import { registerConfigRoutes } from './routes/config.js';
 import { registerEventsRoute } from './routes/events.js';
 import { registerBillingRoutes } from './routes/billing.js';
+import { registerResolveRoutes } from './routes/resolve.js';
 import { BillingManager } from './managers/billing-manager.js';
 
 export interface ServerConfig {
@@ -266,6 +267,7 @@ export async function createServer(config: ServerConfig = {}) {
   await registerConfigRoutes(app, db, sse, () => port);
   await registerEventsRoute(app, sse);
   await registerBillingRoutes(app, billingManager, agentManager, connectionManager);
+  await registerResolveRoutes(app, connectorExecutor, connectionManager);
 
   // Serve static files (UI)
   if (serveStaticFiles && fs.existsSync(staticFilesRoot)) {

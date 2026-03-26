@@ -12,6 +12,8 @@ import type {
   PermissionMetadata,
   ServiceHelp,
   OAuthCredentials,
+  ResolveResult,
+  ResolvableType,
 } from '@keepai/proto';
 import { getTrelloCredentials } from '../credentials.js';
 import { classifyFetchError } from '../classify-fetch-error.js';
@@ -61,6 +63,18 @@ async function trelloFetch(
 // Human-readable request descriptions
 // ---------------------------------------------------------------------------
 
+function trelloRef(method: string, id: unknown): string {
+  if (!id) return '(unknown)';
+  const group = method.split('.')[0];
+  const typeMap: Record<string, string> = {
+    boards: 'board_id',
+    lists: 'list_id',
+    cards: 'card_id',
+  };
+  const refType = typeMap[group];
+  return refType ? `[${refType}:${id}]` : String(id);
+}
+
 function describeTrelloRequest(method: string, params: Record<string, unknown>): string {
   switch (method) {
     case 'members.me':
@@ -72,55 +86,55 @@ function describeTrelloRequest(method: string, params: Record<string, unknown>):
     case 'boards.list':
       return 'List your Trello boards';
     case 'boards.get':
-      return `Get board ${params.id || '(unknown)'}`;
+      return `Get ${trelloRef(method, params.id)}`;
     case 'boards.create':
       return `Create board "${params.name || '(unnamed)'}"`;
     case 'boards.update':
-      return `Update board ${params.id || '(unknown)'}`;
+      return `Update ${trelloRef(method, params.id)}`;
     case 'boards.delete':
-      return `Delete board ${params.id || '(unknown)'}`;
+      return `Delete ${trelloRef(method, params.id)}`;
     case 'boards.members':
-      return `List members of board ${params.id || '(unknown)'}`;
+      return `List members of ${trelloRef(method, params.id)}`;
 
     // Lists
     case 'lists.get':
-      return `Get list ${params.id || '(unknown)'}`;
+      return `Get ${trelloRef(method, params.id)}`;
     case 'lists.create':
-      return `Create list "${params.name || '(unnamed)'}" on board ${params.idBoard || '(unknown)'}`;
+      return `Create list "${params.name || '(unnamed)'}" on ${trelloRef('boards.x', params.idBoard)}`;
     case 'lists.update':
-      return `Update list ${params.id || '(unknown)'}`;
+      return `Update ${trelloRef(method, params.id)}`;
     case 'lists.archive':
-      return `Archive list ${params.id || '(unknown)'}`;
+      return `Archive ${trelloRef(method, params.id)}`;
     case 'lists.unarchive':
-      return `Unarchive list ${params.id || '(unknown)'}`;
+      return `Unarchive ${trelloRef(method, params.id)}`;
 
     // Cards
     case 'cards.list':
-      return `Get cards on board ${params.boardId || '(unknown)'}`;
+      return `Get cards on ${trelloRef('boards.x', params.boardId)}`;
     case 'cards.listByList':
-      return `Get cards in list ${params.listId || '(unknown)'}`;
+      return `Get cards in ${trelloRef('lists.x', params.listId)}`;
     case 'cards.get':
-      return `Get card ${params.id || '(unknown)'}`;
+      return `Get ${trelloRef(method, params.id)}`;
     case 'cards.create':
-      return `Create card "${params.name || '(unnamed)'}" in list ${params.idList || '(unknown)'}`;
+      return `Create card "${params.name || '(unnamed)'}" in ${trelloRef('lists.x', params.idList)}`;
     case 'cards.update':
-      return `Update card ${params.id || '(unknown)'}`;
+      return `Update ${trelloRef(method, params.id)}`;
     case 'cards.delete':
-      return `Delete card ${params.id || '(unknown)'}`;
+      return `Delete ${trelloRef(method, params.id)}`;
     case 'cards.addMember':
-      return `Assign member to card ${params.id || '(unknown)'}`;
+      return `Assign member to ${trelloRef(method, params.id)}`;
     case 'cards.removeMember':
-      return `Remove member from card ${params.id || '(unknown)'}`;
+      return `Remove member from ${trelloRef(method, params.id)}`;
     case 'cards.addLabel':
-      return `Add label to card ${params.id || '(unknown)'}`;
+      return `Add label to ${trelloRef(method, params.id)}`;
     case 'cards.removeLabel':
-      return `Remove label from card ${params.id || '(unknown)'}`;
+      return `Remove label from ${trelloRef(method, params.id)}`;
 
     // Comments
     case 'comments.list':
-      return `List comments on card ${params.cardId || '(unknown)'}`;
+      return `List comments on ${trelloRef('cards.x', params.cardId)}`;
     case 'comments.create':
-      return `Add comment to card ${params.cardId || '(unknown)'}`;
+      return `Add comment to ${trelloRef('cards.x', params.cardId)}`;
     case 'comments.update':
       return `Update comment ${params.id || '(unknown)'}`;
     case 'comments.delete':
@@ -128,7 +142,7 @@ function describeTrelloRequest(method: string, params: Record<string, unknown>):
 
     // Labels
     case 'labels.list':
-      return `List labels on board ${params.boardId || '(unknown)'}`;
+      return `List labels on ${trelloRef('boards.x', params.boardId)}`;
     case 'labels.create':
       return `Create label "${params.name || '(unnamed)'}"`;
     case 'labels.update':
@@ -140,7 +154,7 @@ function describeTrelloRequest(method: string, params: Record<string, unknown>):
     case 'checklists.get':
       return `Get checklist ${params.id || '(unknown)'}`;
     case 'checklists.create':
-      return `Create checklist "${params.name || '(unnamed)'}" on card ${params.idCard || '(unknown)'}`;
+      return `Create checklist "${params.name || '(unnamed)'}" on ${trelloRef('cards.x', params.idCard)}`;
     case 'checklists.delete':
       return `Delete checklist ${params.id || '(unknown)'}`;
     case 'checkItems.create':
@@ -152,9 +166,9 @@ function describeTrelloRequest(method: string, params: Record<string, unknown>):
 
     // Attachments
     case 'attachments.list':
-      return `List attachments on card ${params.cardId || '(unknown)'}`;
+      return `List attachments on ${trelloRef('cards.x', params.cardId)}`;
     case 'attachments.create':
-      return `Add attachment to card ${params.cardId || '(unknown)'}`;
+      return `Add attachment to ${trelloRef('cards.x', params.cardId)}`;
     case 'attachments.delete':
       return `Delete attachment ${params.attachmentId || '(unknown)'}`;
 
@@ -1210,10 +1224,70 @@ async function executeTrello(
 // Connector export
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Resolvable ID types & resolver
+// ---------------------------------------------------------------------------
+
+const trelloResolvableTypes: Record<string, ResolvableType> = {
+  board_id: {
+    label: 'Board',
+    params: { 'boards.get': 'id', 'boards.update': 'id', 'boards.delete': 'id', 'boards.members': 'id' },
+  },
+  list_id: {
+    label: 'List',
+    params: { 'lists.get': 'id', 'lists.update': 'id', 'lists.archive': 'id', 'lists.unarchive': 'id', 'cards.listByList': 'listId' },
+  },
+  card_id: {
+    label: 'Card',
+    params: {
+      'cards.get': 'id', 'cards.update': 'id', 'cards.delete': 'id',
+      'cards.addMember': 'id', 'cards.removeMember': 'id',
+      'cards.addLabel': 'id', 'cards.removeLabel': 'id',
+      'comments.list': 'cardId', 'comments.create': 'cardId',
+      'attachments.list': 'cardId', 'attachments.create': 'cardId',
+    },
+  },
+};
+
+async function resolveTrelloId(
+  type: string,
+  id: string,
+  credentials: OAuthCredentials,
+): Promise<ResolveResult | null> {
+  const { clientId: apiKey } = getTrelloCredentials();
+  const token = credentials.accessToken;
+  const pathMap: Record<string, string> = {
+    board_id: 'boards',
+    list_id: 'lists',
+    card_id: 'cards',
+  };
+  const path = pathMap[type];
+  if (!path) return null;
+
+  try {
+    const res = await fetch(
+      `${TRELLO_API}/${path}/${id}?fields=name,shortUrl&key=${apiKey}&token=${token}`,
+    );
+    if (!res.ok) return null;
+    const data: any = await res.json();
+    return {
+      title: data.name || id,
+      url: data.shortUrl || data.url,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Connector export
+// ---------------------------------------------------------------------------
+
 export const trelloConnector: Connector = {
   service: 'trello',
   name: 'Trello',
   methods,
+  resolvableTypes: trelloResolvableTypes,
   groupDescriptions: {
     members: 'Get current user profile',
     search: 'Search across boards, cards, and members',
@@ -1252,6 +1326,8 @@ export const trelloConnector: Connector = {
   ): Promise<unknown> {
     return executeTrello(method, params, credentials);
   },
+
+  resolveId: resolveTrelloId,
 
   help(method?: string): ServiceHelp {
     if (method) {

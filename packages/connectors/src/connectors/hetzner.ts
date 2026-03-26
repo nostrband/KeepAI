@@ -13,6 +13,8 @@ import type {
   PermissionMetadata,
   ServiceHelp,
   OAuthCredentials,
+  ResolveResult,
+  ResolvableType,
 } from '@keepai/proto';
 import { classifyFetchError } from '../classify-fetch-error.js';
 
@@ -606,48 +608,68 @@ const allMethods: ConnectorMethod[] = [
 // Human-readable request descriptions
 // ---------------------------------------------------------------------------
 
+/**
+ * Build a resolvable [type:id] reference for a Hetzner method's id param.
+ */
+function hetznerRef(method: string, id: unknown): string {
+  if (!id) return '(unknown)';
+  const group = method.split('.')[0];
+  const typeMap: Record<string, string> = {
+    servers: 'server_id',
+    networks: 'network_id',
+    firewalls: 'firewall_id',
+    loadBalancers: 'load_balancer_id',
+    volumes: 'volume_id',
+    floatingIps: 'floating_ip_id',
+    sshKeys: 'ssh_key_id',
+    images: 'image_id',
+  };
+  const refType = typeMap[group];
+  return refType ? `[${refType}:${id}]` : String(id);
+}
+
 function describeHetznerRequest(method: string, params: Record<string, unknown>): string {
   switch (method) {
     case 'servers.create': return `Create server "${params.name || ''}"${params.server_type ? ` (${params.server_type})` : ''}`;
-    case 'servers.delete': return `Delete server ${params.id || '(unknown)'}`;
-    case 'servers.poweron': return `Power on server ${params.id || '(unknown)'}`;
-    case 'servers.poweroff': return `Power off server ${params.id || '(unknown)'}`;
-    case 'servers.reboot': return `Reboot server ${params.id || '(unknown)'}`;
-    case 'servers.reset': return `Reset server ${params.id || '(unknown)'}`;
-    case 'servers.shutdown': return `Shutdown server ${params.id || '(unknown)'}`;
-    case 'servers.resetPassword': return `Reset password for server ${params.id || '(unknown)'}`;
-    case 'servers.rebuild': return `Rebuild server ${params.id || '(unknown)'} with image ${params.image || '(unknown)'}`;
-    case 'servers.changeType': return `Change server ${params.id || '(unknown)'} to type ${params.server_type || '(unknown)'}`;
-    case 'servers.createImage': return `Create ${params.type || 'snapshot'} of server ${params.id || '(unknown)'}`;
-    case 'servers.enableRescue': return `Enable rescue mode on server ${params.id || '(unknown)'}`;
-    case 'servers.disableRescue': return `Disable rescue mode on server ${params.id || '(unknown)'}`;
-    case 'servers.enableBackup': return `Enable backups for server ${params.id || '(unknown)'}`;
-    case 'servers.disableBackup': return `Disable backups for server ${params.id || '(unknown)'}`;
-    case 'servers.attachIso': return `Attach ISO ${params.iso || '(unknown)'} to server ${params.id || '(unknown)'}`;
-    case 'servers.detachIso': return `Detach ISO from server ${params.id || '(unknown)'}`;
-    case 'servers.attachToNetwork': return `Attach server ${params.id || '(unknown)'} to network ${params.network || '(unknown)'}`;
-    case 'servers.detachFromNetwork': return `Detach server ${params.id || '(unknown)'} from network ${params.network || '(unknown)'}`;
-    case 'servers.changeProtection': return `Change protection on server ${params.id || '(unknown)'}`;
+    case 'servers.delete': return `Delete ${hetznerRef(method, params.id)}`;
+    case 'servers.poweron': return `Power on ${hetznerRef(method, params.id)}`;
+    case 'servers.poweroff': return `Power off ${hetznerRef(method, params.id)}`;
+    case 'servers.reboot': return `Reboot ${hetznerRef(method, params.id)}`;
+    case 'servers.reset': return `Reset ${hetznerRef(method, params.id)}`;
+    case 'servers.shutdown': return `Shutdown ${hetznerRef(method, params.id)}`;
+    case 'servers.resetPassword': return `Reset password for ${hetznerRef(method, params.id)}`;
+    case 'servers.rebuild': return `Rebuild ${hetznerRef(method, params.id)} with image ${params.image || '(unknown)'}`;
+    case 'servers.changeType': return `Change ${hetznerRef(method, params.id)} to type ${params.server_type || '(unknown)'}`;
+    case 'servers.createImage': return `Create ${params.type || 'snapshot'} of ${hetznerRef(method, params.id)}`;
+    case 'servers.enableRescue': return `Enable rescue mode on ${hetznerRef(method, params.id)}`;
+    case 'servers.disableRescue': return `Disable rescue mode on ${hetznerRef(method, params.id)}`;
+    case 'servers.enableBackup': return `Enable backups for ${hetznerRef(method, params.id)}`;
+    case 'servers.disableBackup': return `Disable backups for ${hetznerRef(method, params.id)}`;
+    case 'servers.attachIso': return `Attach ISO ${params.iso || '(unknown)'} to ${hetznerRef(method, params.id)}`;
+    case 'servers.detachIso': return `Detach ISO from ${hetznerRef(method, params.id)}`;
+    case 'servers.attachToNetwork': return `Attach ${hetznerRef(method, params.id)} to network ${params.network || '(unknown)'}`;
+    case 'servers.detachFromNetwork': return `Detach ${hetznerRef(method, params.id)} from network ${params.network || '(unknown)'}`;
+    case 'servers.changeProtection': return `Change protection on ${hetznerRef(method, params.id)}`;
     case 'volumes.create': return `Create ${params.size || '?'}GB volume "${params.name || ''}"`;
-    case 'volumes.delete': return `Delete volume ${params.id || '(unknown)'}`;
-    case 'volumes.attach': return `Attach volume ${params.id || '(unknown)'} to server ${params.server || '(unknown)'}`;
-    case 'volumes.detach': return `Detach volume ${params.id || '(unknown)'}`;
-    case 'volumes.resize': return `Resize volume ${params.id || '(unknown)'} to ${params.size || '?'}GB`;
+    case 'volumes.delete': return `Delete ${hetznerRef(method, params.id)}`;
+    case 'volumes.attach': return `Attach ${hetznerRef(method, params.id)} to server ${params.server || '(unknown)'}`;
+    case 'volumes.detach': return `Detach ${hetznerRef(method, params.id)}`;
+    case 'volumes.resize': return `Resize ${hetznerRef(method, params.id)} to ${params.size || '?'}GB`;
     case 'networks.create': return `Create network "${params.name || ''}" (${params.ip_range || ''})`;
-    case 'networks.delete': return `Delete network ${params.id || '(unknown)'}`;
+    case 'networks.delete': return `Delete ${hetznerRef(method, params.id)}`;
     case 'loadBalancers.create': return `Create load balancer "${params.name || ''}"`;
-    case 'loadBalancers.delete': return `Delete load balancer ${params.id || '(unknown)'}`;
+    case 'loadBalancers.delete': return `Delete ${hetznerRef(method, params.id)}`;
     case 'firewalls.create': return `Create firewall "${params.name || ''}"`;
-    case 'firewalls.delete': return `Delete firewall ${params.id || '(unknown)'}`;
-    case 'firewalls.setRules': return `Set rules on firewall ${params.id || '(unknown)'}`;
+    case 'firewalls.delete': return `Delete ${hetznerRef(method, params.id)}`;
+    case 'firewalls.setRules': return `Set rules on ${hetznerRef(method, params.id)}`;
     case 'floatingIps.create': return `Create floating IP (${params.type || 'ipv4'}) in ${params.home_location || '(unknown)'}`;
-    case 'floatingIps.delete': return `Delete floating IP ${params.id || '(unknown)'}`;
-    case 'floatingIps.assign': return `Assign floating IP ${params.id || '(unknown)'} to server ${params.server || '(unknown)'}`;
-    case 'floatingIps.unassign': return `Unassign floating IP ${params.id || '(unknown)'}`;
+    case 'floatingIps.delete': return `Delete ${hetznerRef(method, params.id)}`;
+    case 'floatingIps.assign': return `Assign ${hetznerRef(method, params.id)} to server ${params.server || '(unknown)'}`;
+    case 'floatingIps.unassign': return `Unassign ${hetznerRef(method, params.id)}`;
     case 'primaryIps.create': return `Create primary IP (${params.type || 'ipv4'})`;
     case 'primaryIps.delete': return `Delete primary IP ${params.id || '(unknown)'}`;
     case 'sshKeys.create': return `Add SSH key "${params.name || ''}"`;
-    case 'sshKeys.delete': return `Delete SSH key ${params.id || '(unknown)'}`;
+    case 'sshKeys.delete': return `Delete ${hetznerRef(method, params.id)}`;
     case 'certificates.create': return `Create ${params.type || 'uploaded'} certificate "${params.name || ''}"`;
     case 'certificates.delete': return `Delete certificate ${params.id || '(unknown)'}`;
     case 'placementGroups.create': return `Create placement group "${params.name || ''}"`;
@@ -656,7 +678,7 @@ function describeHetznerRequest(method: string, params: Record<string, unknown>)
       const parts = method.split('.');
       const action = parts[parts.length - 1];
       const resource = parts.slice(0, -1).join('.');
-      if (params.id) return `${action} ${resource} ${params.id}`;
+      if (params.id) return `${action} ${resource} ${hetznerRef(method, params.id)}`;
       return `${action} ${resource}`;
     }
   }
@@ -787,6 +809,84 @@ async function executeHetzner(
 // Connector export
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Resolvable ID types & resolver
+// ---------------------------------------------------------------------------
+
+const hetznerResolvableTypes: Record<string, ResolvableType> = {
+  server_id: {
+    label: 'Server',
+    params: { 'servers.get': 'id', 'servers.update': 'id', 'servers.delete': 'id' },
+  },
+  network_id: {
+    label: 'Network',
+    params: { 'networks.get': 'id', 'networks.update': 'id', 'networks.delete': 'id' },
+  },
+  firewall_id: {
+    label: 'Firewall',
+    params: { 'firewalls.get': 'id', 'firewalls.update': 'id', 'firewalls.delete': 'id' },
+  },
+  load_balancer_id: {
+    label: 'Load Balancer',
+    params: { 'loadBalancers.get': 'id', 'loadBalancers.update': 'id', 'loadBalancers.delete': 'id' },
+  },
+  volume_id: {
+    label: 'Volume',
+    params: { 'volumes.get': 'id', 'volumes.update': 'id', 'volumes.delete': 'id' },
+  },
+  floating_ip_id: {
+    label: 'Floating IP',
+    params: { 'floatingIps.get': 'id', 'floatingIps.update': 'id', 'floatingIps.delete': 'id' },
+  },
+  ssh_key_id: {
+    label: 'SSH Key',
+    params: { 'sshKeys.get': 'id', 'sshKeys.update': 'id', 'sshKeys.delete': 'id' },
+  },
+  image_id: {
+    label: 'Image',
+    params: { 'images.get': 'id', 'images.update': 'id', 'images.delete': 'id' },
+  },
+};
+
+async function resolveHetznerId(
+  type: string,
+  id: string,
+  credentials: OAuthCredentials,
+): Promise<ResolveResult | null> {
+  const headers = { Authorization: `Bearer ${credentials.accessToken}` };
+  const typeConfig: Record<string, { path: string; key: string }> = {
+    server_id: { path: 'servers', key: 'server' },
+    network_id: { path: 'networks', key: 'network' },
+    firewall_id: { path: 'firewalls', key: 'firewall' },
+    load_balancer_id: { path: 'load_balancers', key: 'load_balancer' },
+    volume_id: { path: 'volumes', key: 'volume' },
+    floating_ip_id: { path: 'floating_ips', key: 'floating_ip' },
+    ssh_key_id: { path: 'ssh_keys', key: 'ssh_key' },
+    image_id: { path: 'images', key: 'image' },
+  };
+
+  const config = typeConfig[type];
+  if (!config) return null;
+
+  try {
+    const res = await fetch(`${HETZNER_API}/${config.path}/${id}`, { headers });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const resource = data[config.key];
+    const title = resource?.name
+      || (type === 'floating_ip_id' ? resource?.ip : null)
+      || (type === 'image_id' ? resource?.description : null)
+      || String(id);
+    return { title };
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Connector export
+// ---------------------------------------------------------------------------
+
 export const hetznerConnector: Connector = {
   service: 'hetzner',
   groupDescriptions: {
@@ -811,6 +911,7 @@ export const hetznerConnector: Connector = {
   },
   name: 'Hetzner Cloud',
   methods: allMethods,
+  resolvableTypes: hetznerResolvableTypes,
 
   extractPermMetadata(
     method: string,
@@ -836,6 +937,8 @@ export const hetznerConnector: Connector = {
   ): Promise<unknown> {
     return executeHetzner(method, params, credentials);
   },
+
+  resolveId: resolveHetznerId,
 
   help(method?: string): ServiceHelp {
     if (method) {

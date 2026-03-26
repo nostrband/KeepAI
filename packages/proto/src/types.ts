@@ -91,6 +91,43 @@ export interface PolicyV2 {
   };
 }
 
+// --- Resolvable IDs ---
+
+export interface ResolvableType {
+  /** Human label shown before resolution, e.g. "Page", "Database" */
+  label: string;
+  /**
+   * Optional map of method name → param key that holds this ID type.
+   * Used when the param key doesn't match the resolvable type name directly.
+   * E.g. Gmail's message_id is passed as bare "id": { 'messages.get': 'id' }
+   * If omitted, the type name itself is used as the param key.
+   */
+  params?: Record<string, string>;
+}
+
+export interface ResolveResult {
+  /** Human-readable title, e.g. "Meeting Notes Q1" */
+  title: string;
+  /** Optional deep-link to the resource in the service's web UI */
+  url?: string;
+}
+
+/**
+ * Convert a description with [type:id] markup to plain text.
+ * "[page_id:abc123]" → "Page: abc123"
+ * Useful for notifications and logs where rich rendering isn't available.
+ */
+export function formatDescriptionPlain(
+  description: string,
+  resolvableTypes?: Record<string, ResolvableType>
+): string {
+  return description.replace(/\[([a-z_]+):([^\]]+)\]/g, (_match, type: string, id: string) => {
+    const label = resolvableTypes?.[type]?.label
+      ?? type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    return `${label}: ${id}`;
+  });
+}
+
 // --- Connector Interfaces ---
 
 export interface ParamSchema {
@@ -159,6 +196,23 @@ export interface Connector {
 
   /** Optional descriptions for method prefix groups (e.g. { messages: 'Send, receive, reply ...' }) */
   groupDescriptions?: Record<string, string>;
+
+  /**
+   * Map of resolvable ID type keys to their metadata.
+   * Optional — connectors without resolvable IDs omit this.
+   */
+  resolvableTypes?: Record<string, ResolvableType>;
+
+  /**
+   * Resolve a single ID to a human-readable title + optional URL.
+   * Called on-demand from the UI via the daemon's resolve endpoint.
+   * Must not throw — return null on failure.
+   */
+  resolveId?(
+    type: string,
+    id: string,
+    credentials: OAuthCredentials
+  ): Promise<ResolveResult | null>;
 }
 
 // --- Database Row Types ---

@@ -4,9 +4,11 @@ import type { ActivityEntry } from '../hooks/use-agent-activity';
 
 interface AgentActivityBadgeProps {
   activity: ActivityEntry | undefined;
+  /** Map of "service:accountId" → display label for showing friendly account names */
+  accountLabels?: Record<string, string>;
 }
 
-export function AgentActivityBadge({ activity }: AgentActivityBadgeProps) {
+export function AgentActivityBadge({ activity, accountLabels }: AgentActivityBadgeProps) {
   const [entered, setEntered] = useState(false);
   const prevReceivedAtRef = useRef<number | undefined>();
 
@@ -48,7 +50,7 @@ export function AgentActivityBadge({ activity }: AgentActivityBadgeProps) {
         <ServiceIcon service={activity.service} className="w-3.5 h-3.5" />
         {activity.accountId && (
           <>
-            <span className="truncate max-w-[80px] font-medium">{activity.accountId}</span>
+            <span className="truncate max-w-[80px] font-medium">{accountLabels?.[`${activity.service}:${activity.accountId}`] || activity.accountId}</span>
             <span className="text-muted-foreground/50">·</span>
           </>
         )}

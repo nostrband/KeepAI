@@ -15,7 +15,7 @@ import { AddAgentDialog } from '../components/add-agent-dialog';
 import { UpgradeDialog } from '../components/upgrade-dialog';
 import { AgentActivityBadge } from '../components/agent-activity-badge';
 import { AppActivityBadge } from '../components/app-activity-badge';
-import { useApproveRequest, useDenyRequest } from '../hooks/use-queue';
+import { useApproveRequest, useDenyRequest, useResolvableTypes } from '../hooks/use-queue';
 import { useOAuthFlow } from '../hooks/use-oauth-flow';
 import { useAgentActivity, useAppActivity } from '../hooks/use-agent-activity';
 import { timeAgo } from '../lib/time-ago';
@@ -82,6 +82,7 @@ export function DashboardPage() {
   const { data: agents, isLoading: agentsLoading } = useAgents();
   const { data: billing } = useBilling();
   const { data: queue } = useQueue();
+  const { data: allResolvableTypes } = useResolvableTypes();
   const approveMutation = useApproveRequest();
   const denyMutation = useDenyRequest();
   const {
@@ -95,6 +96,16 @@ export function DashboardPage() {
   const [upgradeType, setUpgradeType] = useState<'agents' | 'apps' | null>(null);
   const agentActivities = useAgentActivity();
   const appActivities = useAppActivity();
+
+  // Build account label lookup: "service:accountId" → display label
+  const accountLabels: Record<string, string> = {};
+  if (connections) {
+    for (const conn of connections) {
+      if (conn.label) {
+        accountLabels[`${conn.service}:${conn.accountId}`] = conn.label;
+      }
+    }
+  }
 
   const pendingApprovals = queue ?? [];
   const isLoading = connectionsLoading || agentsLoading;
@@ -156,6 +167,7 @@ export function DashboardPage() {
               <ApprovalCard
                 key={item.id}
                 item={item}
+                resolvableTypes={allResolvableTypes?.[item.service]}
                 onApprove={(id) => approveMutation.mutate(id)}
                 onDeny={(id) => denyMutation.mutate(id)}
               />
@@ -217,7 +229,7 @@ export function DashboardPage() {
                     {agent.lastSeenAt && <span>Active {timeAgo(agent.lastSeenAt)}</span>}
                   </div>
                 </div>
-                <AgentActivityBadge activity={agentActivities.get(agent.id)} />
+                <AgentActivityBadge activity={agentActivities.get(agent.id)} accountLabels={accountLabels} />
                 <StatusBadge status={agent.status === 'revoked' ? 'revoked' : agent.status === 'paused' ? 'paused' : 'active'} />
               </Link>
             ))}

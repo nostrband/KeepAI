@@ -11,6 +11,7 @@ import { AddAgentDialog } from '../components/add-agent-dialog';
 import { UpgradeDialog } from '../components/upgrade-dialog';
 import { AgentActivityBadge } from '../components/agent-activity-badge';
 import { useAgentActivity } from '../hooks/use-agent-activity';
+import { useConnections } from '../hooks/use-connections';
 import { timeAgo } from '../lib/time-ago';
 
 export function AgentsPage() {
@@ -19,6 +20,16 @@ export function AgentsPage() {
   const [showDialog, setShowDialog] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const agentActivities = useAgentActivity();
+  const { data: connections } = useConnections();
+
+  const accountLabels: Record<string, string> = {};
+  if (connections) {
+    for (const conn of connections) {
+      if (conn.label) {
+        accountLabels[`${conn.service}:${conn.accountId}`] = conn.label;
+      }
+    }
+  }
 
   const handleAddAgent = () => {
     if (billing) {
@@ -84,7 +95,7 @@ export function AgentsPage() {
                   {agent.lastSeenAt && <span>Active {timeAgo(agent.lastSeenAt)}</span>}
                 </div>
               </div>
-              <AgentActivityBadge activity={agentActivities.get(agent.id)} />
+              <AgentActivityBadge activity={agentActivities.get(agent.id)} accountLabels={accountLabels} />
               <StatusBadge status={agent.status === 'revoked' ? 'revoked' : agent.status === 'paused' ? 'paused' : 'active'} />
             </Link>
           ))}

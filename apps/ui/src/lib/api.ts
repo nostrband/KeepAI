@@ -136,6 +136,13 @@ export const api = {
   denyRequest: (id: string) =>
     request<void>(`/queue/${id}/deny`, { method: 'POST' }),
 
+  // ID Resolution
+  resolveId: (service: string, accountId: string, type: string, id: string) =>
+    request<{ result: { title: string; url?: string } | null }>(`/resolve/${service}/${encodeURIComponent(accountId)}/${type}/${encodeURIComponent(id)}`),
+
+  getResolvableTypes: () =>
+    request<{ types: Record<string, Record<string, { label: string; params?: Record<string, string> }>> }>('/resolvable-types').then((r) => r.types),
+
   // Logs
   listLogs: (params?: Record<string, string>) => {
     const qs = params ? '?' + new URLSearchParams(params).toString() : '';

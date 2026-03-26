@@ -14,6 +14,8 @@ import type {
   PermissionMetadata,
   ServiceHelp,
   OAuthCredentials,
+  ResolveResult,
+  ResolvableType,
 } from '@keepai/proto';
 
 import { coreMethods } from './methods-core.js';
@@ -62,29 +64,48 @@ function formatAmount(amount: number | undefined, currency: string | undefined):
   return `${(amount / 100).toFixed(2)} ${curr}`;
 }
 
+/**
+ * Build a resolvable [type:id] reference for a Stripe method's id param.
+ * Maps method prefix to the correct resolvable type.
+ */
+function stripeRef(method: string, id: unknown): string {
+  if (!id) return '(unknown)';
+  const group = method.split('.')[0];
+  const typeMap: Record<string, string> = {
+    customers: 'customer_id',
+    subscriptions: 'subscription_id',
+    paymentIntents: 'payment_intent_id',
+    invoices: 'invoice_id',
+    products: 'product_id',
+    prices: 'price_id',
+  };
+  const refType = typeMap[group];
+  return refType ? `[${refType}:${id}]` : String(id);
+}
+
 function describeStripeRequest(method: string, params: Record<string, unknown>): string {
   switch (method) {
     case 'balance.retrieve': return 'Retrieve account balance';
     case 'customers.create': return `Create customer${params.email ? ` (${params.email})` : ''}`;
-    case 'customers.delete': return `Delete customer ${params.id || '(unknown)'}`;
+    case 'customers.delete': return `Delete ${stripeRef(method, params.id)}`;
     case 'paymentIntents.create': return `Create payment intent for ${formatAmount(params.amount as number, params.currency as string)}`;
-    case 'paymentIntents.confirm': return `Confirm payment ${params.id || '(unknown)'}`;
-    case 'paymentIntents.capture': return `Capture payment ${params.id || '(unknown)'}`;
-    case 'paymentIntents.cancel': return `Cancel payment ${params.id || '(unknown)'}`;
+    case 'paymentIntents.confirm': return `Confirm ${stripeRef(method, params.id)}`;
+    case 'paymentIntents.capture': return `Capture ${stripeRef(method, params.id)}`;
+    case 'paymentIntents.cancel': return `Cancel ${stripeRef(method, params.id)}`;
     case 'charges.create': return `Create charge for ${formatAmount(params.amount as number, params.currency as string)}`;
     case 'charges.capture': return `Capture charge ${params.id || '(unknown)'}`;
     case 'refunds.create': return `Create refund${params.payment_intent ? ` for ${params.payment_intent}` : params.charge ? ` for ${params.charge}` : ''}`;
-    case 'invoices.create': return `Create invoice${params.customer ? ` for customer ${params.customer}` : ''}`;
-    case 'invoices.finalizeInvoice': return `Finalize invoice ${params.id || '(unknown)'}`;
-    case 'invoices.pay': return `Pay invoice ${params.id || '(unknown)'}`;
-    case 'invoices.sendInvoice': return `Send invoice ${params.id || '(unknown)'}`;
-    case 'invoices.voidInvoice': return `Void invoice ${params.id || '(unknown)'}`;
-    case 'invoices.delete': return `Delete draft invoice ${params.id || '(unknown)'}`;
-    case 'subscriptions.create': return `Create subscription for customer ${params.customer || '(unknown)'}`;
-    case 'subscriptions.cancel': return `Cancel subscription ${params.id || '(unknown)'}`;
+    case 'invoices.create': return `Create invoice${params.customer ? ` for ${stripeRef('customers.x', params.customer)}` : ''}`;
+    case 'invoices.finalizeInvoice': return `Finalize ${stripeRef(method, params.id)}`;
+    case 'invoices.pay': return `Pay ${stripeRef(method, params.id)}`;
+    case 'invoices.sendInvoice': return `Send ${stripeRef(method, params.id)}`;
+    case 'invoices.voidInvoice': return `Void ${stripeRef(method, params.id)}`;
+    case 'invoices.delete': return `Delete draft ${stripeRef(method, params.id)}`;
+    case 'subscriptions.create': return `Create subscription for ${stripeRef('customers.x', params.customer)}`;
+    case 'subscriptions.cancel': return `Cancel ${stripeRef(method, params.id)}`;
     case 'products.create': return `Create product "${params.name || ''}"`;
-    case 'products.delete': return `Delete product ${params.id || '(unknown)'}`;
-    case 'prices.create': return `Create price for product ${params.product || '(unknown)'}`;
+    case 'products.delete': return `Delete ${stripeRef(method, params.id)}`;
+    case 'prices.create': return `Create price for ${stripeRef('products.x', params.product)}`;
     case 'transfers.create': return `Transfer ${formatAmount(params.amount as number, params.currency as string)} to ${params.destination || '(unknown)'}`;
     case 'payouts.create': return `Create payout for ${formatAmount(params.amount as number, params.currency as string)}`;
     case 'payouts.cancel': return `Cancel payout ${params.id || '(unknown)'}`;
@@ -98,7 +119,7 @@ function describeStripeRequest(method: string, params: Record<string, unknown>):
       const parts = method.split('.');
       const action = parts[parts.length - 1];
       const resource = parts.slice(0, -1).join('.');
-      if (params.id) return `${action} ${resource} ${params.id}`;
+      if (params.id) return `${action} ${resource} ${stripeRef(method, params.id)}`;
       return `${action} ${resource}`;
     }
   }
@@ -251,10 +272,109 @@ function classifyStripeError(err: unknown): Error {
 // Connector export
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Resolvable ID types & resolver
+// ---------------------------------------------------------------------------
+
+const stripeResolvableTypes: Record<string, ResolvableType> = {
+  customer_id: {
+    label: 'Customer',
+    params: { 'customers.retrieve': 'id', 'customers.update': 'id', 'customers.delete': 'id' },
+  },
+  subscription_id: {
+    label: 'Subscription',
+    params: { 'subscriptions.retrieve': 'id', 'subscriptions.update': 'id', 'subscriptions.cancel': 'id' },
+  },
+  payment_intent_id: {
+    label: 'Payment',
+    params: { 'paymentIntents.retrieve': 'id', 'paymentIntents.update': 'id', 'paymentIntents.confirm': 'id', 'paymentIntents.cancel': 'id', 'paymentIntents.capture': 'id' },
+  },
+  invoice_id: {
+    label: 'Invoice',
+    params: { 'invoices.retrieve': 'id', 'invoices.update': 'id', 'invoices.delete': 'id', 'invoices.pay': 'id', 'invoices.finalizeInvoice': 'id', 'invoices.sendInvoice': 'id', 'invoices.voidInvoice': 'id' },
+  },
+  product_id: {
+    label: 'Product',
+    params: { 'products.retrieve': 'id', 'products.update': 'id', 'products.delete': 'id' },
+  },
+  price_id: {
+    label: 'Price',
+    params: { 'prices.retrieve': 'id', 'prices.update': 'id' },
+  },
+};
+
+async function resolveStripeId(
+  type: string,
+  id: string,
+  credentials: OAuthCredentials,
+): Promise<ResolveResult | null> {
+  const stripe = getClient(credentials);
+  try {
+    switch (type) {
+      case 'customer_id': {
+        const customer: any = await stripe.customers.retrieve(id);
+        if (customer.deleted) return { title: '(deleted customer)' };
+        return {
+          title: customer.name || customer.email || id,
+          url: `https://dashboard.stripe.com/customers/${id}`,
+        };
+      }
+      case 'subscription_id': {
+        const sub: any = await stripe.subscriptions.retrieve(id);
+        return {
+          title: `Subscription (${sub.status})`,
+          url: `https://dashboard.stripe.com/subscriptions/${id}`,
+        };
+      }
+      case 'payment_intent_id': {
+        const pi: any = await stripe.paymentIntents.retrieve(id);
+        const amount = formatAmount(pi.amount, pi.currency);
+        return {
+          title: `${amount} (${pi.status})`,
+          url: `https://dashboard.stripe.com/payments/${id}`,
+        };
+      }
+      case 'invoice_id': {
+        const inv: any = await stripe.invoices.retrieve(id);
+        const amount = inv.amount_due ? formatAmount(inv.amount_due, inv.currency || 'usd') : '';
+        return {
+          title: [amount, inv.status].filter(Boolean).join(' — '),
+          url: `https://dashboard.stripe.com/invoices/${id}`,
+        };
+      }
+      case 'product_id': {
+        const product: any = await stripe.products.retrieve(id);
+        return {
+          title: product.name || id,
+          url: `https://dashboard.stripe.com/products/${id}`,
+        };
+      }
+      case 'price_id': {
+        const price: any = await stripe.prices.retrieve(id);
+        const amount = formatAmount(price.unit_amount || 0, price.currency);
+        const interval = price.recurring ? `/${price.recurring.interval}` : '';
+        return {
+          title: `${amount}${interval}`,
+          url: `https://dashboard.stripe.com/prices/${id}`,
+        };
+      }
+      default:
+        return null;
+    }
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Connector export
+// ---------------------------------------------------------------------------
+
 export const stripeConnector: Connector = {
   service: 'stripe',
   name: 'Stripe',
   methods: allMethods,
+  resolvableTypes: stripeResolvableTypes,
   groupDescriptions: {
     paymentIntents: 'Create and manage payment intents',
     charges: 'Create and capture charges',
@@ -316,6 +436,7 @@ export const stripeConnector: Connector = {
   },
 
   execute: executeWithClassification,
+  resolveId: resolveStripeId,
 
   help(method?: string): ServiceHelp {
     if (method) {

@@ -26,6 +26,8 @@ import type {
   PermissionMetadata,
   ServiceHelp,
   OAuthCredentials,
+  ResolveResult,
+  ResolvableType,
 } from '@keepai/proto';
 
 import { dnsMethods } from './methods-dns.js';
@@ -70,18 +72,20 @@ const allMethods: ConnectorMethod[] = [
 // Human-readable request descriptions
 // ---------------------------------------------------------------------------
 
+function zoneRef(id: unknown): string { return id ? `[zone_id:${id}]` : '(unknown)'; }
+
 function describeCloudflareRequest(method: string, params: Record<string, unknown>): string {
   switch (method) {
     // Zones
     case 'zones.create': return `Create zone${params.name ? ` "${params.name}"` : ''}`;
-    case 'zones.delete': return `Delete zone ${params.zone_id || '(unknown)'}`;
-    case 'zones.edit': return `Edit zone ${params.zone_id || '(unknown)'}`;
+    case 'zones.delete': return `Delete ${zoneRef(params.zone_id)}`;
+    case 'zones.edit': return `Edit ${zoneRef(params.zone_id)}`;
 
     // DNS
-    case 'dns.records.create': return `Create ${params.type || ''} DNS record${params.name ? ` "${params.name}"` : ''} in zone ${params.zone_id || '(unknown)'}`;
-    case 'dns.records.update': return `Update DNS record ${params.dns_record_id || '(unknown)'} in zone ${params.zone_id || '(unknown)'}`;
-    case 'dns.records.delete': return `Delete DNS record ${params.dns_record_id || '(unknown)'} in zone ${params.zone_id || '(unknown)'}`;
-    case 'dns.records.scan': return `Scan DNS records for zone ${params.zone_id || '(unknown)'}`;
+    case 'dns.records.create': return `Create ${params.type || ''} DNS record${params.name ? ` "${params.name}"` : ''} in ${zoneRef(params.zone_id)}`;
+    case 'dns.records.update': return `Update DNS record in ${zoneRef(params.zone_id)}`;
+    case 'dns.records.delete': return `Delete DNS record in ${zoneRef(params.zone_id)}`;
+    case 'dns.records.scan': return `Scan DNS records for ${zoneRef(params.zone_id)}`;
 
     // Workers
     case 'workers.scripts.update': return `Upload worker script "${params.script_name || '(unknown)'}"`;
@@ -112,7 +116,7 @@ function describeCloudflareRequest(method: string, params: Record<string, unknow
     case 'pages.projects.deployments.rollback': return `Rollback Pages deployment for "${params.project_name || '(unknown)'}"`;
 
     // Firewall / Security
-    case 'firewall.rules.create': return `Create firewall rule in zone ${params.zone_id || '(unknown)'}`;
+    case 'firewall.rules.create': return `Create firewall rule in ${zoneRef(params.zone_id)}`;
     case 'firewall.rules.delete': return `Delete firewall rule ${params.rule_id || '(unknown)'}`;
     case 'rulesets.create': return `Create ruleset`;
     case 'rulesets.delete': return `Delete ruleset ${params.ruleset_id || '(unknown)'}`;
@@ -222,10 +226,46 @@ function classifyCloudflareError(err: unknown): Error {
 // Connector export
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Resolvable ID types & resolver
+// ---------------------------------------------------------------------------
+
+const cloudflareResolvableTypes: Record<string, ResolvableType> = {
+  zone_id: { label: 'Zone' },
+};
+
+async function resolveCloudflareId(
+  type: string,
+  id: string,
+  credentials: OAuthCredentials,
+): Promise<ResolveResult | null> {
+  const client = getClient(credentials);
+  try {
+    switch (type) {
+      case 'zone_id': {
+        const zone: any = await client.zones.get({ zone_id: id });
+        return {
+          title: zone.name || id,
+          url: `https://dash.cloudflare.com/${zone.account?.id || ''}/${zone.name}`,
+        };
+      }
+      default:
+        return null;
+    }
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Connector export
+// ---------------------------------------------------------------------------
+
 export const cloudflareConnector: Connector = {
   service: 'cloudflare',
   name: 'Cloudflare',
   methods: allMethods,
+  resolvableTypes: cloudflareResolvableTypes,
   groupDescriptions: {
     zones: 'Zone management — create, list, edit, delete zones',
     dns: 'DNS record management and DNSSEC',
@@ -305,6 +345,7 @@ export const cloudflareConnector: Connector = {
   },
 
   execute,
+  resolveId: resolveCloudflareId,
 
   help(method?: string): ServiceHelp {
     if (method) {

@@ -10,6 +10,8 @@ import type {
   PermissionMetadata,
   ServiceHelp,
   OAuthCredentials,
+  ResolveResult,
+  ResolvableType,
 } from '@keepai/proto';
 import { AuthError, NetworkError, PermissionError, LogicError } from '@keepai/proto';
 
@@ -89,29 +91,43 @@ const PAGINATION_TOKEN_PARAM = {
 // Human-readable request descriptions
 // ---------------------------------------------------------------------------
 
+function xRef(method: string, id: unknown): string {
+  if (!id) return '(unknown)';
+  const group = method.split('.')[0];
+  const typeMap: Record<string, string> = {
+    posts: 'post_id',
+    users: 'user_id',
+    lists: 'list_id',
+  };
+  const refType = typeMap[group];
+  return refType ? `[${refType}:${id}]` : String(id);
+}
+function postRef(id: unknown): string { return id ? `[post_id:${id}]` : '(unknown)'; }
+function userRef(id: unknown): string { return id ? `[user_id:${id}]` : '(unknown)'; }
+
 function describeXRequest(method: string, params: Record<string, unknown>): string {
   switch (method) {
     // Posts
     case 'posts.get':
-      return `Get post ${params.id || '(unknown)'}`;
+      return `Get ${postRef(params.id)}`;
     case 'posts.getBatch':
       return `Get ${Array.isArray(params.ids) ? params.ids.length : '?'} posts`;
     case 'posts.create':
       return `Create post: "${String(params.text || '').slice(0, 60)}"`;
     case 'posts.delete':
-      return `Delete post ${params.id || '(unknown)'}`;
+      return `Delete ${postRef(params.id)}`;
     case 'posts.searchRecent':
       return `Search recent posts: "${params.query}"`;
     case 'posts.searchAll':
       return `Full-archive search: "${params.query}"`;
     case 'posts.getQuoted':
-      return `Get quote posts of ${params.id || '(unknown)'}`;
+      return `Get quote posts of ${postRef(params.id)}`;
     case 'posts.getReposts':
-      return `Get reposts of ${params.id || '(unknown)'}`;
+      return `Get reposts of ${postRef(params.id)}`;
     case 'posts.getRepostedBy':
-      return `Get users who reposted ${params.id || '(unknown)'}`;
+      return `Get users who reposted ${postRef(params.id)}`;
     case 'posts.hideReply':
-      return `${params.hidden ? 'Hide' : 'Unhide'} reply ${params.id || '(unknown)'}`;
+      return `${params.hidden ? 'Hide' : 'Unhide'} reply ${postRef(params.id)}`;
     case 'posts.getAnalytics':
       return `Get analytics for ${Array.isArray(params.ids) ? params.ids.length : '?'} posts`;
     case 'posts.getInsights':
@@ -121,35 +137,35 @@ function describeXRequest(method: string, params: Record<string, unknown>): stri
     case 'users.getMe':
       return 'Get authenticated user profile';
     case 'users.get':
-      return `Get user ${params.id || '(unknown)'}`;
+      return `Get ${userRef(params.id)}`;
     case 'users.getBatch':
       return `Get ${Array.isArray(params.ids) ? params.ids.length : '?'} users`;
     case 'users.getByUsername':
       return `Look up user @${params.username || '(unknown)'}`;
     case 'users.getFollowers':
-      return `Get followers of user ${params.id || '(unknown)'}`;
+      return `Get followers of ${userRef(params.id)}`;
     case 'users.getFollowing':
-      return `Get following of user ${params.id || '(unknown)'}`;
+      return `Get following of ${userRef(params.id)}`;
     case 'users.follow':
-      return `Follow user ${params.targetUserId || '(unknown)'}`;
+      return `Follow ${userRef(params.targetUserId)}`;
     case 'users.unfollow':
-      return `Unfollow user ${params.targetUserId || '(unknown)'}`;
+      return `Unfollow ${userRef(params.targetUserId)}`;
     case 'users.getMentions':
-      return `Get mentions of user ${params.id || '(unknown)'}`;
+      return `Get mentions of ${userRef(params.id)}`;
     case 'users.getTimeline':
-      return `Get timeline of user ${params.id || '(unknown)'}`;
+      return `Get timeline of ${userRef(params.id)}`;
     case 'users.getLikedPosts':
-      return `Get posts liked by user ${params.id || '(unknown)'}`;
+      return `Get posts liked by ${userRef(params.id)}`;
     case 'users.like':
-      return `Like post ${params.tweetId || '(unknown)'}`;
+      return `Like ${postRef(params.tweetId)}`;
     case 'users.unlike':
-      return `Unlike post ${params.tweetId || '(unknown)'}`;
+      return `Unlike ${postRef(params.tweetId)}`;
     case 'users.getBookmarks':
       return 'Get bookmarks';
     case 'users.bookmark':
-      return `Bookmark post ${params.tweetId || '(unknown)'}`;
+      return `Bookmark ${postRef(params.tweetId)}`;
     case 'users.removeBookmark':
-      return `Remove bookmark for post ${params.tweetId || '(unknown)'}`;
+      return `Remove bookmark for ${postRef(params.tweetId)}`;
     case 'users.getBlocking':
       return 'Get blocked users';
 
@@ -159,9 +175,9 @@ function describeXRequest(method: string, params: Record<string, unknown>): stri
     case 'dm.getEventsByConversation':
       return `Get DMs in conversation ${params.id || '(unknown)'}`;
     case 'dm.getEventsByParticipant':
-      return `Get DMs with user ${params.participantId || '(unknown)'}`;
+      return `Get DMs with ${userRef(params.participantId)}`;
     case 'dm.send':
-      return `Send DM to user ${params.participantId || '(unknown)'}`;
+      return `Send DM to ${userRef(params.participantId)}`;
     case 'dm.sendToConversation':
       return `Send DM to conversation ${params.id || '(unknown)'}`;
     case 'dm.createConversation':
@@ -169,21 +185,21 @@ function describeXRequest(method: string, params: Record<string, unknown>): stri
 
     // Lists
     case 'lists.get':
-      return `Get list ${params.id || '(unknown)'}`;
+      return `Get ${xRef(method, params.id)}`;
     case 'lists.getPosts':
-      return `Get posts in list ${params.id || '(unknown)'}`;
+      return `Get posts in ${xRef(method, params.id)}`;
     case 'lists.getMembers':
-      return `Get members of list ${params.id || '(unknown)'}`;
+      return `Get members of ${xRef(method, params.id)}`;
     case 'lists.getFollowers':
-      return `Get followers of list ${params.id || '(unknown)'}`;
+      return `Get followers of ${xRef(method, params.id)}`;
     case 'lists.create':
       return `Create list "${params.name || '(unnamed)'}"`;
     case 'lists.update':
-      return `Update list ${params.id || '(unknown)'}`;
+      return `Update ${xRef(method, params.id)}`;
     case 'lists.delete':
-      return `Delete list ${params.id || '(unknown)'}`;
+      return `Delete ${xRef(method, params.id)}`;
     case 'lists.addMember':
-      return `Add member to list ${params.id || '(unknown)'}`;
+      return `Add member to ${xRef(method, params.id)}`;
 
     // Spaces
     case 'spaces.get':
@@ -1343,10 +1359,89 @@ function getResourceType(method: string): string | undefined {
 // Connector export
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Resolvable ID types & resolver
+// ---------------------------------------------------------------------------
+
+const xResolvableTypes: Record<string, ResolvableType> = {
+  post_id: {
+    label: 'Post',
+    params: {
+      'posts.get': 'id', 'posts.delete': 'id',
+      'posts.getQuoted': 'id', 'posts.getReposts': 'id',
+      'posts.getRepostedBy': 'id', 'posts.hideReply': 'id',
+      'users.like': 'tweetId', 'users.unlike': 'tweetId',
+      'users.bookmark': 'tweetId', 'users.removeBookmark': 'tweetId',
+    },
+  },
+  user_id: {
+    label: 'User',
+    params: {
+      'users.get': 'id', 'users.getFollowers': 'id', 'users.getFollowing': 'id',
+      'users.getMentions': 'id', 'users.getTimeline': 'id', 'users.getLikedPosts': 'id',
+      'users.follow': 'targetUserId', 'users.unfollow': 'targetUserId',
+      'dm.getEventsByParticipant': 'participantId', 'dm.send': 'participantId',
+    },
+  },
+  list_id: {
+    label: 'List',
+    params: {
+      'lists.get': 'id', 'lists.getPosts': 'id', 'lists.getMembers': 'id',
+      'lists.getFollowers': 'id', 'lists.update': 'id', 'lists.delete': 'id',
+      'lists.addMember': 'id',
+    },
+  },
+};
+
+async function resolveXId(
+  type: string,
+  id: string,
+  credentials: OAuthCredentials,
+): Promise<ResolveResult | null> {
+  const client = getClient(credentials);
+  try {
+    switch (type) {
+      case 'post_id': {
+        const res: any = await client.posts.getById(id, { 'tweet.fields': ['text'] });
+        const text = res?.data?.text || '';
+        return {
+          title: text.length > 80 ? text.slice(0, 80) + '…' : text || id,
+          url: `https://x.com/i/status/${id}`,
+        };
+      }
+      case 'user_id': {
+        const res: any = await client.users.getById(id, { 'user.fields': ['username', 'name'] });
+        const name = res?.data?.name || '';
+        const username = res?.data?.username || '';
+        return {
+          title: username ? `${name} (@${username})` : name || id,
+          url: username ? `https://x.com/${username}` : undefined,
+        };
+      }
+      case 'list_id': {
+        const res: any = await client.lists.getById(id, { 'list.fields': ['name'] });
+        return {
+          title: res?.data?.name || id,
+          url: `https://x.com/i/lists/${id}`,
+        };
+      }
+      default:
+        return null;
+    }
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Connector export
+// ---------------------------------------------------------------------------
+
 export const xConnector: Connector = {
   service: 'x',
   name: 'X',
   methods,
+  resolvableTypes: xResolvableTypes,
   groupDescriptions: {
     posts: 'Create, get, search, delete posts and manage replies',
     users: 'Get user profiles, followers, timelines, likes, bookmarks, and blocks',
@@ -1391,6 +1486,8 @@ export const xConnector: Connector = {
       throw classifyXError(err);
     }
   },
+
+  resolveId: resolveXId,
 
   help(method?: string): ServiceHelp {
     if (method) {

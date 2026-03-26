@@ -9,6 +9,8 @@ import type {
   PermissionMetadata,
   ServiceHelp,
   OAuthCredentials,
+  ResolveResult,
+  ResolvableType,
 } from '@keepai/proto';
 import { classifyFetchError } from '../classify-fetch-error.js';
 
@@ -61,30 +63,34 @@ function buildQuery(params: Record<string, unknown>, keys: string[]): string {
 // Human-readable descriptions
 // ---------------------------------------------------------------------------
 
+function inboxRef(id: unknown): string { return id ? `[inbox_id:${id}]` : '(unknown)'; }
+function amMsgRef(id: unknown): string { return id ? `[message_id:${id}]` : '(unknown)'; }
+function amThreadRef(id: unknown): string { return id ? `[thread_id:${id}]` : '(unknown)'; }
+
 function describeAgentmailRequest(method: string, params: Record<string, unknown>): string {
   switch (method) {
     case 'inboxes.list': return 'List inboxes';
     case 'inboxes.create': return `Create inbox${params.display_name ? ` "${params.display_name}"` : ''}`;
-    case 'inboxes.get': return `Get inbox ${params.inbox_id || '(unknown)'}`;
-    case 'inboxes.update': return `Update inbox ${params.inbox_id || '(unknown)'}`;
-    case 'inboxes.delete': return `Delete inbox ${params.inbox_id || '(unknown)'}`;
+    case 'inboxes.get': return `Get ${inboxRef(params.inbox_id)}`;
+    case 'inboxes.update': return `Update ${inboxRef(params.inbox_id)}`;
+    case 'inboxes.delete': return `Delete ${inboxRef(params.inbox_id)}`;
 
-    case 'messages.list': return `List messages in inbox ${params.inbox_id || '(unknown)'}`;
-    case 'messages.get': return `Get message ${params.message_id || '(unknown)'}`;
-    case 'messages.update': return `Update labels on message ${params.message_id || '(unknown)'}`;
+    case 'messages.list': return `List messages in ${inboxRef(params.inbox_id)}`;
+    case 'messages.get': return `Get ${amMsgRef(params.message_id)}`;
+    case 'messages.update': return `Update labels on ${amMsgRef(params.message_id)}`;
     case 'messages.send': return `Send message to ${(params.to as string[])?.join(', ') || 'recipients'}${params.subject ? `: "${params.subject}"` : ''}`;
-    case 'messages.reply': return `Reply to message ${params.message_id || '(unknown)'}`;
-    case 'messages.replyAll': return `Reply all to message ${params.message_id || '(unknown)'}`;
-    case 'messages.forward': return `Forward message ${params.message_id || '(unknown)'} to ${(params.to as string[])?.join(', ') || 'recipients'}`;
-    case 'messages.getRaw': return `Get raw .eml for message ${params.message_id || '(unknown)'}`;
-    case 'messages.getAttachment': return `Get attachment ${params.attachment_id || '(unknown)'} from message ${params.message_id || '(unknown)'}`;
+    case 'messages.reply': return `Reply to ${amMsgRef(params.message_id)}`;
+    case 'messages.replyAll': return `Reply all to ${amMsgRef(params.message_id)}`;
+    case 'messages.forward': return `Forward ${amMsgRef(params.message_id)} to ${(params.to as string[])?.join(', ') || 'recipients'}`;
+    case 'messages.getRaw': return `Get raw .eml for ${amMsgRef(params.message_id)}`;
+    case 'messages.getAttachment': return `Get attachment from ${amMsgRef(params.message_id)}`;
 
-    case 'threads.list': return `List threads in inbox ${params.inbox_id || '(unknown)'}`;
-    case 'threads.get': return `Get thread ${params.thread_id || '(unknown)'}`;
-    case 'threads.delete': return `Delete thread ${params.thread_id || '(unknown)'}${params.permanent ? ' permanently' : ''}`;
-    case 'threads.getAttachment': return `Get attachment ${params.attachment_id || '(unknown)'} from thread ${params.thread_id || '(unknown)'}`;
+    case 'threads.list': return `List threads in ${inboxRef(params.inbox_id)}`;
+    case 'threads.get': return `Get ${amThreadRef(params.thread_id)}`;
+    case 'threads.delete': return `Delete ${amThreadRef(params.thread_id)}${params.permanent ? ' permanently' : ''}`;
+    case 'threads.getAttachment': return `Get attachment from ${amThreadRef(params.thread_id)}`;
 
-    case 'drafts.list': return `List drafts in inbox ${params.inbox_id || '(unknown)'}`;
+    case 'drafts.list': return `List drafts in ${inboxRef(params.inbox_id)}`;
     case 'drafts.get': return `Get draft ${params.draft_id || '(unknown)'}`;
     case 'drafts.create': return `Create draft${params.subject ? `: "${params.subject}"` : ''}`;
     case 'drafts.update': return `Update draft ${params.draft_id || '(unknown)'}`;
@@ -121,7 +127,7 @@ function describeAgentmailRequest(method: string, params: Record<string, unknown
     case 'apiKeys.delete': return `Delete API key ${params.api_key_id || '(unknown)'}`;
 
     case 'metrics.getOrg': return 'Get organization metrics';
-    case 'metrics.getInbox': return `Get metrics for inbox ${params.inbox_id || '(unknown)'}`;
+    case 'metrics.getInbox': return `Get metrics for ${inboxRef(params.inbox_id)}`;
 
     case 'organization.get': return 'Get organization info';
 
@@ -1058,10 +1064,55 @@ function pick(obj: Record<string, unknown>, keys: string[]): Record<string, unkn
 // Connector export
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Resolvable ID types & resolver
+// ---------------------------------------------------------------------------
+
+const agentmailResolvableTypes: Record<string, ResolvableType> = {
+  inbox_id: { label: 'Inbox' },
+  message_id: { label: 'Message' },
+  thread_id: { label: 'Thread' },
+};
+
+async function resolveAgentmailId(
+  type: string,
+  id: string,
+  credentials: OAuthCredentials,
+): Promise<ResolveResult | null> {
+  const pathMap: Record<string, string> = {
+    inbox_id: 'inboxes',
+    message_id: 'messages',
+    thread_id: 'threads',
+  };
+  const path = pathMap[type];
+  if (!path) return null;
+
+  try {
+    const data: any = await agentmailFetch(`/${path}/${id}`, credentials);
+    switch (type) {
+      case 'inbox_id':
+        return { title: data.display_name || data.email || id };
+      case 'message_id':
+        return { title: data.subject || '(no subject)' };
+      case 'thread_id':
+        return { title: data.subject || data.messages?.[0]?.subject || '(no subject)' };
+      default:
+        return null;
+    }
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Connector export
+// ---------------------------------------------------------------------------
+
 export const agentmailConnector: Connector = {
   service: 'agentmail',
   name: 'AgentMail',
   methods: allMethods,
+  resolvableTypes: agentmailResolvableTypes,
   groupDescriptions: {
     messages: 'Send, receive, reply, forward messages',
     threads: 'List, get, and delete threads',
@@ -1100,6 +1151,8 @@ export const agentmailConnector: Connector = {
   ): Promise<unknown> {
     return executeAgentmail(method, params, credentials);
   },
+
+  resolveId: resolveAgentmailId,
 
   help(method?: string): ServiceHelp {
     if (method) {

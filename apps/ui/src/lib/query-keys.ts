@@ -10,6 +10,7 @@ export const qk = {
   policy: (agentId: string, connectionId: string) => ['policy', agentId, connectionId] as const,
   connectionPolicies: (connectionId: string) => ['connectionPolicies', connectionId] as const,
   serviceMethods: (service: string) => ['serviceMethods', service] as const,
+  resolvableTypes: () => ['resolvableTypes'] as const,
   queue: () => ['queue'] as const,
   logs: (params?: Record<string, string>) => ['logs', params] as const,
   config: () => ['config'] as const,

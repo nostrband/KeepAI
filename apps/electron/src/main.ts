@@ -34,7 +34,7 @@ import {
 import * as path from 'path';
 import { createServer } from '@keepai/daemon';
 import type { KeepServer } from '@keepai/daemon';
-import { DEFAULT_PORT } from '@keepai/proto';
+import { DEFAULT_PORT, formatDescriptionPlain } from '@keepai/proto';
 
 // Redirect debug output to log file (in addition to stderr)
 const keepaiDir = path.join(os.homedir(), '.keepai');
@@ -275,7 +275,7 @@ function handleSSEEvent(event: string, dataStr: string) {
       if (Notification.isSupported()) {
         const notification = new Notification({
           title: `${data.agentName || 'Agent'} to ${(data.service || 'Unknown').charAt(0).toUpperCase() + (data.service || 'unknown').slice(1)}${data.accountId ? ` (${data.accountId})` : ''}`,
-          body: data.description || `Requests ${data.method} approval`,
+          body: data.description ? formatDescriptionPlain(data.description) : `Requests ${data.method} approval`,
           icon: getIconPath('icon.png'),
         });
 

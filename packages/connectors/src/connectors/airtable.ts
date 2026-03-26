@@ -8,6 +8,8 @@ import type {
   PermissionMetadata,
   ServiceHelp,
   OAuthCredentials,
+  ResolveResult,
+  ResolvableType,
 } from '@keepai/proto';
 import { classifyFetchError } from '../classify-fetch-error.js';
 
@@ -44,12 +46,16 @@ function tableLabel(params: Record<string, unknown>): string {
   return `"${params.tableIdOrName || 'unknown table'}"`;
 }
 
+function baseRef(id: unknown): string {
+  return id ? `[base_id:${id}]` : '(unknown)';
+}
+
 function describeAirtableRequest(method: string, params: Record<string, unknown>): string {
   switch (method) {
     case 'bases.list':
       return 'List accessible bases';
     case 'base.tables':
-      return 'List tables in base';
+      return `List tables in ${baseRef(params.baseId)}`;
     case 'records.list':
       return `List records from ${tableLabel(params)}${params.filterByFormula ? ` (filter: ${params.filterByFormula})` : ''}`;
     case 'records.get':
@@ -79,23 +85,23 @@ function describeAirtableRequest(method: string, params: Record<string, unknown>
     case 'comments.delete':
       return `Delete comment ${params.commentId || '(unknown)'} from record ${params.recordId || '(unknown)'} in ${tableLabel(params)}`;
     case 'table.create':
-      return `Create table "${params.name || '(unnamed)'}" in base ${params.baseId || '(unknown)'}`;
+      return `Create table "${params.name || '(unnamed)'}" in ${baseRef(params.baseId)}`;
     case 'table.update':
-      return `Update table ${params.tableId || '(unknown)'} in base ${params.baseId || '(unknown)'}`;
+      return `Update table ${params.tableId || '(unknown)'} in ${baseRef(params.baseId)}`;
     case 'field.create':
       return `Create field "${params.name || '(unnamed)'}" in table ${params.tableId || '(unknown)'}`;
     case 'field.update':
       return `Update field ${params.fieldId || '(unknown)'} in table ${params.tableId || '(unknown)'}`;
     case 'webhooks.list':
-      return `List webhooks for base ${params.baseId || '(unknown)'}`;
+      return `List webhooks for ${baseRef(params.baseId)}`;
     case 'webhook.create':
-      return `Create webhook for base ${params.baseId || '(unknown)'}`;
+      return `Create webhook for ${baseRef(params.baseId)}`;
     case 'webhook.delete':
-      return `Delete webhook ${params.webhookId || '(unknown)'} from base ${params.baseId || '(unknown)'}`;
+      return `Delete webhook ${params.webhookId || '(unknown)'} from ${baseRef(params.baseId)}`;
     case 'webhook.payloads':
-      return `Get payloads for webhook ${params.webhookId || '(unknown)'} in base ${params.baseId || '(unknown)'}`;
+      return `Get payloads for webhook ${params.webhookId || '(unknown)'} in ${baseRef(params.baseId)}`;
     case 'webhook.refresh':
-      return `Refresh webhook ${params.webhookId || '(unknown)'} in base ${params.baseId || '(unknown)'}`;
+      return `Refresh webhook ${params.webhookId || '(unknown)'} in ${baseRef(params.baseId)}`;
     case 'whoami':
       return 'Get current user info';
     default:
@@ -731,10 +737,43 @@ function getResourceType(method: string): string | undefined {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Resolvable ID types & resolver
+// ---------------------------------------------------------------------------
+
+const airtableResolvableTypes: Record<string, ResolvableType> = {
+  base_id: { label: 'Base' },
+};
+
+async function resolveAirtableId(
+  type: string,
+  id: string,
+  credentials: OAuthCredentials,
+): Promise<ResolveResult | null> {
+  if (type !== 'base_id') return null;
+  try {
+    // List bases and find the one matching the ID
+    const data: any = await airtableFetch('/meta/bases', credentials);
+    const base = data?.bases?.find((b: any) => b.id === id);
+    if (!base) return null;
+    return {
+      title: base.name || id,
+      url: `https://airtable.com/${id}`,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Connector export
+// ---------------------------------------------------------------------------
+
 export const airtableConnector: Connector = {
   service: 'airtable',
   name: 'Airtable',
   methods,
+  resolvableTypes: airtableResolvableTypes,
   groupDescriptions: {
     bases: 'List accessible bases',
     base: 'List tables and fields in a base',
@@ -772,6 +811,8 @@ export const airtableConnector: Connector = {
   ): Promise<unknown> {
     return executeAirtable(method, params, credentials);
   },
+
+  resolveId: resolveAirtableId,
 
   help(method?: string): ServiceHelp {
     if (method) {
